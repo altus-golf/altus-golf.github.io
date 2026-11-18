@@ -568,3 +568,23 @@ details[open] > summary::before { transform: rotate(90deg); }
 .pr-bloc h3 { margin: 14px 0 4px; font-size: 1rem; }
 .pr-bloc + .pr-bloc, .bloc-coach + .pr-bloc, .bloc-coach + .bloc-defi { margin-top: 16px; }
 .pied .lien-bouton { font-size: 0.85rem; }
+
+/* Règles des exos (texte du classeur Altus) */
+.regles { white-space: pre-line; margin: 8px 0; }
+
+/* Test de Pelz (exos-altus.js) */
+.pelz-semaine { margin: 10px 0; }
+.pelz-liste { list-style: none; margin: 0; padding: 0; }
+.pelz-liste li { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--bord); }
+.pelz-liste li > span:first-child { flex: 1; display: flex; flex-direction: column; }
+.pelz-liste small { color: var(--texte-doux); font-size: 0.8rem; }
+.pelz-liste .bouton { width: auto; min-height: 42px; padding: 6px 12px; }
+.pelz-fait { font-weight: 800; color: var(--accent); white-space: nowrap; }
+.pelz-compteur { font-size: 1.1rem; }
+.pelz-balles { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin: 8px 0 14px; }
+.pelz-balle { aspect-ratio: 1; border-radius: 50%; border: 2px solid var(--bord); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.8rem; }
+.pelz-balle.jouee { background: var(--accent); border-color: var(--accent); color: var(--accent-texte); }
+.pelz-boutons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pelz-boutons .bouton { min-height: 72px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 1.05rem; }
+.pelz-boutons small { font-weight: 600; opacity: 0.8; }
+.carte .pelz-liste { padding: 0; }

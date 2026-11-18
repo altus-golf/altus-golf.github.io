@@ -138,8 +138,8 @@ const PRENOMS_DEMO = ["Lucas", "Emma", "Hugo", "Léa", "Nathan", "Chloé"];
 function baseDemo() {
   let db = lireStockage("demo", null);
   if (db && db.version === 1) return db;
-  db = { version: 1, bilans: {}, defi: { fiche: "trefle", lundi: lundiDe(), message: "Qui fera 16/16 cette semaine ?" }, consignes: {} };
-  const fiches = (window.FICHES_ALTUS || []).map((f) => f.id).filter((id) => id !== "snail-3-10-feet");
+  db = { version: 1, bilans: {}, defi: { fiche: "trefle", lundi: lundiDe(), message: "Meilleure série au Trèfle : qui fera 16 d'affilée ?" }, consignes: {} };
+  const fiches = ITEMS_ALTUS.map((it) => it.id).filter((id) => id !== "pelz-total");
   const lundi = lundiDe();
   PRENOMS_DEMO.forEach((prenom, k) => {
     const uid = "demo-" + k;
@@ -153,7 +153,9 @@ function baseDemo() {
       }
       hist[id] = liste.sort((a, b) => a[0].localeCompare(b[0]));
     });
-    const defi = k % 3 === 2 ? null : { lundi, fiche: "trefle", meilleur: Math.min(16, 8 + k + (k % 2) * 2) };   // 2 joueurs n'ont pas joué le défi
+    // Un Pelz complet il y a 2 semaines
+    hist["pelz-total"] = [[dateEnTexte(ajouterJours(new Date(), -14)), Math.round(360 * (niveau - 0.15))]];
+    const defi = k % 3 === 2 ? null : { lundi, fiche: "trefle", meilleur: Math.min(15, 8 + k + (k % 2) * 2) };   // 2 joueurs n'ont pas joué le défi
     db.bilans[uid] = calculerBilanDepuis(uid, prenom, hist, { lundi, n: (k * 7) % 12 }, defi);
   });
   ecrireStockage("demo", db);

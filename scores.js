@@ -13,32 +13,14 @@
 
 const PREFIXE_SCORES = "altus-scores-v1:";
 
-// Unité de chaque exo (lue dans le « critère de réussite » des fiches)
-const UNITES_SCORE = {
-  "2-feet-circle": "/ 12",
-  "9-putt-circle": "/ 9",
-  "demi-lune": "/ 12",
-  "leap-frog": "balles",
-  "lowry-putt": "/ 6",
-  "speed-drill-cross": "/ 12",
-  "start-line": "%",
-  "speed-drill": "/ 30",
-  trefle: "/ 16",
-  "snail-3-10-feet": "rentrés",
-  "cercle-mickelson": "d'affilée",
-  "echelle-de-dosage": "balles réussies",
-  "echelle-inversee": "balles",
-};
+// Unité de chaque score : remplie par exos-altus.js (ITEMS_ALTUS)
+const UNITES_SCORE = {};
 
 // Exos où le plus petit score est le meilleur (aucun en putting, gardé pour exos-points.js)
 const SCORES_PLUS_BAS_MIEUX = new Set(["couloir-precision-fers", "neuf-trajectoires"]);
 
 // Score le plus haut possible (pour les joueurs fictifs de la démo)
-function scoreMaxi(idFiche) {
-  const u = UNITES_SCORE[idFiche] || "";
-  if (u.startsWith("/")) return Number(u.slice(1));
-  return u === "%" ? 100 : 20;
-}
+function scoreMaxi(id) { return (itemDe(id) || { max: 20 }).max; }
 
 function meilleurScore(idFiche, valeurs) {
   return SCORES_PLUS_BAS_MIEUX.has(idFiche) ? Math.min(...valeurs) : Math.max(...valeurs);
@@ -65,13 +47,20 @@ function resumeScores(liste, idFiche) {
   return { dernier: liste[liste.length - 1], record: meilleurScore(idFiche, liste.map((s) => s.v)), nombre: liste.length };
 }
 
-// Appelé par exos-points.js à la fin d'un exo noté
-function enregistrerScore(idFiche, valeur) {
+// Ajoute un score (id = un des ITEMS_ALTUS, exos-altus.js), sans rien d'autre
+function enregistrerScoreSansSuite(id, valeur) {
   const scores = lireScores();
-  const liste = Array.isArray(scores[idFiche]) ? scores[idFiche] : [];
+  const liste = Array.isArray(scores[id]) ? scores[id] : [];
   liste.push({ t: Date.now(), d: dateEnTexte(new Date()), v: valeur });
-  scores[idFiche] = liste;
+  scores[id] = liste;
   ecrireStockage("scores", scores, PREFIXE_SCORES);
+}
+
+// Appelé par exos-points.js à la fin d'un exo noté. Le score « façon Altus »
+// (Trèfle en série, Snail sur 8, Start Line par distance) remplace le sien.
+function enregistrerScore(idFiche, valeur) {
+  const scores = scoreAltusEnAttente || [[idFiche, valeur]];
+  scores.forEach(([id, v]) => enregistrerScoreSansSuite(id, v));
   apresUnExo(idFiche);   // app.js
 }
 

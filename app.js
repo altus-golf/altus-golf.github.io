@@ -6,7 +6,7 @@
      classements  défi de la semaine, 🦥 flemmard de la semaine,
                   🏆 top 3 de l'année (moyenne) et ⭐ record de l'année par exo
      moi          mes records et courbes
-     exos         tous les exos de putting (jouables)
+     exos         tous les exos de petit jeu et de putting (jouables)
      coach        espace des coachs (défi, exos donnés, progrès des joueurs)
 
    Sources : scores de ce téléphone (scores.js, exos-points.js) et
@@ -22,10 +22,10 @@ let exoClassement = null;    // exo choisi dans « Classements »
 let joueurCoach = null;      // uid du joueur choisi dans l'espace coach
 let messageCoach = "";       // erreur à afficher dans l'espace coach
 
-const FICHES = window.FICHES_ALTUS || [];
-const ficheDe = (id) => FICHES.find((f) => f.id === id) || null;
-const avecScore = (id) => { const exo = exoDeLaFiche(id); return !!exo && !sansScore(exo); };
-const FICHES_NOTEES = FICHES.filter((f) => avecScore(f.id));
+// Exos à jouer et scores classés : exos-altus.js (FICHES_ALTUS, ITEMS_ALTUS, ficheDe, itemDe)
+const FICHES = FICHES_ALTUS;
+// Exo à jouer pour un score classé (ex. « start-line-10 » -> Start Line)
+const ficheDeItem = (id) => (itemDe(id) ? ficheDe(itemDe(id).fiche) : null);
 
 function echapper(texte) {
   return String(texte ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -35,13 +35,15 @@ const virguleA = (n) => (Math.round(n * 10) / 10).toLocaleString("fr-FR");
 
 /* ---------- 1. Mon bilan (envoyé au groupe) ---------- */
 
-// Exos joués cette semaine (tous les tours terminés, Snail compris)
+// Exos joués cette semaine : tours terminés des jeux + situations du Pelz
 function exosDeLaSemaine() {
   const lundi = lundiDe();
   let n = 0;
   for (const exo of Object.keys(EXOS_POINTS)) {
     if (ficheDe(EXOS_POINTS[exo].idFiche)) n += toursDe(exo).filter((t) => t.d >= lundi).length;
   }
+  const scores = lireScores();
+  PELZ_SITUATIONS.forEach((s) => { n += (scores["pelz-" + s.id] || []).filter((x) => x.d >= lundi).length; });
   return n;
 }
 
@@ -93,28 +95,14 @@ function mesConsignes() {
 /* ---------- 2. Morceaux de page ---------- */
 
 function carteExo(fiche, options = {}) {
-  const source = fiche.source || {};
-  const texteSource = source.type === "web"
-    ? `Source : <a href="${echapper(source.url)}" target="_blank" rel="noopener">${echapper(source.nom || "en ligne")}</a>`
-    : source.fichier ? `Source : ${echapper(source.fichier.replace(/\.pdf(\.pdf)?$/i, ""))} (fiche PDF du club)` : "";
-  const liste = (l, balise) => Array.isArray(l) && l.length ? `<${balise}>${l.map((x) => `<li>${echapper(x)}</li>`).join("")}</${balise}>` : "";
   return `<article class="carte cat-putting ${options.fait ? "faite" : ""}">
-    <div class="carte-haut"><span class="pastille">${echapper(options.etiquette || "Putting")}</span><span class="duree">⏱ ${Number(fiche.duree) || 0} min</span></div>
+    <div class="carte-haut"><span class="pastille">${echapper(options.etiquette || fiche.type)}</span></div>
     <h3 class="carte-titre">${echapper(fiche.titre)}</h3>
-    ${fiche.objectif ? `<p class="objectif">${echapper(fiche.objectif)}</p>` : ""}
-    <details>
-      <summary>Comment faire</summary>
-      <h4>Matériel</h4>${liste(fiche.materiel, "ul")}
-      <h4>Mise en place</h4>${liste(fiche.miseEnPlace, "ol")}
-      <h4>Déroulé</h4>${liste(fiche.deroule, "ol")}
-      <h4>Critère de réussite</h4><p>${echapper(fiche.reussite)}</p>
-      <div class="variantes">
-        <div class="variante"><strong>Plus facile</strong>${echapper(fiche.varianteFacile)}</div>
-        <div class="variante"><strong>Plus difficile</strong>${echapper(fiche.varianteDifficile)}</div>
-      </div>
-      ${texteSource ? `<p class="source">${texteSource}</p>` : ""}
+    <details ${options.ouvert ? "open" : ""}>
+      <summary>Mise en place et règles</summary>
+      <p class="regles">${echapper(fiche.regles)}</p>
     </details>
-    ${options.sansJeu ? "" : zoneExoPoints(fiche.id)}
+    ${fiche.id === "pelz" ? zonePelz() : zoneExoPoints(fiche.id)}
   </article>`;
 }
 
@@ -135,13 +123,13 @@ function courbe(valeurs) {
 // Records et courbes d'un joueur, à partir de son historique { fiche: [[d, v]] }
 function blocRecords(hist, titre) {
   const lignes = Object.entries(hist)
-    .filter(([id, l]) => ficheDe(id) && l.length)
+    .filter(([id, l]) => itemDe(id) && l.length)
     .sort((a, b) => b[1][b[1].length - 1][0].localeCompare(a[1][a[1].length - 1][0]))
     .map(([id, l]) => {
       const vals = l.map(([, v]) => v);
       const record = meilleurScore(id, vals);
       return `<article class="pr-exo cat-putting">
-        <div class="pr-exo-tete"><h3>${echapper(ficheDe(id).titre)}</h3></div>
+        <div class="pr-exo-tete"><h3>${echapper(itemDe(id).titre)}</h3></div>
         ${courbe(vals.slice(-20))}
         <p class="pr-exo-chiffres">
           <span>⭐ Record <strong>${echapper(texteScore(id, record))}</strong></span>
@@ -189,7 +177,7 @@ function vueSeance() {
   const duCoach = c.exos.map(ficheDe).filter((f) => f && (!c.faits[f.id] || c.faits[f.id] === jour));
   const aFaire = duCoach.filter((f) => !c.faits[f.id]);
   const defi = groupeDonnees && groupeDonnees.defi && groupeDonnees.defi.lundi === lundiDe() ? groupeDonnees.defi : null;
-  const ficheDefi = defi && ficheDe(defi.fiche);
+  const ficheDefi = defi && ficheDeItem(defi.fiche);
 
   let html = `<p class="semaine-info">Salut <strong>${echapper(m.prenom)}</strong> · ${exosDeLaSemaine()} exo${exosDeLaSemaine() > 1 ? "s" : ""} joué${exosDeLaSemaine() > 1 ? "s" : ""} cette semaine</p>`;
   if (duCoach.length) {
@@ -205,11 +193,11 @@ function vueSeance() {
     const resume = meilleur.length ? `Ton meilleur score cette semaine : <strong>${echapper(texteScore(defi.fiche, meilleurScore(defi.fiche, meilleur)))}</strong>` : "Tu ne l'as pas encore joué cette semaine.";
     if (aFaire.length) {
       // Exos du coach d'abord : le défi est seulement rappelé
-      html += `<section class="bloc pr-bloc"><h2 class="bloc-titre">🎯 Défi de la semaine : ${echapper(ficheDefi.titre)}</h2>
+      html += `<section class="bloc pr-bloc"><h2 class="bloc-titre">🎯 Défi de la semaine : ${echapper(itemDe(defi.fiche).titre)}</h2>
         <p class="petit">À jouer après tes exos du coach (onglet Exos). ${resume}</p></section>`;
     } else {
       html += `<section class="bloc bloc-defi">
-        <h2 class="bloc-titre">🎯 Défi de la semaine</h2>
+        <h2 class="bloc-titre">🎯 Défi de la semaine : ${echapper(itemDe(defi.fiche).titre)}</h2>
         ${defi.message ? `<p class="message-coach">💬 ${echapper(defi.message)}</p>` : ""}
         <p class="bloc-info">${resume} · classement dans 🏆</p>
         ${carteExo(ficheDefi, { etiquette: "🎯 Défi" })}
@@ -231,11 +219,11 @@ function vueClassements() {
 
   // --- Défi de la semaine ---
   const defi = groupeDonnees.defi && groupeDonnees.defi.lundi === lundi ? groupeDonnees.defi : null;
-  if (defi && ficheDe(defi.fiche)) {
+  if (defi && itemDe(defi.fiche)) {
     const joues = bilans.filter((b) => b.defi && b.defi.lundi === lundi && b.defi.fiche === defi.fiche)
       .sort((a, b) => (meilleurQue(defi.fiche, a.defi.meilleur, b.defi.meilleur) ? -1 : 1));
     html += `<section class="bloc pr-bloc">
-      <h2 class="bloc-titre">🎯 Défi : ${echapper(ficheDe(defi.fiche).titre)}</h2>
+      <h2 class="bloc-titre">🎯 Défi : ${echapper(itemDe(defi.fiche).titre)}</h2>
       <p class="bloc-info">Meilleur score de chacun cette semaine</p>
       ${joues.length ? `<ol class="classement">${joues.map((b, i) => ligneClassement(i, b.prenom, echapper(texteScore(defi.fiche, b.defi.meilleur)), m && b.uid === m.uid)).join("")}</ol>` : `<p class="petit">Personne ne l'a encore joué.</p>`}
     </section>`;
@@ -258,7 +246,7 @@ function vueClassements() {
 
   // --- Par exo : top 3 de l'année (moyenne) + record absolu ---
   const annee = new Date().getFullYear();
-  const avecDonnees = FICHES_NOTEES.filter((f) => bilans.some((b) => b.annee === annee && b.exos[f.id]));
+  const avecDonnees = ITEMS_ALTUS.filter((f) => bilans.some((b) => b.annee === annee && b.exos[f.id]));
   if (!avecDonnees.some((f) => f.id === exoClassement)) exoClassement = (defi && avecDonnees.some((f) => f.id === defi.fiche)) ? defi.fiche : avecDonnees.length ? avecDonnees[0].id : null;
   if (exoClassement) {
     const id = exoClassement;
@@ -289,7 +277,7 @@ function vueMoi() {
 
 function vueExos() {
   return `<h2 class="bloc-titre">📚 Tous les exos</h2>
-    <p class="bloc-info">${FICHES.length} exos de putting, à jouer quand tu veux</p>
+    <p class="bloc-info">${FICHES.length} exos de petit jeu et de putting, à jouer quand tu veux</p>
     ${FICHES.map((f) => carteExo(f)).join("")}`;
 }
 
@@ -320,7 +308,7 @@ function vueCoach() {
     <h2 class="bloc-titre">🎯 Défi de la semaine du ${echapper(dateLisible(lundi))}</h2>
     <select id="choix-defi" class="choix" aria-label="Exo du défi">
       ${defi ? "" : `<option value="">— choisir un exo —</option>`}
-      ${FICHES_NOTEES.map((f) => `<option value="${echapper(f.id)}" ${defi && defi.fiche === f.id ? "selected" : ""}>${echapper(f.titre)}</option>`).join("")}
+      ${ITEMS_ALTUS.map((f) => `<option value="${echapper(f.id)}" ${defi && defi.fiche === f.id ? "selected" : ""}>${echapper(f.titre)}</option>`).join("")}
     </select>
     <label for="message-defi">💬 Message (facultatif)</label>
     <input id="message-defi" maxlength="200" value="${echapper(defi ? defi.message : "")}">
@@ -366,7 +354,7 @@ function afficherVue() {
   document.getElementById("onglets").innerHTML = m && !enCoach
     ? ONGLETS.map(([id, nom]) => `<button type="button" class="onglet ${vue === id ? "actif" : ""}" data-a="vue" data-vue="${id}" aria-pressed="${vue === id}">${nom}</button>`).join("")
     : enCoach ? `<button type="button" class="onglet" data-a="vue" data-vue="seance">← Retour</button>` : "";
-  document.getElementById("sous-titre").textContent = m ? `${m.prenom} · groupe ${m.code}` : "Entraînement putting";
+  document.getElementById("sous-titre").textContent = m ? `${m.prenom} · groupe ${m.code}` : "Petit jeu et putting";
   const contenu = document.getElementById("contenu");
   if (enCoach) contenu.innerHTML = vueCoach();
   else if (!m) contenu.innerHTML = vueAccueil();
