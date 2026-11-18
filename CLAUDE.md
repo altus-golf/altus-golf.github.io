@@ -8,6 +8,7 @@ Site **Altus Performance** (GitHub Pages, https://altus-golf.github.io/) : défi
 - Tout accès `localStorage` passe par `lireStockage` / `ecrireStockage` (base.js, try/catch).
 - Données reçues en ligne = non fiables : toujours normalisées (`normaliserBilan`, `normaliserDefi`, `normaliserConsignes`) et échappées (`echapper`).
 - Adresses des coachs : jamais dans le dépôt (placeholders `ADRESSE_COACH_n` dans `outils/regles-firestore.txt`).
+- **Putting en PIEDS, jamais en mètres** (choix de l'utilisateur) : conversions dans exos-altus.js (`EN_PIEDS`, `remplacerTextes`) ; barème du Pelz en pieds (< 3 / 3 à 6 / > 6) ; seules les distances de jeu du Pelz (15 m, 50 m…) restent en mètres.
 - Exercices : uniquement des exos de PERFORMANCE (jeu noté). Ne jamais mentionner le « SG » du PDF Trèfle.
 - `exos-points.js` est une **copie telle quelle** de l'appli golf (jeux interactifs) : ne pas l'éditer, les réglages Altus sont dans `exos-altus.js`. Une amélioration d'un côté ne passe pas toute seule de l'autre : recopier si l'utilisateur le demande.
 - **Programme Altus = les 11 exos du classeur Google « ALTUS Saisie Training Petit Jeu/Putting » (onglet Exercices)**, règles recopiées telles quelles. Ne pas publier les prénoms ni les scores des joueurs de ce classeur.
