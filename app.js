@@ -1,0 +1,450 @@
+/* =========================================================
+   Site Altus Performance — affichage et actions
+
+   Vues (onglets) :
+     seance       ⭐ exos du coach s'il y en a, sinon 🎯 défi de la semaine
+     classements  défi de la semaine, 🦥 flemmard de la semaine,
+                  🏆 top 3 de l'année (moyenne) et ⭐ record de l'année par exo
+     moi          mes records et courbes
+     exos         tous les exos de putting (jouables)
+     coach        espace des coachs (défi, exos donnés, progrès des joueurs)
+
+   Sources : scores de ce téléphone (scores.js, exos-points.js) et
+   bilans du groupe (base.js). Après chaque exo : apresUnExo().
+   ========================================================= */
+
+"use strict";
+
+let vue = "seance";
+let groupeDonnees = null;    // { bilans, defi, consignes } (lireGroupe, base.js) ; null = pas encore chargé
+let erreurGroupe = false;    // la base n'a pas répondu
+let exoClassement = null;    // exo choisi dans « Classements »
+let joueurCoach = null;      // uid du joueur choisi dans l'espace coach
+let messageCoach = "";       // erreur à afficher dans l'espace coach
+
+const FICHES = window.FICHES_ALTUS || [];
+const ficheDe = (id) => FICHES.find((f) => f.id === id) || null;
+const avecScore = (id) => { const exo = exoDeLaFiche(id); return !!exo && !sansScore(exo); };
+const FICHES_NOTEES = FICHES.filter((f) => avecScore(f.id));
+
+function echapper(texte) {
+  return String(texte ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+const virguleA = (n) => (Math.round(n * 10) / 10).toLocaleString("fr-FR");
+
+
+/* ---------- 1. Mon bilan (envoyé au groupe) ---------- */
+
+// Exos joués cette semaine (tous les tours terminés, Snail compris)
+function exosDeLaSemaine() {
+  const lundi = lundiDe();
+  let n = 0;
+  for (const exo of Object.keys(EXOS_POINTS)) {
+    if (ficheDe(EXOS_POINTS[exo].idFiche)) n += toursDe(exo).filter((t) => t.d >= lundi).length;
+  }
+  return n;
+}
+
+function calculerBilan() {
+  const m = moi();
+  const hist = {};
+  for (const [id, liste] of Object.entries(lireScores())) {
+    if (Array.isArray(liste) && liste.length) hist[id] = liste.map((s) => [s.d, s.v]);
+  }
+  const lundi = lundiDe();
+  const defi = groupeDonnees && groupeDonnees.defi;
+  let monDefi = null;
+  if (defi && defi.lundi === lundi && hist[defi.fiche]) {
+    const cetteSemaine = hist[defi.fiche].filter(([d]) => d >= lundi).map(([, v]) => v);
+    if (cetteSemaine.length) monDefi = { lundi, fiche: defi.fiche, meilleur: meilleurScore(defi.fiche, cetteSemaine) };
+  }
+  return calculerBilanDepuis(m.uid, m.prenom, hist, { lundi, n: exosDeLaSemaine() }, monDefi);
+}
+
+// Après chaque exo terminé (scores.js) : exo du coach coché, bilan envoyé, page à jour
+async function apresUnExo(idFiche) {
+  const m = moi();
+  if (!m) return;
+  const c = mesConsignes();
+  if (idFiche && c.exos.includes(idFiche)) {
+    c.faits[idFiche] = dateEnTexte(new Date());
+    noterFaitConsigne(c.faits);
+    if (groupeDonnees) groupeDonnees.consignes[m.uid] = c;
+  }
+  afficherVue();
+  await publierBilan(calculerBilan());
+  await chargerGroupe();
+}
+
+async function chargerGroupe() {
+  if (!moi() && !(vue === "coach" && coachConnecte())) return;
+  const donnees = await lireGroupe(vue === "coach" && coachConnecte());
+  erreurGroupe = !donnees;
+  if (donnees) groupeDonnees = donnees;
+  afficherVue();
+}
+
+function mesConsignes() {
+  const m = moi();
+  return (groupeDonnees && m && groupeDonnees.consignes[m.uid]) || { exos: [], message: "", faits: {} };
+}
+
+
+/* ---------- 2. Morceaux de page ---------- */
+
+function carteExo(fiche, options = {}) {
+  const source = fiche.source || {};
+  const texteSource = source.type === "web"
+    ? `Source : <a href="${echapper(source.url)}" target="_blank" rel="noopener">${echapper(source.nom || "en ligne")}</a>`
+    : source.fichier ? `Source : ${echapper(source.fichier.replace(/\.pdf(\.pdf)?$/i, ""))} (fiche PDF du club)` : "";
+  const liste = (l, balise) => Array.isArray(l) && l.length ? `<${balise}>${l.map((x) => `<li>${echapper(x)}</li>`).join("")}</${balise}>` : "";
+  return `<article class="carte cat-putting ${options.fait ? "faite" : ""}">
+    <div class="carte-haut"><span class="pastille">${echapper(options.etiquette || "Putting")}</span><span class="duree">⏱ ${Number(fiche.duree) || 0} min</span></div>
+    <h3 class="carte-titre">${echapper(fiche.titre)}</h3>
+    ${fiche.objectif ? `<p class="objectif">${echapper(fiche.objectif)}</p>` : ""}
+    <details>
+      <summary>Comment faire</summary>
+      <h4>Matériel</h4>${liste(fiche.materiel, "ul")}
+      <h4>Mise en place</h4>${liste(fiche.miseEnPlace, "ol")}
+      <h4>Déroulé</h4>${liste(fiche.deroule, "ol")}
+      <h4>Critère de réussite</h4><p>${echapper(fiche.reussite)}</p>
+      <div class="variantes">
+        <div class="variante"><strong>Plus facile</strong>${echapper(fiche.varianteFacile)}</div>
+        <div class="variante"><strong>Plus difficile</strong>${echapper(fiche.varianteDifficile)}</div>
+      </div>
+      ${texteSource ? `<p class="source">${texteSource}</p>` : ""}
+    </details>
+    ${options.sansJeu ? "" : zoneExoPoints(fiche.id)}
+  </article>`;
+}
+
+// Petite courbe des scores (le gros point = le meilleur)
+function courbe(valeurs) {
+  const l = 240, h = 60, m = 6;
+  if (valeurs.length < 2) return "";
+  const min = Math.min(...valeurs), max = Math.max(...valeurs), ampl = max - min || 1;
+  const x = (i) => m + i * (l - 2 * m) / (valeurs.length - 1);
+  const y = (v) => h - m - (v - min) / ampl * (h - 2 * m);
+  const iMax = valeurs.lastIndexOf(max);
+  return `<svg class="pr-courbe" viewBox="0 0 ${l} ${h}" aria-hidden="true">
+    <polyline points="${valeurs.map((v, i) => `${x(i)},${y(v)}`).join(" ")}" class="pr-ligne"/>
+    ${valeurs.map((v, i) => `<circle cx="${x(i)}" cy="${y(v)}" r="${i === iMax ? 4.5 : 2.5}" class="${i === iMax ? "pr-record" : "pr-point"}"/>`).join("")}
+  </svg>`;
+}
+
+// Records et courbes d'un joueur, à partir de son historique { fiche: [[d, v]] }
+function blocRecords(hist, titre) {
+  const lignes = Object.entries(hist)
+    .filter(([id, l]) => ficheDe(id) && l.length)
+    .sort((a, b) => b[1][b[1].length - 1][0].localeCompare(a[1][a[1].length - 1][0]))
+    .map(([id, l]) => {
+      const vals = l.map(([, v]) => v);
+      const record = meilleurScore(id, vals);
+      return `<article class="pr-exo cat-putting">
+        <div class="pr-exo-tete"><h3>${echapper(ficheDe(id).titre)}</h3></div>
+        ${courbe(vals.slice(-20))}
+        <p class="pr-exo-chiffres">
+          <span>⭐ Record <strong>${echapper(texteScore(id, record))}</strong></span>
+          <span>Dernier : ${echapper(texteScore(id, vals[vals.length - 1]))} (${echapper(dateLisible(l[l.length - 1][0]))})</span>
+          <span>${l.length} score${l.length > 1 ? "s" : ""}</span>
+        </p>
+      </article>`;
+    });
+  return `<section class="bloc pr-bloc">
+    <h2 class="bloc-titre">${titre}</h2>
+    ${lignes.length ? lignes.join("") : `<p class="petit">Pas encore de score.</p>`}
+  </section>`;
+}
+
+const medaille = (i) => ["🥇", "🥈", "🥉"][i] || `${i + 1}.`;
+
+function ligneClassement(i, nom, valeur, estMoi) {
+  return `<li class="${estMoi ? "moi" : ""}"><span>${medaille(i)} ${echapper(nom)}</span><strong>${valeur}</strong></li>`;
+}
+
+
+/* ---------- 3. Vues ---------- */
+
+function vueAccueil() {
+  return `<section class="bloc pr-bloc accueil-altus">
+    <h2 class="bloc-titre">Bienvenue chez Altus 👋</h2>
+    <p>Entre ton prénom et le code du groupe donné par ton coach.</p>
+    <form id="form-rejoindre">
+      <label for="prenom">Prénom</label>
+      <input id="prenom" name="prenom" autocomplete="given-name" maxlength="30" required>
+      <label for="code">Code du groupe</label>
+      <input id="code" name="code" autocapitalize="characters" maxlength="20" required placeholder="ex. ALTUS2026">
+      <p class="erreur" id="erreur-rejoindre" hidden></p>
+      <button type="submit" class="bouton principal pleine-largeur">C'est parti</button>
+    </form>
+    ${modeDemo() ? `<p class="petit">Mode démo : n'importe quel code marche (ex. ALTUS2026).</p>` : ""}
+  </section>`;
+}
+
+function vueSeance() {
+  const m = moi();
+  const jour = dateEnTexte(new Date());
+  const c = mesConsignes();
+  // Exos du coach : à faire, ou faits aujourd'hui (grisés) ; faits avant, ils disparaissent
+  const duCoach = c.exos.map(ficheDe).filter((f) => f && (!c.faits[f.id] || c.faits[f.id] === jour));
+  const aFaire = duCoach.filter((f) => !c.faits[f.id]);
+  const defi = groupeDonnees && groupeDonnees.defi && groupeDonnees.defi.lundi === lundiDe() ? groupeDonnees.defi : null;
+  const ficheDefi = defi && ficheDe(defi.fiche);
+
+  let html = `<p class="semaine-info">Salut <strong>${echapper(m.prenom)}</strong> · ${exosDeLaSemaine()} exo${exosDeLaSemaine() > 1 ? "s" : ""} joué${exosDeLaSemaine() > 1 ? "s" : ""} cette semaine</p>`;
+  if (duCoach.length) {
+    html += `<section class="bloc bloc-coach">
+      <h2 class="bloc-titre">⭐ Demandé par ton coach</h2>
+      ${c.message ? `<p class="message-coach">💬 ${echapper(c.message)}</p>` : ""}
+      <p class="bloc-info">${aFaire.length ? `${aFaire.length} exo${aFaire.length > 1 ? "s" : ""} à faire` : "Tout est fait, bravo ! 🎉"}</p>
+      ${duCoach.map((f) => carteExo(f, { fait: !!c.faits[f.id], etiquette: c.faits[f.id] ? "✓ Fait" : "⭐ Coach" })).join("")}
+    </section>`;
+  }
+  if (ficheDefi) {
+    const meilleur = (lireScores()[defi.fiche] || []).filter((s) => s.d >= lundiDe()).map((s) => s.v);
+    const resume = meilleur.length ? `Ton meilleur score cette semaine : <strong>${echapper(texteScore(defi.fiche, meilleurScore(defi.fiche, meilleur)))}</strong>` : "Tu ne l'as pas encore joué cette semaine.";
+    if (aFaire.length) {
+      // Exos du coach d'abord : le défi est seulement rappelé
+      html += `<section class="bloc pr-bloc"><h2 class="bloc-titre">🎯 Défi de la semaine : ${echapper(ficheDefi.titre)}</h2>
+        <p class="petit">À jouer après tes exos du coach (onglet Exos). ${resume}</p></section>`;
+    } else {
+      html += `<section class="bloc bloc-defi">
+        <h2 class="bloc-titre">🎯 Défi de la semaine</h2>
+        ${defi.message ? `<p class="message-coach">💬 ${echapper(defi.message)}</p>` : ""}
+        <p class="bloc-info">${resume} · classement dans 🏆</p>
+        ${carteExo(ficheDefi, { etiquette: "🎯 Défi" })}
+      </section>`;
+    }
+  } else if (!duCoach.length) {
+    html += `<section class="bloc pr-bloc"><h2 class="bloc-titre">🎯 Défi de la semaine</h2>
+      <p class="petit">Pas encore de défi cette semaine : ton coach va le choisir. En attendant, joue un exo de l'onglet 📚 Exos.</p></section>`;
+  }
+  return html;
+}
+
+function vueClassements() {
+  if (!groupeDonnees) return `<p class="petit">${erreurGroupe ? "Pas de connexion : impossible de charger les classements." : "Chargement…"}</p>`;
+  const m = moi();
+  const lundi = lundiDe();
+  const bilans = groupeDonnees.bilans;
+  let html = "";
+
+  // --- Défi de la semaine ---
+  const defi = groupeDonnees.defi && groupeDonnees.defi.lundi === lundi ? groupeDonnees.defi : null;
+  if (defi && ficheDe(defi.fiche)) {
+    const joues = bilans.filter((b) => b.defi && b.defi.lundi === lundi && b.defi.fiche === defi.fiche)
+      .sort((a, b) => (meilleurQue(defi.fiche, a.defi.meilleur, b.defi.meilleur) ? -1 : 1));
+    html += `<section class="bloc pr-bloc">
+      <h2 class="bloc-titre">🎯 Défi : ${echapper(ficheDe(defi.fiche).titre)}</h2>
+      <p class="bloc-info">Meilleur score de chacun cette semaine</p>
+      ${joues.length ? `<ol class="classement">${joues.map((b, i) => ligneClassement(i, b.prenom, echapper(texteScore(defi.fiche, b.defi.meilleur)), m && b.uid === m.uid)).join("")}</ol>` : `<p class="petit">Personne ne l'a encore joué.</p>`}
+    </section>`;
+  }
+
+  // --- Flemmard de la semaine : le moins d'exos joués ---
+  if (bilans.length) {
+    const comptes = bilans.map((b) => ({ b, n: b.semaine.lundi === lundi ? b.semaine.n : 0 })).sort((a, b) => a.n - b.n || a.b.prenom.localeCompare(b.b.prenom, "fr"));
+    const mini = comptes[0].n;
+    const flemmards = comptes.filter((x) => x.n === mini).map((x) => x.b.prenom);
+    html += `<section class="bloc pr-bloc flemmard">
+      <h2 class="bloc-titre">🦥 Flemmard de la semaine</h2>
+      <p class="flemmard-nom">${echapper(flemmards.join(", "))}</p>
+      <p class="bloc-info">${mini} exo${mini > 1 ? "s" : ""} joué${mini > 1 ? "s" : ""} depuis lundi</p>
+      <details><summary>Exos joués par chacun cette semaine</summary>
+        <ol class="classement">${[...comptes].reverse().map((x, i) => ligneClassement(i, x.b.prenom, x.n, m && x.b.uid === m.uid)).join("")}</ol>
+      </details>
+    </section>`;
+  }
+
+  // --- Par exo : top 3 de l'année (moyenne) + record absolu ---
+  const annee = new Date().getFullYear();
+  const avecDonnees = FICHES_NOTEES.filter((f) => bilans.some((b) => b.annee === annee && b.exos[f.id]));
+  if (!avecDonnees.some((f) => f.id === exoClassement)) exoClassement = (defi && avecDonnees.some((f) => f.id === defi.fiche)) ? defi.fiche : avecDonnees.length ? avecDonnees[0].id : null;
+  if (exoClassement) {
+    const id = exoClassement;
+    const lignes = bilans.filter((b) => b.annee === annee && b.exos[id]);
+    const top = lignes.filter((b) => b.exos[id].n >= 3).sort((a, b) => (meilleurQue(id, a.exos[id].moy, b.exos[id].moy) ? -1 : 1)).slice(0, 3);
+    const rec = [...lignes].sort((a, b) => (meilleurQue(id, a.exos[id].record, b.exos[id].record) ? -1 : 1))[0];
+    html += `<section class="bloc pr-bloc">
+      <h2 class="bloc-titre">🏆 Classements ${annee}</h2>
+      <select id="choix-exo-classement" class="choix" aria-label="Exo">${avecDonnees.map((f) => `<option value="${echapper(f.id)}" ${f.id === id ? "selected" : ""}>${echapper(f.titre)}</option>`).join("")}</select>
+      <h3>⭐ Record absolu de l'année</h3>
+      <p class="record-annee"><strong>${echapper(texteScore(id, rec.exos[id].record))}</strong> par ${echapper(rec.prenom)} <small>(${echapper(dateLisible(rec.exos[id].recordD))})</small></p>
+      <h3>🏆 Top 3 à la moyenne</h3>
+      ${top.length ? `<ol class="classement">${top.map((b, i) => ligneClassement(i, b.prenom, `${virguleA(b.exos[id].moy)} <small>moy. · ${b.exos[id].n} fois</small>`, m && b.uid === m.uid)).join("")}</ol>` : ""}
+      <p class="petit">Moyenne de tous les scores depuis le 1er janvier (3 fois minimum pour être classé).</p>
+    </section>`;
+  } else {
+    html += `<p class="petit">Pas encore de score dans le groupe cette année.</p>`;
+  }
+  return html;
+}
+
+function vueMoi() {
+  const hist = {};
+  for (const [id, liste] of Object.entries(lireScores())) if (Array.isArray(liste) && liste.length) hist[id] = liste.map((s) => [s.d, s.v]);
+  return `<p class="semaine-info">${exosDeLaSemaine()} exo${exosDeLaSemaine() > 1 ? "s" : ""} joué${exosDeLaSemaine() > 1 ? "s" : ""} cette semaine</p>
+    ${blocRecords(hist, "⭐ Mes records")}`;
+}
+
+function vueExos() {
+  return `<h2 class="bloc-titre">📚 Tous les exos</h2>
+    <p class="bloc-info">${FICHES.length} exos de putting, à jouer quand tu veux</p>
+    ${FICHES.map((f) => carteExo(f)).join("")}`;
+}
+
+function vueCoach() {
+  if (!coachConnecte()) {
+    return `<section class="bloc pr-bloc"><h2 class="bloc-titre">🧑‍🏫 Espace coachs</h2>
+      <p>Réservé aux coachs d'Altus${modeDemo() ? "" : " (compte Google autorisé)"}.</p>
+      ${messageCoach ? `<p class="erreur">${echapper(messageCoach)}</p>` : ""}
+      <button type="button" class="bouton principal pleine-largeur" data-a="coach-connexion">${modeDemo() ? "Entrer (démo)" : "Se connecter avec Google"}</button></section>`;
+  }
+  const code = codeCoach();
+  let html = `<section class="bloc pr-bloc"><h2 class="bloc-titre">🧑‍🏫 Espace coachs</h2>
+    ${messageCoach ? `<p class="erreur">${echapper(messageCoach)}</p>` : ""}
+    <p>Groupe suivi : <strong>${echapper(code || "aucun")}</strong></p>
+    <details ${code ? "" : "open"}><summary>Créer / changer de groupe</summary>
+      <label for="code-groupe">Code du groupe (les joueurs le tapent pour entrer)</label>
+      <input id="code-groupe" maxlength="20" autocapitalize="characters" value="${echapper(code)}">
+      <button type="button" class="bouton" data-a="coach-groupe">Enregistrer le groupe</button>
+    </details>
+    <button type="button" class="lien-bouton" data-a="coach-deconnexion">Se déconnecter</button></section>`;
+  if (!code) return html;
+  if (!groupeDonnees) return html + `<p class="petit">${erreurGroupe ? "Pas de connexion." : "Chargement…"}</p>`;
+
+  // --- Défi de la semaine ---
+  const lundi = lundiDe();
+  const defi = groupeDonnees.defi && groupeDonnees.defi.lundi === lundi ? groupeDonnees.defi : null;
+  html += `<section class="bloc pr-bloc">
+    <h2 class="bloc-titre">🎯 Défi de la semaine du ${echapper(dateLisible(lundi))}</h2>
+    <select id="choix-defi" class="choix" aria-label="Exo du défi">
+      ${defi ? "" : `<option value="">— choisir un exo —</option>`}
+      ${FICHES_NOTEES.map((f) => `<option value="${echapper(f.id)}" ${defi && defi.fiche === f.id ? "selected" : ""}>${echapper(f.titre)}</option>`).join("")}
+    </select>
+    <label for="message-defi">💬 Message (facultatif)</label>
+    <input id="message-defi" maxlength="200" value="${echapper(defi ? defi.message : "")}">
+    <button type="button" class="bouton principal" data-a="coach-defi">${defi ? "Changer le défi" : "Lancer le défi"}</button>
+  </section>`;
+
+  // --- Joueurs ---
+  const joueurs = [...groupeDonnees.bilans].sort((a, b) => a.prenom.localeCompare(b.prenom, "fr"));
+  if (!joueurs.length) return html + `<p class="petit">Aucun joueur n'a encore rejoint le groupe ${echapper(code)}.</p>`;
+  if (!joueurs.some((j) => j.uid === joueurCoach)) joueurCoach = joueurs[0].uid;
+  const j = joueurs.find((x) => x.uid === joueurCoach);
+  const c = groupeDonnees.consignes[j.uid] || { exos: [], message: "", faits: {} };
+  const nSemaine = j.semaine.lundi === lundi ? j.semaine.n : 0;
+  html += `<div class="filtres">${joueurs.map((x) => `<button type="button" class="filtre ${x.uid === j.uid ? "actif" : ""}" data-a="coach-joueur" data-uid="${echapper(x.uid)}">${echapper(x.prenom)}</button>`).join("")}</div>
+    <section class="bloc pr-bloc consignes-admin">
+      <h2 class="bloc-titre">⭐ Exos pour ${echapper(j.prenom)}</h2>
+      <p class="bloc-info">${nSemaine} exo${nSemaine > 1 ? "s" : ""} joué${nSemaine > 1 ? "s" : ""} cette semaine · les exos donnés remplacent son défi jusqu'à ce qu'il les fasse</p>
+      ${c.exos.length ? `<ul class="liste-consignes">${c.exos.map((id) => `<li class="consigne">
+        <span><strong>${echapper((ficheDe(id) || { titre: id }).titre)}</strong><small>${c.faits[id] ? "✓ fait le " + echapper(dateLisible(c.faits[id])) : "à faire"}</small></span>
+        ${c.faits[id] ? `<button type="button" class="bouton" data-a="coach-redonner" data-id="${echapper(id)}">↺ Redonner</button>` : ""}
+        <button type="button" class="bouton danger" data-a="coach-retirer" data-id="${echapper(id)}" aria-label="Retirer">✕</button>
+      </li>`).join("")}</ul>` : `<p class="petit">Aucun exo donné : il joue le défi de la semaine.</p>`}
+      ${c.exos.length < 10 ? `<div class="ajout-consigne">
+        <select id="choix-consigne" aria-label="Exo à donner">${FICHES.filter((f) => !c.exos.includes(f.id)).map((f) => `<option value="${echapper(f.id)}">${echapper(f.titre)}</option>`).join("")}</select>
+        <button type="button" class="bouton principal" data-a="coach-donner">➕ Donner</button></div>` : ""}
+      <label for="message-consigne">💬 Message pour ${echapper(j.prenom)}</label>
+      <textarea id="message-consigne" maxlength="300" rows="2">${echapper(c.message)}</textarea>
+      <button type="button" class="bouton" data-a="coach-message">Enregistrer le message</button>
+    </section>
+    ${blocRecords(j.hist, `📈 Progrès de ${echapper(j.prenom)}`)}`;
+  return html;
+}
+
+
+/* ---------- 4. Affichage ---------- */
+
+const ONGLETS = [["seance", "🎯 Séance"], ["classements", "🏆 Classements"], ["moi", "📈 Moi"], ["exos", "📚 Exos"]];
+
+function afficherVue() {
+  const m = moi();
+  const enCoach = vue === "coach";
+  document.getElementById("bandeau-demo").hidden = !modeDemo();
+  document.getElementById("onglets").innerHTML = m && !enCoach
+    ? ONGLETS.map(([id, nom]) => `<button type="button" class="onglet ${vue === id ? "actif" : ""}" data-a="vue" data-vue="${id}" aria-pressed="${vue === id}">${nom}</button>`).join("")
+    : enCoach ? `<button type="button" class="onglet" data-a="vue" data-vue="seance">← Retour</button>` : "";
+  document.getElementById("sous-titre").textContent = m ? `${m.prenom} · groupe ${m.code}` : "Entraînement putting";
+  const contenu = document.getElementById("contenu");
+  if (enCoach) contenu.innerHTML = vueCoach();
+  else if (!m) contenu.innerHTML = vueAccueil();
+  else contenu.innerHTML = { seance: vueSeance, classements: vueClassements, moi: vueMoi, exos: vueExos }[vue]();
+}
+
+function changerVue(nouvelle) {
+  vue = nouvelle;
+  messageCoach = "";
+  afficherVue();
+  window.scrollTo(0, 0);
+  chargerGroupe();
+}
+
+
+/* ---------- 5. Actions ---------- */
+
+async function actionCoach(a, bouton) {
+  messageCoach = "";
+  if (a === "coach-connexion") { messageCoach = await connecterCoach(); return changerVue("coach"); }
+  if (a === "coach-deconnexion") { await deconnecterCoach(); groupeDonnees = null; return changerVue("coach"); }
+  if (a === "coach-groupe") {
+    const code = document.getElementById("code-groupe").value.trim().toUpperCase();
+    if (!/^[A-Z0-9-]{3,20}$/.test(code)) { messageCoach = "Code : 3 à 20 lettres ou chiffres, sans espace."; return afficherVue(); }
+    messageCoach = await creerGroupe(code, code);
+    groupeDonnees = null;
+    return chargerGroupe();
+  }
+  if (a === "coach-joueur") { joueurCoach = bouton.dataset.uid; return afficherVue(); }
+  if (a === "coach-defi") {
+    const fiche = document.getElementById("choix-defi").value;
+    if (!fiche) return;
+    messageCoach = await ecrireDefi({ fiche, lundi: lundiDe(), message: document.getElementById("message-defi").value.trim().slice(0, 200) });
+    return chargerGroupe();
+  }
+  // Exos donnés au joueur choisi
+  const c = JSON.parse(JSON.stringify(groupeDonnees.consignes[joueurCoach] || { exos: [], message: "", faits: {} }));
+  if (a === "coach-donner") { const id = document.getElementById("choix-consigne").value; if (id && !c.exos.includes(id)) { c.exos.push(id); delete c.faits[id]; } }
+  if (a === "coach-retirer") { c.exos = c.exos.filter((id) => id !== bouton.dataset.id); delete c.faits[bouton.dataset.id]; }
+  if (a === "coach-redonner") delete c.faits[bouton.dataset.id];
+  if (a === "coach-message") c.message = document.getElementById("message-consigne").value.trim().slice(0, 300);
+  messageCoach = await ecrireConsignes(joueurCoach, normaliserConsignes(c));
+  return chargerGroupe();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  afficherVue();
+  chargerGroupe().then(() => { if (moi()) publierBilan(calculerBilan()); });
+
+  document.addEventListener("click", (e) => {
+    const bouton = e.target.closest("[data-a]");
+    if (!bouton) return;
+    const a = bouton.dataset.a;
+    if (a === "vue") changerVue(bouton.dataset.vue);
+    if (a === "ouvrir-coach") changerVue("coach");
+    if (a === "changer-joueur" && confirm("Changer de joueur ou de groupe sur ce téléphone ? Tes scores restent sur ce téléphone.")) {
+      ecrireStockage("moi", null);
+      groupeDonnees = null;
+      changerVue("seance");
+    }
+    if (a.startsWith("coach-")) actionCoach(a, bouton);
+  });
+  document.addEventListener("change", (e) => {
+    if (e.target.id === "choix-exo-classement") { exoClassement = e.target.value; afficherVue(); }
+  });
+  document.addEventListener("submit", async (e) => {
+    if (e.target.id !== "form-rejoindre") return;
+    e.preventDefault();
+    const erreur = await rejoindreGroupe(e.target.code.value, e.target.prenom.value);
+    if (erreur) {
+      const p = document.getElementById("erreur-rejoindre");
+      p.textContent = erreur;
+      p.hidden = false;
+      return;
+    }
+    await publierBilan(calculerBilan());
+    changerVue("seance");
+  });
+  // Retour sur l'appli : classements frais
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") chargerGroupe(); });
+});

@@ -1,0 +1,363 @@
+/* =========================================================
+   Données du site Altus : mémoire du téléphone + base en ligne
+
+   1. lireStockage / ecrireStockage : tout accès à localStorage passe
+      par ici (try/catch : mode privé, mémoire pleine…).
+   2. Petites fonctions de dates (jour « AAAA-MM-JJ », lundi de la semaine).
+   3. La base partagée par le groupe :
+      - CONFIG_FIREBASE = null  -> MODE DÉMO : tout reste sur ce téléphone,
+        avec des joueurs fictifs pour voir les classements ;
+      - CONFIG_FIREBASE rempli  -> Firestore (règles : outils/regles-firestore.txt).
+
+   Organisation en ligne (code du groupe = G, ex. ALTUS2026) :
+     groupes/G                      { nom }  (créé par un coach : le code n'existe que s'il existe)
+     groupes/G/bilans/<uid>         bilan d'un joueur, écrit par lui seul (voir calculerBilan, app.js)
+     groupes/G/reglages/defi        { fiche, lundi, message }  défi de la semaine (coachs)
+     groupes/G/consignes/<uid>      { exos, message, faits }   exos donnés par un coach
+   Un bilan par joueur (et pas un document par score) : ouvrir les
+   classements ne lit qu'un document par joueur.
+   ========================================================= */
+
+"use strict";
+
+/* ---------- 1. Mémoire du téléphone ---------- */
+
+const PREFIXE_ALTUS = "altus-v1:";
+
+function lireStockage(cle, valeurParDefaut, prefixe = PREFIXE_ALTUS) {
+  try {
+    const texte = localStorage.getItem(prefixe + cle);
+    return texte === null ? valeurParDefaut : JSON.parse(texte);
+  } catch (e) {
+    return valeurParDefaut;
+  }
+}
+
+function ecrireStockage(cle, valeur, prefixe = PREFIXE_ALTUS) {
+  try {
+    if (valeur === null) localStorage.removeItem(prefixe + cle);
+    else localStorage.setItem(prefixe + cle, JSON.stringify(valeur));
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+
+/* ---------- 2. Dates ---------- */
+
+function dateEnTexte(date) {
+  const deux = (n) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${deux(date.getMonth() + 1)}-${deux(date.getDate())}`;
+}
+function texteEnDate(texte) {
+  const [a, m, j] = texte.split("-").map(Number);
+  return new Date(a, m - 1, j);
+}
+function ajouterJours(date, n) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + n);
+  return d;
+}
+// Lundi de la semaine d'une date (texte « AAAA-MM-JJ »)
+function lundiDe(date = new Date()) {
+  const decalage = (date.getDay() + 6) % 7;   // lundi = 0 … dimanche = 6
+  return dateEnTexte(ajouterJours(date, -decalage));
+}
+function dateLisible(texte) {
+  return texteEnDate(texte).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+}
+const jourValide = (d) => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d);
+
+
+/* ---------- 3. Base partagée ---------- */
+
+// À remplir quand le projet Firebase d'Altus sera créé (console Firebase >
+// Paramètres du projet > Vos applications > Web). null = mode démo.
+const CONFIG_FIREBASE = null;
+const VERSION_FIREBASE = "10.12.2";
+
+function modeDemo() { return CONFIG_FIREBASE === null; }
+
+// Le joueur de ce téléphone : { code, prenom, uid } (null tant qu'il n'a pas rejoint)
+function moi() {
+  const m = lireStockage("moi", null);
+  return m && typeof m.code === "string" && typeof m.prenom === "string" && typeof m.uid === "string" ? m : null;
+}
+
+// --- Firebase (chargé seulement si configuré) ---
+let base = null;
+let promesseFirebase = null;
+
+function chargerScript(adresse) {
+  return new Promise((ok, echec) => {
+    const script = document.createElement("script");
+    script.src = adresse;
+    script.onload = ok;
+    script.onerror = echec;
+    document.head.appendChild(script);
+  });
+}
+
+// Prépare Firebase et connecte ce téléphone en anonyme. Renvoie true si prêt.
+function demarrerFirebase() {
+  if (modeDemo()) return Promise.resolve(false);
+  if (base) return Promise.resolve(true);
+  if (!promesseFirebase) {
+    promesseFirebase = (async () => {
+      try {
+        if (!window.firebase) {
+          const racine = `https://www.gstatic.com/firebasejs/${VERSION_FIREBASE}/`;
+          await chargerScript(racine + "firebase-app-compat.js");
+          await chargerScript(racine + "firebase-auth-compat.js");
+          await chargerScript(racine + "firebase-firestore-compat.js");
+        }
+        if (!firebase.apps.length) firebase.initializeApp(CONFIG_FIREBASE);
+        const deja = await new Promise((ok) => { const stop = firebase.auth().onAuthStateChanged((u) => { stop(); ok(u); }); });
+        if (!deja) await firebase.auth().signInAnonymously();
+        base = firebase.firestore();
+        return true;
+      } catch (e) {
+        return false;
+      } finally {
+        promesseFirebase = null;
+      }
+    })();
+  }
+  return promesseFirebase;
+}
+function uidFirebase() { return firebase.auth().currentUser.uid; }
+const groupe = (code) => base.collection("groupes").doc(code);
+
+
+/* ---------- Mode démo : une fausse base dans ce téléphone ---------- */
+
+const PRENOMS_DEMO = ["Lucas", "Emma", "Hugo", "Léa", "Nathan", "Chloé"];
+
+// Joueurs fictifs, créés une seule fois, pour voir les classements
+function baseDemo() {
+  let db = lireStockage("demo", null);
+  if (db && db.version === 1) return db;
+  db = { version: 1, bilans: {}, defi: { fiche: "trefle", lundi: lundiDe(), message: "Qui fera 16/16 cette semaine ?" }, consignes: {} };
+  const fiches = (window.FICHES_ALTUS || []).map((f) => f.id).filter((id) => id !== "snail-3-10-feet");
+  const lundi = lundiDe();
+  PRENOMS_DEMO.forEach((prenom, k) => {
+    const uid = "demo-" + k;
+    const niveau = 0.45 + k * 0.08;                          // chacun son niveau
+    const hist = {};
+    fiches.forEach((id) => {
+      const liste = [];
+      for (let i = 0; i < 6 + ((k * 3 + id.length) % 9); i++) {
+        const d = dateEnTexte(ajouterJours(new Date(), -((i * 11 + k * 5) % 300)));
+        liste.push([d, Math.round(scoreMaxi(id) * Math.min(1, Math.max(0.1, niveau + (Math.random() - 0.5) * 0.3)))]);
+      }
+      hist[id] = liste.sort((a, b) => a[0].localeCompare(b[0]));
+    });
+    const defi = k % 3 === 2 ? null : { lundi, fiche: "trefle", meilleur: Math.min(16, 8 + k + (k % 2) * 2) };   // 2 joueurs n'ont pas joué le défi
+    db.bilans[uid] = calculerBilanDepuis(uid, prenom, hist, { lundi, n: (k * 7) % 12 }, defi);
+  });
+  ecrireStockage("demo", db);
+  return db;
+}
+
+// Bilan d'un joueur (le mien, ou un joueur fictif de la démo) à partir de { fiche: [[d, v]] }
+function calculerBilanDepuis(uid, prenom, hist, semaine, defi) {
+  const annee = String(new Date().getFullYear());
+  const exos = {};
+  for (const [id, liste] of Object.entries(hist)) {
+    const dans = liste.filter(([d]) => d.startsWith(annee));
+    if (!dans.length) continue;
+    const vals = dans.map(([, v]) => v);
+    const record = Math.max(...vals);
+    exos[id] = { n: vals.length, moy: Math.round(10 * vals.reduce((t, v) => t + v, 0) / vals.length) / 10, record, recordD: dans.find(([, v]) => v === record)[0] };
+  }
+  return { uid, prenom, maj: dateEnTexte(new Date()), annee: Number(annee), exos, hist: mapObjet(hist, (l) => l.slice(-30)), semaine, defi };
+}
+
+
+/* ---------- Ce que l'appli demande à la base ---------- */
+
+// Rejoindre un groupe : le code doit exister (créé par un coach). Renvoie un message d'erreur ou "".
+async function rejoindreGroupe(code, prenom) {
+  code = code.trim().toUpperCase();
+  prenom = prenom.trim().slice(0, 30);
+  if (!/^[A-Z0-9-]{3,20}$/.test(code)) return "Le code du groupe : 3 à 20 lettres ou chiffres, sans espace.";
+  if (!prenom) return "Écris ton prénom.";
+  if (modeDemo()) {
+    ecrireStockage("moi", { code, prenom, uid: lireStockage("uidDemo", null) || "moi-" + Date.now() });
+    ecrireStockage("uidDemo", moi().uid);
+    return "";
+  }
+  if (!(await demarrerFirebase())) return "Pas de connexion. Vérifie le réseau et réessaie.";
+  try {
+    const doc = await groupe(code).get();
+    if (!doc.exists) return "Ce code de groupe n'existe pas. Demande le bon code à ton coach.";
+  } catch (e) {
+    return "Ce code de groupe n'existe pas. Demande le bon code à ton coach.";
+  }
+  ecrireStockage("moi", { code, prenom, uid: uidFirebase() });
+  return "";
+}
+
+// Envoie mon bilan (calculé par app.js). Silencieux en cas d'échec : réessayé plus tard.
+async function publierBilan(bilan) {
+  const m = moi();
+  if (!m) return;
+  if (modeDemo()) {
+    const db = baseDemo();
+    db.bilans[m.uid] = bilan;
+    ecrireStockage("demo", db);
+    return;
+  }
+  if (!(await demarrerFirebase())) return;
+  try { await groupe(m.code).collection("bilans").doc(m.uid).set(bilan); } catch (e) { /* plus tard */ }
+}
+
+// Tout ce qu'il faut pour afficher le groupe : { bilans: [], defi, consignes (les miennes ou toutes pour un coach) }
+// Renvoie null si la base ne répond pas.
+async function lireGroupe(commeCoach = false) {
+  const m = moi();
+  const code = commeCoach ? codeCoach() : m && m.code;
+  if (!code) return null;
+  if (modeDemo()) {
+    const db = baseDemo();
+    return {
+      bilans: Object.values(db.bilans).map(normaliserBilan).filter(Boolean),
+      defi: normaliserDefi(db.defi),
+      consignes: commeCoach ? mapObjet(db.consignes, normaliserConsignes) : { [m.uid]: normaliserConsignes(db.consignes[m.uid]) },
+    };
+  }
+  if (!(await demarrerFirebase())) return null;
+  try {
+    const g = groupe(code);
+    const [bilans, defi, consignes] = await Promise.all([
+      g.collection("bilans").get(),
+      g.collection("reglages").doc("defi").get(),
+      commeCoach ? g.collection("consignes").get() : g.collection("consignes").doc(m.uid).get(),
+    ]);
+    const lesConsignes = {};
+    if (commeCoach) consignes.docs.forEach((d) => { lesConsignes[d.id] = normaliserConsignes(d.data()); });
+    else lesConsignes[m.uid] = normaliserConsignes(consignes.exists ? consignes.data() : null);
+    return {
+      bilans: bilans.docs.map((d) => normaliserBilan({ ...d.data(), uid: d.id })).filter(Boolean),
+      defi: normaliserDefi(defi.exists ? defi.data() : null),
+      consignes: lesConsignes,
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
+function mapObjet(objet, f) { return Object.fromEntries(Object.entries(objet || {}).map(([k, v]) => [k, f(v)])); }
+
+// Le joueur note qu'il a fait un exo du coach (il ne peut changer que « faits »)
+async function noterFaitConsigne(faits) {
+  const m = moi();
+  if (!m) return;
+  if (modeDemo()) {
+    const db = baseDemo();
+    db.consignes[m.uid] = { ...normaliserConsignes(db.consignes[m.uid]), faits };
+    ecrireStockage("demo", db);
+    return;
+  }
+  if (!(await demarrerFirebase())) return;
+  try { await groupe(m.code).collection("consignes").doc(m.uid).update({ faits }); } catch (e) { /* plus tard */ }
+}
+
+
+/* ---------- Coachs ---------- */
+
+// Code du groupe suivi par le coach sur ce téléphone
+function codeCoach() { return lireStockage("codeCoach", "") || (moi() ? moi().code : ""); }
+
+// Connexion coach : compte Google (adresse autorisée dans les règles Firestore).
+// En démo : pas de compte, on entre directement.
+async function connecterCoach() {
+  if (modeDemo()) { ecrireStockage("coachDemo", true); return ""; }
+  if (!(await demarrerFirebase())) return "Pas de connexion. Vérifie le réseau et réessaie.";
+  try {
+    await firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider());
+    return "";
+  } catch (e) {
+    return "Connexion Google annulée ou refusée.";
+  }
+}
+function coachConnecte() {
+  if (modeDemo()) return lireStockage("coachDemo", false) === true;
+  try { const u = firebase.auth().currentUser; return !!(u && !u.isAnonymous); } catch (e) { return false; }
+}
+async function deconnecterCoach() {
+  if (modeDemo()) { ecrireStockage("coachDemo", null); return; }
+  try { await firebase.auth().signOut(); } catch (e) { /* rien */ }
+}
+
+// Crée le groupe (son code) : seul un coach peut le faire
+async function creerGroupe(code, nom) {
+  if (modeDemo()) { ecrireStockage("codeCoach", code); return ""; }
+  if (!(await demarrerFirebase())) return "Pas de connexion.";
+  try {
+    await groupe(code).set({ nom: nom.slice(0, 60) }, { merge: true });
+    ecrireStockage("codeCoach", code);
+    return "";
+  } catch (e) {
+    return "Refusé : ce compte Google n'est pas un coach autorisé.";
+  }
+}
+
+async function ecrireDefi(defi) {
+  if (modeDemo()) { const db = baseDemo(); db.defi = defi; ecrireStockage("demo", db); return ""; }
+  try { await groupe(codeCoach()).collection("reglages").doc("defi").set(defi); return ""; } catch (e) { return "Enregistrement refusé (connexion coach ?)."; }
+}
+
+async function ecrireConsignes(uid, c) {
+  if (modeDemo()) { const db = baseDemo(); db.consignes[uid] = c; ecrireStockage("demo", db); return ""; }
+  try {
+    const doc = groupe(codeCoach()).collection("consignes").doc(uid);
+    if (!c.exos.length && !c.message) await doc.delete(); else await doc.set(c);
+    return "";
+  } catch (e) {
+    return "Enregistrement refusé (connexion coach ?).";
+  }
+}
+
+
+/* ---------- Données reçues = non fiables : on vérifie tout ---------- */
+
+const idFicheValide = (id) => typeof id === "string" && /^[a-z0-9-]{1,60}$/.test(id);
+const nombreOk = (n, max = 100000) => typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= max;
+
+function normaliserBilan(b) {
+  if (!b || typeof b !== "object" || typeof b.prenom !== "string" || typeof b.uid !== "string") return null;
+  const exos = {};
+  for (const [id, e] of Object.entries(b.exos && typeof b.exos === "object" ? b.exos : {})) {
+    if (idFicheValide(id) && e && nombreOk(e.n) && nombreOk(e.moy) && nombreOk(e.record) && jourValide(e.recordD)) exos[id] = { n: e.n, moy: e.moy, record: e.record, recordD: e.recordD };
+  }
+  const hist = {};
+  for (const [id, liste] of Object.entries(b.hist && typeof b.hist === "object" ? b.hist : {})) {
+    if (idFicheValide(id) && Array.isArray(liste)) hist[id] = liste.filter((x) => Array.isArray(x) && jourValide(x[0]) && nombreOk(x[1])).slice(-30);
+  }
+  const s = b.semaine && typeof b.semaine === "object" ? b.semaine : {};
+  const defi = b.defi && typeof b.defi === "object" && jourValide(b.defi.lundi) && idFicheValide(b.defi.fiche) && nombreOk(b.defi.meilleur) ? { lundi: b.defi.lundi, fiche: b.defi.fiche, meilleur: b.defi.meilleur } : null;
+  return {
+    uid: b.uid,
+    prenom: b.prenom.slice(0, 30),
+    annee: Number.isInteger(b.annee) ? b.annee : 0,
+    exos,
+    hist,
+    semaine: { lundi: jourValide(s.lundi) ? s.lundi : "", n: nombreOk(s.n, 10000) ? s.n : 0 },
+    defi,
+  };
+}
+
+function normaliserDefi(d) {
+  if (!d || typeof d !== "object" || !idFicheValide(d.fiche) || !jourValide(d.lundi)) return null;
+  return { fiche: d.fiche, lundi: d.lundi, message: typeof d.message === "string" ? d.message.slice(0, 200) : "" };
+}
+
+function normaliserConsignes(c) {
+  const d = c && typeof c === "object" ? c : {};
+  const exos = [...new Set((Array.isArray(d.exos) ? d.exos : []).filter(idFicheValide))].slice(0, 10);
+  const faits = {};
+  for (const [id, j] of Object.entries(d.faits && typeof d.faits === "object" ? d.faits : {})) if (idFicheValide(id) && jourValide(j)) faits[id] = j;
+  return { exos, message: typeof d.message === "string" ? d.message.slice(0, 300) : "", faits };
+}

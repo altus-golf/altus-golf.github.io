@@ -1,0 +1,54 @@
+rules_version = '2';
+
+// Règles de sécurité Firestore du site Altus (à coller dans la console Firebase
+// du projet Altus : Firestore Database > Règles > remplacer tout > Publier).
+//  - Un groupe (son code) n'existe que si un COACH l'a créé.
+//  - Un joueur (connexion anonyme) qui connaît le code peut lire les bilans
+//    du groupe et écrire SEULEMENT son propre bilan.
+//  - Défi de la semaine et exos donnés : écrits par les coachs ; un joueur peut
+//    seulement noter la date où il a fait ses exos (champ « faits »).
+// ⚠ Ce fichier est public : avant de coller, remplacer ADRESSE_COACH_1, 2…
+//   par les adresses Gmail des coachs (ne pas les écrire ici).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function estCoach() {
+      return request.auth != null
+        && request.auth.token.email in ['ADRESSE_COACH_1', 'ADRESSE_COACH_2']
+        && request.auth.token.email_verified == true;
+    }
+    function connecte() { return request.auth != null; }
+    function groupeExiste(code) { return exists(/databases/$(database)/documents/groupes/$(code)); }
+
+    match /groupes/{code} {
+      allow get: if connecte();            // vérifier qu'un code existe
+      allow list: if estCoach();
+      allow create, update, delete: if estCoach() && code.matches('[A-Z0-9-]{3,20}');
+
+      match /bilans/{uid} {
+        allow read: if connecte() && groupeExiste(code);
+        allow create, update: if connecte() && uid == request.auth.uid && groupeExiste(code)
+          && request.resource.data.keys().hasOnly(['uid', 'prenom', 'maj', 'annee', 'exos', 'hist', 'semaine', 'defi'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.prenom is string && request.resource.data.prenom.size() > 0 && request.resource.data.prenom.size() <= 30
+          && request.resource.data.exos is map && request.resource.data.exos.size() <= 40
+          && request.resource.data.hist is map && request.resource.data.hist.size() <= 40;
+        allow delete: if estCoach() || (connecte() && uid == request.auth.uid);
+      }
+
+      match /reglages/{id} {
+        allow read: if connecte() && groupeExiste(code);
+        allow write: if estCoach();
+      }
+
+      match /consignes/{uid} {
+        allow read: if estCoach() || (connecte() && uid == request.auth.uid);
+        allow create, delete: if estCoach();
+        allow update: if estCoach()
+          || (connecte() && uid == request.auth.uid
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['faits'])
+              && request.resource.data.faits is map && request.resource.data.faits.size() <= 10);
+      }
+    }
+  }
+}

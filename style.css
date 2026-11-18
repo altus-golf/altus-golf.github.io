@@ -1,0 +1,570 @@
+/* =========================================================
+   Style de la page – pensé pour le téléphone en premier.
+   Les couleurs sont des « variables » : on les change ici,
+   et toute la page suit. Le mode sombre est automatique.
+   ========================================================= */
+
+:root {
+  /* Mode clair : contraste fort, lisible en plein soleil */
+  --fond: #f4f7f3;
+  --carte: #ffffff;
+  --texte: #0b1a10;
+  --texte-doux: #3a4a3f;
+  --bord: #c9d4cc;
+  --accent: #14325c;        /* bleu Altus */
+  --accent-texte: #ffffff;
+  --accent-doux: #e3eaf5;
+  --alerte-fond: #fff3cd;
+  --alerte-texte: #5c4300;
+  --erreur-fond: #fde2e1;
+  --erreur-texte: #7a1410;
+  --ombre: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fond: #0d130f;
+    --carte: #172019;
+    --texte: #eef4f0;
+    --texte-doux: #b6c4ba;
+    --bord: #2d3b32;
+    --accent: #7fb0f0;
+    --accent-texte: #05210f;
+    --accent-doux: #1b2a40;
+    --alerte-fond: #3a2f0b;
+    --alerte-texte: #ffe08a;
+    --erreur-fond: #3d1514;
+    --erreur-texte: #ffb4ae;
+    --ombre: none;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html { font-size: 18px; -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--fond);
+  color: var(--texte);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.5;
+  /* Marges qui respectent l'encoche des iPhone */
+  padding: 0 max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+
+header, nav, main, footer { max-width: 680px; margin: 0 auto; }
+
+/* ---------- En-tête ---------- */
+.entete { padding-top: max(16px, env(safe-area-inset-top)); }
+.entete h1 { margin: 0; font-size: 1.7rem; line-height: 1.2; }
+.date { margin: 2px 0 10px; color: var(--texte-doux); font-weight: 600; }
+.date::first-letter { text-transform: uppercase; }   /* « Samedi 17 octobre » */
+
+.badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.badge {
+  font-size: 0.8rem; font-weight: 600;
+  padding: 4px 10px; border-radius: 999px;
+  background: var(--accent-doux); color: var(--texte);
+  border: 1px solid var(--bord);
+}
+.badge.attention { background: var(--alerte-fond); color: var(--alerte-texte); }
+#badges:empty { display: none; }
+/* Série de jours d'affilée : orange quand elle est en cours */
+#serie { margin-top: -6px; }
+.badge.serie.active { background: #ffe1c2; color: #6b2e00; border-color: #f0a868; }
+@media (prefers-color-scheme: dark) {
+  .badge.serie.active { background: #4a2a10; color: #ffd2a8; border-color: #8a5226; }
+}
+
+/* Sauvegarde Google (compte.js) : le badge sert aussi de bouton */
+#compte { margin-top: -6px; }
+#compte:empty { display: none; }
+.bouton-badge { font: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer; text-align: left; }
+
+/* ---------- Chrono (chrono.js) ---------- */
+.chronos { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.bouton.chrono { min-height: 44px; padding: 6px 14px; }
+.barre-chrono {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px max(16px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background: var(--accent); color: var(--accent-texte);
+  font-size: 1.4rem; font-weight: 800; font-variant-numeric: tabular-nums;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.25);
+}
+.barre-chrono[hidden] { display: none; }
+.barre-chrono .bouton { min-height: 44px; background: var(--carte); color: var(--texte); }
+.barre-chrono.termine { background: #b3261e; color: #fff; }
+body:has(.barre-chrono:not([hidden])) { padding-bottom: 90px; }
+
+/* ---------- Case score (scores.js) ---------- */
+.score-exo { margin-top: 12px; padding: 12px; border-radius: 12px; background: var(--accent-doux); }
+.score-exo label { display: block; font-weight: 700; margin-bottom: 6px; }
+.score-exo .petit { margin: 8px 0 0; }
+.ligne-score { display: flex; align-items: center; gap: 8px; }
+.ligne-score .champ { width: 6em; flex: none; }
+.unite-score { font-weight: 700; color: var(--texte-doux); white-space: nowrap; }
+.ligne-score .bouton { margin-left: auto; }
+
+/* ---------- Trèfle interactif (trefle.js) ---------- */
+.zone-trefle { margin-bottom: 12px; }
+.zone-trefle .petit { margin: 8px 0 0; }
+.trefle-jeu {
+  position: fixed; inset: 0; z-index: 20; overflow-y: auto;
+  background: var(--fond);
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+.trefle-jeu[hidden] { display: none; }
+.trefle-contenu { max-width: 480px; margin: 0 auto; }
+.trefle-haut { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.trefle-haut .bouton { min-height: 44px; }
+.schema-trefle { display: block; width: 100%; max-width: 400px; max-height: 52vh; margin: 0 auto; touch-action: manipulation; }
+.schema-trefle .trou { fill: var(--texte); }
+.point-trefle { cursor: pointer; }
+.point-trefle circle { stroke-width: 5; }
+.point-trefle text { font-size: 28px; font-weight: 800; pointer-events: none; }
+.point-trefle.a-jouer circle { fill: var(--carte); stroke: var(--texte-doux); }
+.point-trefle.a-jouer text { fill: var(--texte); }
+.point-trefle.rentre circle { fill: #1e8e3e; stroke: #1e8e3e; }
+.point-trefle.rate circle { fill: #c5221f; stroke: #c5221f; }
+.point-trefle.rentre text, .point-trefle.rate text { fill: #fff; }
+/* Snail montante puis descendante : points pas concernés par la phase en cours */
+.point-trefle.hors-phase { cursor: default; opacity: 0.35; }
+.point-trefle.hors-phase circle { fill: var(--carte); stroke: var(--bord); }
+.point-trefle.hors-phase text { fill: var(--texte-doux); }
+.boutons-modes { display: grid; gap: 8px; }
+.point-trefle.choisi circle { stroke: var(--accent); stroke-width: 10; }
+.point-trefle:focus { outline: none; }
+.point-trefle:focus-visible circle { stroke: var(--accent); stroke-width: 10; }
+.trefle-choix { min-height: 110px; text-align: center; }
+.trefle-choix p { margin: 8px 0; }
+/* Exos de putting interactifs : décor des schémas, plusieurs balles par point, séries */
+.point-trefle.mixte circle { fill: #e37400; stroke: #e37400; }
+.point-trefle.mixte text { fill: #fff; }
+.point-trefle .bille.a-jouer { fill: var(--carte); stroke: var(--texte-doux); stroke-width: 3; }
+.point-trefle .bille.rentre { fill: #1e8e3e; stroke: #1e8e3e; stroke-width: 3; }
+.point-trefle .bille.rate { fill: #c5221f; stroke: #c5221f; stroke-width: 3; }
+.point-trefle .bille.choisie { stroke: var(--accent); stroke-width: 6; }
+.decor-zone { fill: var(--accent); fill-opacity: 0.12; stroke: var(--texte-doux); stroke-width: 3; stroke-dasharray: 8 6; }
+.decor-texte { fill: var(--texte-doux); font-size: 22px; font-weight: 600; }
+.decor-ligne { stroke: var(--bord); stroke-width: 4; stroke-dasharray: 10 8; }
+.decor-tee { fill: var(--texte-doux); }
+.decor-balle { fill: var(--carte); stroke: var(--texte); stroke-width: 4; }
+.compteur-serie { font-size: 3.5rem; font-weight: 800; line-height: 1; color: var(--accent); }
+.bouton:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ---------- Tableaux de l'espace admin (serie.js) ---------- */
+/* Le tableau défile de côté sur téléphone, la page ne déborde pas */
+.tableau-defilant { overflow-x: auto; margin: 8px 0 16px; border: 1px solid var(--bord); border-radius: 12px; background: var(--carte); }
+.tableau-admin { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.tableau-admin th, .tableau-admin td { padding: 8px 10px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--bord); }
+.tableau-admin th { background: var(--accent-doux); font-weight: 800; white-space: nowrap; }
+.tableau-admin tr:last-child td { border-bottom: none; }
+.tableau-admin .nombre { white-space: nowrap; }
+.tableau-admin small { color: var(--texte-doux); }
+
+/* ---------- Première page (nom du joueur) ---------- */
+/* Tant que le nom n'est pas donné : ni onglets, ni autres vues */
+body.accueil-actif .onglets,
+body.accueil-actif main > section[id^="vue-"] { display: none; }
+
+/* ---------- Onglets ---------- */
+/* Téléphone : 2 lignes de 3 onglets ; écran large : les 6 sur une ligne */
+.onglets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 16px; }
+@media (min-width: 600px) {
+  .onglets { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+}
+.onglet {
+  min-height: 52px; padding: 0 2px; font-size: 0.85rem; white-space: nowrap;
+  font: inherit; font-weight: 700;
+  border: 2px solid var(--accent); border-radius: 12px;
+  background: transparent; color: var(--texte);
+  cursor: pointer;
+}
+.onglet.actif { background: var(--accent); color: var(--accent-texte); }
+
+/* ---------- Résumé de la séance ---------- */
+.resume {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
+  padding: 14px 16px; margin-bottom: 16px;
+  background: var(--carte); border: 1px solid var(--bord); border-radius: 14px;
+  box-shadow: var(--ombre);
+}
+.resume-total { font-size: 1.35rem; font-weight: 800; }
+.resume-avancement { color: var(--texte-doux); font-weight: 600; }
+.resume-detail { width: 100%; margin: 0; color: var(--texte-doux); font-weight: 600; }
+.resume-bravo { width: 100%; margin: 0; font-weight: 700; color: var(--accent); }
+
+/* ---------- Blocs (putting, chipping, practice, sport) ---------- */
+.bloc { margin-bottom: 24px; }
+.bloc-titre { margin: 0; font-size: 1.35rem; line-height: 1.25; }
+.bloc-titre::first-letter { text-transform: uppercase; }
+.bloc-info { margin: 2px 0 10px; color: var(--texte-doux); font-weight: 600; }
+
+/* ---------- Cartes d'exercice ---------- */
+.carte {
+  background: var(--carte);
+  border: 1px solid var(--bord);
+  border-left: 6px solid var(--couleur-cat, var(--accent));
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: var(--ombre);
+}
+.carte.faite { border-color: var(--accent); border-left-color: var(--accent); }
+.carte.faite .carte-titre::after { content: " ✓"; color: var(--accent); }
+/* Exos terminés (en bas de page) : grisés pour les distinguer d'un coup d'œil */
+.termines { border-top: 2px dashed var(--bord); padding-top: 16px; }
+.termines .carte.faite { opacity: 0.55; filter: grayscale(1); border-color: var(--bord); }
+
+.carte-haut { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pastille {
+  font-size: 0.85rem; font-weight: 700; color: #fff;
+  background: var(--couleur-cat, var(--accent));
+  padding: 3px 10px; border-radius: 999px;
+}
+.pastille.brouillon { background: var(--alerte-fond); color: var(--alerte-texte); }
+.duree { font-weight: 700; color: var(--texte-doux); }
+.numero { margin-left: auto; font-weight: 700; color: var(--texte-doux); }
+
+.carte-titre { margin: 8px 0 4px; font-size: 1.3rem; line-height: 1.25; }
+.objectif { margin: 0 0 8px; }
+
+/* Bloc dépliable « Comment faire » */
+details { margin-top: 8px; }
+summary {
+  min-height: 48px; display: flex; align-items: center;
+  font-weight: 700; color: var(--accent); cursor: pointer;
+  list-style: none;
+}
+summary::-webkit-details-marker { display: none; }
+summary::before { content: "▸"; margin-right: 8px; transition: transform 0.15s; }
+details[open] > summary::before { transform: rotate(90deg); }
+
+.carte h4 { margin: 14px 0 4px; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--texte-doux); }
+.carte ul, .carte ol { margin: 0; padding-left: 1.3em; }
+.carte li { margin-bottom: 4px; }
+.carte p { margin: 0 0 6px; }
+
+.variantes { display: grid; gap: 8px; margin-top: 6px; }
+.variante { padding: 10px 12px; border-radius: 10px; background: var(--accent-doux); }
+.variante strong { display: block; }
+
+.note { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: var(--alerte-fond); color: var(--alerte-texte); font-size: 0.9rem; }
+.source { margin-top: 12px; font-size: 0.9rem; color: var(--texte-doux); word-break: break-word; }
+.source a { color: var(--accent); font-weight: 600; }
+.texte-extrait { white-space: pre-wrap; font-size: 0.85rem; background: var(--fond); padding: 10px; border-radius: 8px; }
+
+/* ---------- Boutons ---------- */
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+.bouton {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 56px; padding: 0 12px;
+  font: inherit; font-weight: 800; text-align: center; text-decoration: none;
+  border-radius: 12px; border: 2px solid var(--accent);
+  background: transparent; color: var(--texte);
+  cursor: pointer;
+}
+.bouton:active { transform: scale(0.98); }
+.bouton.principal { background: var(--accent); color: var(--accent-texte); }
+.bouton.fait { background: var(--accent-doux); color: var(--accent); }
+.bouton.pleine-largeur { grid-column: 1 / -1; }
+.bouton:focus-visible, .onglet:focus-visible, summary:focus-visible, .filtre:focus-visible {
+  outline: 3px solid var(--texte); outline-offset: 2px;
+}
+
+/* ---------- Bibliothèque ---------- */
+.filtres { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.sous-filtres { padding: 10px; border-radius: 12px; background: var(--accent-doux); }
+.filtres + .filtres { margin-top: -8px; }
+.filtre {
+  min-height: 44px; padding: 0 14px;
+  font: inherit; font-size: 0.9rem; font-weight: 700;
+  border: 2px solid var(--bord); border-radius: 999px;
+  background: var(--carte); color: var(--texte); cursor: pointer;
+}
+.filtre.actif { border-color: var(--accent); background: var(--accent); color: var(--accent-texte); }
+.compte { color: var(--texte-doux); margin: 0 0 12px; }
+
+/* ---------- Prépa physique ---------- */
+.je-sais-pas { flex-direction: column; gap: 2px; min-height: 72px; margin: 10px 0 4px; font-size: 1.15rem; }
+.je-sais-pas small { font-size: 0.8rem; font-weight: 600; }
+.je-sais-pas small::first-letter { text-transform: uppercase; }
+.grille-choix { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.grille-choix .bouton { font-size: 0.95rem; }
+
+/* ---------- Parcours : saisie de la partie ---------- */
+.champ {
+  width: 100%; min-height: 52px; padding: 10px 14px;
+  font: inherit; color: var(--texte); background: var(--carte);
+  border: 2px solid var(--bord); border-radius: 12px;
+}
+.champ:focus { outline: none; border-color: var(--accent); }
+.zone-note { min-height: 96px; resize: vertical; }
+.formulaire label { display: block; font-weight: 700; margin-bottom: 6px; }
+
+.ligne-joueur {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  margin-bottom: 14px; color: var(--texte-doux);
+}
+.lien-bouton {
+  min-height: 44px; padding: 0 4px;
+  font: inherit; font-weight: 700; color: var(--accent);
+  background: none; border: none; text-decoration: underline; cursor: pointer;
+}
+
+.recherche { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-bottom: 14px; }
+.sous-titre { margin: 16px 0 8px; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--texte-doux); }
+.resultat {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  width: 100%; min-height: 60px; padding: 10px 14px; margin-bottom: 8px;
+  font: inherit; text-align: left; color: var(--texte);
+  background: var(--carte); border: 1px solid var(--bord); border-left: 6px solid var(--accent);
+  border-radius: 12px; box-shadow: var(--ombre); cursor: pointer;
+}
+.resultat span { color: var(--texte-doux); font-size: 0.9rem; }
+.info-recherche { color: var(--texte-doux); font-weight: 600; }
+.info-recherche.attention { padding: 12px 14px; border-radius: 12px; background: var(--alerte-fond); color: var(--alerte-texte); }
+.ajout-manuel { margin-top: 8px; }
+.petit { font-size: 0.85rem; color: var(--texte-doux); }
+.petit a { color: var(--accent); }
+
+/* Grille des trous en haut de la partie */
+.grille-trous { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-bottom: 16px; }
+@media (min-width: 600px) { .grille-trous { grid-template-columns: repeat(9, 1fr); } }
+.case-trou {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 52px; font: inherit; font-weight: 800; line-height: 1.1;
+  color: var(--texte); background: var(--carte);
+  border: 2px solid var(--bord); border-radius: 10px; cursor: pointer;
+}
+.case-trou small { font-size: 0.7rem; font-weight: 600; color: var(--texte-doux); }
+.case-trou.actuel { border-color: var(--texte); border-width: 3px; }
+
+/* Couleurs des scores (case, carte de score, historique) */
+.sous-par { color: #0b5fa5; }
+.au-par   { color: var(--accent); }
+.bogey    { color: #9a5b00; }
+.double   { color: #b0122f; }
+@media (prefers-color-scheme: dark) {
+  .sous-par { color: #7cc0ff; }
+  .bogey    { color: #ffc266; }
+  .double   { color: #ff8a8a; }
+}
+
+.numero-trou { margin: 0; font-size: 1.6rem; }
+.carte-trou h4 { margin-top: 16px; }
+
+/* Rangées de gros boutons à choix unique (par, score, putts…) */
+.choix { display: grid; grid-template-columns: repeat(var(--colonnes, 5), 1fr); gap: 8px; }
+.choix-bouton {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 56px; padding: 4px 2px;
+  font: inherit; font-weight: 800; line-height: 1.15;
+  color: var(--texte); background: var(--carte);
+  border: 2px solid var(--bord); border-radius: 12px; cursor: pointer;
+}
+.choix-bouton small { font-size: 0.65rem; font-weight: 600; color: var(--texte-doux); }
+.choix-bouton.actif { background: var(--accent); border-color: var(--accent); color: var(--accent-texte); }
+.choix-bouton.actif small { color: var(--accent-texte); }
+
+.green { margin: 14px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--fond); color: var(--texte-doux); font-weight: 600; }
+.green.oui { background: var(--accent-doux); color: var(--accent); }
+.green.non { background: var(--alerte-fond); color: var(--alerte-texte); }
+
+.bouton:disabled { opacity: 0.4; cursor: default; }
+.bouton.danger { border-color: var(--erreur-texte); color: var(--erreur-texte); }
+
+/* ---------- Historique ---------- */
+.resume.en-cours { border-color: var(--accent); }
+.resume.en-attente { background: var(--alerte-fond); color: var(--alerte-texte); }
+.resume.en-attente .resume-detail { color: var(--alerte-texte); }
+.retour { width: 100%; margin-bottom: 16px; }
+.resultat.partie { flex-direction: row; align-items: center; gap: 14px; }
+.partie-score {
+  display: flex; flex-direction: column; align-items: center;
+  min-width: 54px; font-size: 1.5rem; font-weight: 800; line-height: 1.1;
+}
+.partie-score small { font-size: 0.8rem; }
+.partie-texte { display: flex; flex-direction: column; gap: 2px; }
+/* Espace admin : bouton 🗑 au bout de la ligne d'un joueur */
+.supprimer-serie { margin-left: auto; flex: none; min-height: 44px; min-width: 44px; padding: 6px 10px; }
+
+.chiffres { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0 0; }
+.chiffres div { padding: 8px 10px; border-radius: 10px; background: var(--accent-doux); }
+.chiffres dt { font-size: 0.8rem; color: var(--texte-doux); font-weight: 600; }
+.chiffres dd { margin: 0; font-weight: 800; }
+.note-partie { white-space: pre-wrap; }
+
+.tableau-defilant { overflow-x: auto; }
+.carte-score { width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: center; }
+.carte-score th, .carte-score td { padding: 6px 4px; border-bottom: 1px solid var(--bord); }
+.carte-score th { color: var(--texte-doux); }
+.carte-score td:nth-child(3) { font-weight: 800; }
+.carte-score tfoot td { font-weight: 800; border-top: 2px solid var(--texte); border-bottom: none; }
+
+/* ---------- Messages ---------- */
+.erreur { padding: 14px 16px; margin-bottom: 16px; border-radius: 12px; background: var(--erreur-fond); color: var(--erreur-texte); font-weight: 600; }
+.pied { color: var(--texte-doux); font-size: 0.8rem; text-align: center; padding-top: 8px; }
+
+/* ---------- Couleurs des catégories (texte blanc lisible dessus) ---------- */
+.cat-putting   { --couleur-cat: #14325c; }
+.cat-chipping  { --couleur-cat: #8a5300; }
+.cat-approches { --couleur-cat: #a3361a; }
+.cat-fers      { --couleur-cat: #2b4c9b; }
+.cat-drive     { --couleur-cat: #6a2c91; }
+.cat-bunker    { --couleur-cat: #7a6312; }
+.cat-cardio    { --couleur-cat: #b0122f; }
+.cat-force     { --couleur-cat: #8c1d40; }
+.cat-puissance { --couleur-cat: #a33a00; }
+.cat-mobilite  { --couleur-cat: #0e6870; }
+.cat-abdos     { --couleur-cat: #4a5a12; }
+.cat-recuperation { --couleur-cat: #3a4f66; }
+.cat-a-classer { --couleur-cat: #555555; }
+
+/* ---------- Exo « jusqu'à N » (couloir de précision) : une pastille par balle ---------- */
+.pastilles-balles { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 8px 0; }
+.pastille-balle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 50%;
+  font-weight: 700; font-size: 0.9rem;
+}
+.pastille-balle.rentre { background: var(--accent); color: var(--accent-texte); }
+.pastille-balle.rate { background: var(--erreur-fond); color: var(--erreur-texte); }
+
+/* Onglet grisé (fonction pas encore prête, ex. Prépa en refonte) */
+.onglet:disabled { opacity: 0.5; border-style: dashed; cursor: not-allowed; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; }
+.onglet .bientot { display: block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* Mental : cases « À toi d'écrire » et 📓 Carnet */
+.mt-sous-onglets { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.mt-sous-onglets .filtre { padding: 0 2px; font-size: 0.8rem; white-space: nowrap; }
+.mt-saisie { margin-top: 14px; padding: 12px; border-radius: 12px; background: var(--accent-doux); }
+.mt-saisie h4 { margin-top: 0; }
+.mt-champ { display: block; margin-bottom: 10px; }
+.mt-champ span { display: block; font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; }
+.mt-champ input, .mt-champ textarea {
+  width: 100%; min-height: 48px; padding: 10px 12px; font: inherit;
+  border: 2px solid var(--bord); border-radius: 10px; background: var(--carte); color: var(--texte);
+}
+.mt-champ input:focus, .mt-champ textarea:focus { outline: none; border-color: var(--accent); }
+.mt-champ .mt-nombre { width: 7em; text-align: center; font-weight: 800; }
+.mt-enregistre { margin: 4px 0 0; font-size: 0.85rem; font-weight: 600; color: var(--texte-doux); }
+.mt-entree { padding: 8px 0; border-top: 1px solid var(--bord); }
+.mt-entree:first-of-type { border-top: none; }
+.mt-entree dl { margin: 4px 0 0; }
+.mt-entree dt { font-size: 0.85rem; font-weight: 700; color: var(--texte-doux); margin-top: 6px; }
+.mt-entree dd { margin: 0; white-space: pre-wrap; }
+.mt-supprimer { font-size: 0.85rem; margin-top: 6px; }
+.mt-refaire { margin-top: 10px; min-height: 48px; }
+
+/* Bibliothèque golf compacte (v29) : une ligne par fiche, un appui l'ouvre */
+.ligne-fiche { display: block; width: 100%; text-align: left; font: inherit; color: var(--texte); cursor: pointer; margin-bottom: 10px; padding: 12px 14px; }
+.ligne-fiche-titre { display: block; margin-top: 6px; font-weight: 800; font-size: 1.05rem; }
+.biblio-retour { margin-bottom: 10px; }
+#filtres[hidden] { display: none !important; }
+
+/* Trackman (v30) : pastille, encadré sur la fiche, interrupteur dans Aujourd'hui */
+.pastille.trackman { background: #3b4a5e; color: #fff; }
+.bloc-trackman { margin: 10px 0 4px; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, #3b4a5e 12%, var(--carte)); border-left: 4px solid #3b4a5e; }
+.bloc-trackman strong { display: block; margin-bottom: 4px; }
+.interrupteur-trackman { font: inherit; font-weight: 700; cursor: pointer; padding: 8px 14px; border-radius: 999px; border: 2px dashed var(--bord); background: transparent; color: var(--texte-doux); }
+.interrupteur-trackman.actif { border-style: solid; border-color: #3b4a5e; background: #3b4a5e; color: #fff; }
+
+/* Jeux « une balle = un appui » (jeux-zones.js, v31) */
+.jz-phase { margin: 12px 0 6px; font-size: 1.1rem; text-align: center; }
+.jz-balles { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 6px 0 10px; }
+.jz-balle { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--bord); background: transparent; }
+.jz-balle.jz-bon { background: var(--accent); border-color: var(--accent); }
+.jz-balle.jz-moyen { background: #c9a227; border-color: #c9a227; }
+.jz-balle.jz-mauvais { background: var(--erreur-texte); border-color: var(--erreur-texte); }
+.jz-zones { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 8px 0 16px; }
+.jz-zone { min-height: 72px; font-size: 1.05rem; white-space: normal; line-height: 1.2; }
+.jz-zone.jz-bon { grid-column: 1 / -1; background: var(--accent); border-color: var(--accent); color: var(--accent-texte); }
+.jz-zone.jz-mauvais { border-color: var(--erreur-texte); color: var(--erreur-texte); }
+.jz-bilan { margin: 12px 0; }
+.jz-bilan ul { margin: 6px 0 10px; }
+
+
+/* ---------- 📈 Progrès (progres.js) ---------- */
+.pr-titre { margin: 4px 0 14px; font-size: 1.5rem; }
+.pr-bloc { background: var(--carte); border: 1px solid var(--bord); border-radius: 14px; padding: 16px; box-shadow: var(--ombre); }
+.pr-radar { display: block; width: 100%; max-width: 340px; margin: 6px auto; }
+.pr-anneau { fill: none; stroke: var(--bord); stroke-width: 1; }
+.pr-forme { fill: var(--accent); fill-opacity: 0.25; stroke: var(--accent); stroke-width: 2.5; stroke-linejoin: round; }
+.pr-point { fill: var(--accent); }
+.pr-record { fill: #e0a100; stroke: var(--carte); stroke-width: 1.5; }
+.pr-etiquette { font-size: 11px; font-weight: 700; fill: var(--texte); }
+.pr-valeur { font-size: 13px; font-weight: 800; fill: var(--accent); }
+.pr-valeur.pr-sans { fill: var(--texte-doux); }
+.pr-details { margin: 4px 0 12px; padding-left: 18px; font-size: 0.85rem; color: var(--texte-doux); }
+.pr-details li { margin: 2px 0; }
+.pr-action { border-top: 1px solid var(--bord); padding-top: 10px; }
+.pr-action p { margin: 4px 0 8px; }
+.pr-bouton {
+  width: 100%; min-height: 48px; border: none; border-radius: 12px; font: inherit; font-weight: 800;
+  background: var(--accent); color: var(--accent-texte); cursor: pointer;
+}
+.pr-mois, .pr-stats { list-style: none; margin: 10px 0 0; padding: 0; }
+.pr-mois li, .pr-stats li {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  padding: 9px 0; border-bottom: 1px solid var(--bord); font-weight: 600;
+}
+.pr-mois li:last-child, .pr-stats li:last-child { border-bottom: none; }
+.pr-evo { font-weight: 800; white-space: nowrap; font-size: 0.9rem; }
+.pr-mieux { color: var(--accent); }
+.pr-moins { color: var(--erreur-texte); }
+.pr-neutre { color: var(--texte-doux); font-weight: 600; }
+.pr-exo { border: 1px solid var(--bord); border-left: 6px solid var(--couleur-cat, var(--accent)); border-radius: 12px; padding: 10px 12px; margin-top: 12px; }
+.pr-exo-tete { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.pr-exo-tete h3 { margin: 0; font-size: 1rem; }
+.pr-exo-tete .pastille { font-size: 0.75rem; white-space: nowrap; }
+.pr-courbe { display: block; width: 100%; height: auto; max-height: 90px; margin: 8px 0 4px; }
+.pr-ligne { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.pr-exo-chiffres { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; font-size: 0.85rem; color: var(--texte-doux); }
+.pr-exo-chiffres strong { color: var(--texte); }
+.pr-nouveau { color: #b07a00; font-style: normal; font-weight: 800; }
+.resume-focus { width: 100%; margin: 4px 0 0; padding: 8px 10px; border-radius: 10px; background: var(--accent-doux); font-weight: 600; }
+.resume-focus .lien-bouton { margin-left: 4px; }
+
+/* ---------- ⭐ Exos du coach (coach.js + espace admin) ---------- */
+.bloc-coach { border: 2px solid #e0a100; border-radius: 14px; padding: 14px 12px 4px; background: rgba(224, 161, 0, 0.07); }
+.message-coach { margin: 8px 0; padding: 10px 12px; border-radius: 10px; background: var(--carte); border-left: 4px solid #e0a100; font-weight: 600; white-space: pre-wrap; }
+.liste-consignes { list-style: none; margin: 10px 0; padding: 0; }
+.consigne { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--bord); }
+.consigne > span { flex: 1; display: flex; flex-direction: column; }
+.consigne small { color: var(--texte-doux); }
+.consigne .bouton { width: auto; min-height: 40px; padding: 6px 10px; }
+.ajout-consigne { display: flex; gap: 8px; margin: 10px 0 14px; }
+.ajout-consigne select { flex: 1; min-width: 0; min-height: 44px; font: inherit; border-radius: 10px; border: 1px solid var(--bord); background: var(--carte); color: var(--texte); padding: 0 8px; }
+.ajout-consigne .bouton { width: auto; }
+.consignes-admin textarea { display: block; width: 100%; box-sizing: border-box; margin: 4px 0 8px; font: inherit; border-radius: 10px; border: 1px solid var(--bord); background: var(--carte); color: var(--texte); padding: 8px; }
+
+
+/* =========================================================
+   Propre au site Altus
+   ========================================================= */
+.titre-altus { margin: 14px 0 0; font-size: 1.6rem; }
+.bandeau-demo { margin: 0 0 10px; padding: 8px 12px; border-radius: 10px; background: var(--alerte-fond); color: var(--alerte-texte); font-weight: 600; font-size: 0.85rem; }
+.bandeau-demo[hidden] { display: none; }
+.onglets.onglets-altus { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 600px) { .onglets.onglets-altus { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.semaine-info { margin: 4px 0 14px; color: var(--texte-doux); }
+.bloc-defi { border: 2px solid var(--accent); border-radius: 14px; padding: 14px 12px 4px; }
+.accueil-altus form { display: flex; flex-direction: column; gap: 6px; }
+.accueil-altus input, .consignes-admin input, .pr-bloc input, .choix {
+  min-height: 46px; font: inherit; border-radius: 10px; border: 1px solid var(--bord);
+  background: var(--carte); color: var(--texte); padding: 0 10px; width: 100%; box-sizing: border-box; margin-bottom: 8px;
+}
+.erreur[hidden] { display: none; }
+.classement { list-style: none; margin: 8px 0; padding: 0; }
+.classement li { display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--bord); font-weight: 600; }
+.classement li:last-child { border-bottom: none; }
+.classement li.moi { color: var(--accent); }
+.classement small { color: var(--texte-doux); font-weight: 500; }
+.flemmard-nom { font-size: 1.4rem; font-weight: 800; margin: 6px 0 0; }
+.record-annee { font-size: 1.1rem; margin: 4px 0 10px; }
+.pr-bloc h3 { margin: 14px 0 4px; font-size: 1rem; }
+.pr-bloc + .pr-bloc, .bloc-coach + .pr-bloc, .bloc-coach + .bloc-defi { margin-top: 16px; }
+.pied .lien-bouton { font-size: 0.85rem; }
