@@ -80,6 +80,8 @@ function lireClasseur(texte) {
   for (const ligne of lignes) {
     const [date, joueur, exercice, situation, score, origine] = cellulesDe(ligne, separateur).map((c) => c.trim());
     if (sansAccents(date) === "date") continue;   // ligne de titre
+    // Joueur qui a un onglet mais pas (encore) de score : il apparaît quand même dans le groupe
+    if (origine === "#joueur") { if (joueur) res.joueurs[joueur.slice(0, 30)] = res.joueurs[joueur.slice(0, 30)] || {}; continue; }
     const d = dateDuClasseur(date);
     const item = itemDuClasseur(exercice, situation);
     const v = Number(String(score).replace(",", "."));
@@ -119,7 +121,11 @@ function lireClasseur(texte) {
 // Bilans « classeur-… » prêts à envoyer
 function bilansDuClasseur(lecture) {
   const lundi = lundiDe();
-  return Object.entries(lecture.joueurs).map(([prenom, hist]) => {
+  // Un joueur sans score déjà inscrit sur le site n'a pas besoin d'un bilan importé vide
+  const inscrits = new Set((groupeDonnees ? groupeDonnees.bilans : []).filter((b) => b.source !== "classeur").map((b) => slugPrenom(b.prenom)));
+  return Object.entries(lecture.joueurs)
+    .filter(([prenom, hist]) => Object.keys(hist).length || !inscrits.has(slugPrenom(prenom)))
+    .map(([prenom, hist]) => {
     const n = Object.values(hist).flat().filter(([d]) => d >= lundi).length;
     const b = calculerBilanDepuis("classeur-" + slugPrenom(prenom), prenom, hist, { lundi, n }, null);
     b.source = "classeur";
@@ -135,7 +141,7 @@ let messageImport = "";
 
 function blocImportClasseur() {
   const apercu = lectureClasseur && lectureClasseur.lignes
-    ? `<p><strong>${Object.keys(lectureClasseur.joueurs).length} joueurs · ${lectureClasseur.lignes} scores</strong> prêts à importer.</p>
+    ? `<p><strong>${Object.keys(lectureClasseur.joueurs).length} joueurs · ${lectureClasseur.lignes} scores</strong> prêts à importer${Object.values(lectureClasseur.joueurs).some((h) => !Object.keys(h).length) ? ` (dont sans score : ${echapper(Object.entries(lectureClasseur.joueurs).filter(([, h]) => !Object.keys(h).length).map(([p]) => p).join(", "))})` : ""}.</p>
        ${lectureClasseur.bizarres.length ? `<details><summary>⚠ ${lectureClasseur.bizarres.length} score(s) à vérifier (virgule ou au-dessus du maximum)</summary><ul class="petit">${lectureClasseur.bizarres.map((t) => `<li>${echapper(t)}</li>`).join("")}</ul></details>` : ""}
        ${lectureClasseur.ignorees.length ? `<details><summary>${lectureClasseur.ignorees.length} ligne(s) ignorée(s) (exercice ou date illisible)</summary><ul class="petit">${lectureClasseur.ignorees.slice(0, 30).map((t) => `<li>${echapper(t)}</li>`).join("")}</ul></details>` : ""}
        <button type="button" class="bouton principal pleine-largeur" data-a="import-envoyer">📥 Importer dans le groupe</button>`
@@ -187,6 +193,7 @@ function blocReprendreHistorique() {
   const meme = libres.find((b) => slugPrenom(b.prenom) === slugPrenom(m.prenom));
   if (!meme) return "";
   const n = Object.values(meme.hist).reduce((t, l) => t + l.length, 0);
+  if (!n) return "";   // joueur importé sans score : rien à récupérer
   return `<section class="bloc pr-bloc">
     <h2 class="bloc-titre">📥 Ton historique du classeur</h2>
     <p>On a trouvé les scores de <strong>${echapper(meme.prenom)}</strong> dans le classeur Altus (${n} scores). C'est toi ?</p>
@@ -266,6 +273,7 @@ async function texteDuFichierExcel(fichier) {
     const t = XLSX.utils.sheet_to_json(classeur.Sheets[n], { header: 1, raw: true, defval: "" });
     if (!t[13] || sansAccents(t[13][0]) !== "date" || !t[2]) return;   // pas un onglet de joueur
     const joueur = propre(t[0][0] || n).trim();
+    texte.push(["", joueur, "", "", "", "#joueur"].join("\t"));
     t.slice(14).forEach((l) => {
       for (let c = 1; c < l.length; c++) {
         if (l[c] === "" || l[c] === null || !t[2][c]) continue;
