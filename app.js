@@ -363,6 +363,7 @@ function afficherVue() {
 
 function changerVue(nouvelle) {
   vue = nouvelle;
+  if (vue === "coach") suivreConnexionCoach(() => { if (vue === "coach") chargerGroupe(); });
   messageCoach = "";
   afficherVue();
   window.scrollTo(0, 0);
@@ -401,6 +402,9 @@ async function actionCoach(a, bouton) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  // Joueur inscrit pendant le mode démo : il doit rejoindre le vrai groupe (ses scores restent)
+  const m = moi();
+  if (!modeDemo() && m && m.uid.startsWith("moi-")) ecrireStockage("moi", null);
   afficherVue();
   chargerGroupe().then(() => { if (moi()) publierBilan(calculerBilan()); });
 

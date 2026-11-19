@@ -74,7 +74,15 @@ const jourValide = (d) => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)
 
 // À remplir quand le projet Firebase d'Altus sera créé (console Firebase >
 // Paramètres du projet > Vos applications > Web). null = mode démo.
-const CONFIG_FIREBASE = null;
+// (Ces valeurs sont publiques par nature : ce sont les règles Firestore qui protègent les données.)
+const CONFIG_FIREBASE = {
+  apiKey: "AIzaSyBIxLXEcWrgOwhveDWl6ppPBDVhhV-c3nA",
+  authDomain: "altus-golf.firebaseapp.com",
+  projectId: "altus-golf",
+  storageBucket: "altus-golf.firebasestorage.app",
+  messagingSenderId: "1086717822931",
+  appId: "1:1086717822931:web:b6c307c16dda24de2cd126",
+};
 const VERSION_FIREBASE = "10.12.2";
 
 function modeDemo() { return CONFIG_FIREBASE === null; }
@@ -212,7 +220,9 @@ async function publierBilan(bilan) {
     return;
   }
   if (!(await demarrerFirebase())) return;
-  try { await groupe(m.code).collection("bilans").doc(m.uid).set(bilan); } catch (e) { /* plus tard */ }
+  // Firestore n'accepte pas les tableaux de tableaux : hist part en [{ d, v }]
+  const enLigne = { ...bilan, hist: mapObjet(bilan.hist, (l) => l.map(([d, v]) => ({ d, v }))) };
+  try { await groupe(m.code).collection("bilans").doc(m.uid).set(enLigne); } catch (e) { /* plus tard */ }
 }
 
 // Tout ce qu'il faut pour afficher le groupe : { bilans: [], defi, consignes (les miennes ou toutes pour un coach) }
@@ -231,7 +241,7 @@ async function lireGroupe(commeCoach = false) {
   }
   if (!(await demarrerFirebase())) return null;
   try {
-    const g = groupe(code);
+    const g = commeCoach ? groupeCoach(code) : groupe(code);
     const [bilans, defi, consignes] = await Promise.all([
       g.collection("bilans").get(),
       g.collection("reglages").doc("defi").get(),
@@ -269,6 +279,21 @@ async function noterFaitConsigne(faits) {
 
 /* ---------- Coachs ---------- */
 
+// Les coachs utilisent une 2e « application » Firebase nommée « coach » :
+// leur connexion Google ne remplace pas la connexion anonyme du joueur
+// (sinon un coach qui joue aussi perdrait son bilan de joueur).
+function appCoach() {
+  try { return firebase.app("coach"); } catch (e) { return firebase.initializeApp(CONFIG_FIREBASE, "coach"); }
+}
+const groupeCoach = (code) => appCoach().firestore().collection("groupes").doc(code);
+let suiviCoach = false;
+// Firebase retrouve la connexion Google tout seul au démarrage : on redessine quand c'est fait
+async function suivreConnexionCoach(rappel) {
+  if (modeDemo() || suiviCoach || !(await demarrerFirebase())) return;
+  suiviCoach = true;
+  appCoach().auth().onAuthStateChanged(rappel);
+}
+
 // Code du groupe suivi par le coach sur ce téléphone
 function codeCoach() { return lireStockage("codeCoach", "") || (moi() ? moi().code : ""); }
 
@@ -278,7 +303,7 @@ async function connecterCoach() {
   if (modeDemo()) { ecrireStockage("coachDemo", true); return ""; }
   if (!(await demarrerFirebase())) return "Pas de connexion. Vérifie le réseau et réessaie.";
   try {
-    await firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider());
+    await appCoach().auth().signInWithPopup(new firebase.auth.GoogleAuthProvider());
     return "";
   } catch (e) {
     return "Connexion Google annulée ou refusée.";
@@ -286,11 +311,11 @@ async function connecterCoach() {
 }
 function coachConnecte() {
   if (modeDemo()) return lireStockage("coachDemo", false) === true;
-  try { const u = firebase.auth().currentUser; return !!(u && !u.isAnonymous); } catch (e) { return false; }
+  try { const u = window.firebase && appCoach().auth().currentUser; return !!(u && !u.isAnonymous); } catch (e) { return false; }
 }
 async function deconnecterCoach() {
   if (modeDemo()) { ecrireStockage("coachDemo", null); return; }
-  try { await firebase.auth().signOut(); } catch (e) { /* rien */ }
+  try { await appCoach().auth().signOut(); } catch (e) { /* rien */ }
 }
 
 // Crée le groupe (son code) : seul un coach peut le faire
@@ -298,7 +323,7 @@ async function creerGroupe(code, nom) {
   if (modeDemo()) { ecrireStockage("codeCoach", code); return ""; }
   if (!(await demarrerFirebase())) return "Pas de connexion.";
   try {
-    await groupe(code).set({ nom: nom.slice(0, 60) }, { merge: true });
+    await groupeCoach(code).set({ nom: nom.slice(0, 60) }, { merge: true });
     ecrireStockage("codeCoach", code);
     return "";
   } catch (e) {
@@ -308,13 +333,13 @@ async function creerGroupe(code, nom) {
 
 async function ecrireDefi(defi) {
   if (modeDemo()) { const db = baseDemo(); db.defi = defi; ecrireStockage("demo", db); return ""; }
-  try { await groupe(codeCoach()).collection("reglages").doc("defi").set(defi); return ""; } catch (e) { return "Enregistrement refusé (connexion coach ?)."; }
+  try { await groupeCoach(codeCoach()).collection("reglages").doc("defi").set(defi); return ""; } catch (e) { return "Enregistrement refusé (connexion coach ?)."; }
 }
 
 async function ecrireConsignes(uid, c) {
   if (modeDemo()) { const db = baseDemo(); db.consignes[uid] = c; ecrireStockage("demo", db); return ""; }
   try {
-    const doc = groupe(codeCoach()).collection("consignes").doc(uid);
+    const doc = groupeCoach(codeCoach()).collection("consignes").doc(uid);
     if (!c.exos.length && !c.message) await doc.delete(); else await doc.set(c);
     return "";
   } catch (e) {
@@ -336,7 +361,11 @@ function normaliserBilan(b) {
   }
   const hist = {};
   for (const [id, liste] of Object.entries(b.hist && typeof b.hist === "object" ? b.hist : {})) {
-    if (idFicheValide(id) && Array.isArray(liste)) hist[id] = liste.filter((x) => Array.isArray(x) && jourValide(x[0]) && nombreOk(x[1])).slice(-30);
+    // En ligne : [{ d, v }] ; en démo : [[d, v]]
+    if (idFicheValide(id) && Array.isArray(liste)) {
+      hist[id] = liste.map((x) => (Array.isArray(x) ? x : x && typeof x === "object" ? [x.d, x.v] : null))
+        .filter((x) => x && jourValide(x[0]) && nombreOk(x[1])).slice(-30);
+    }
   }
   const s = b.semaine && typeof b.semaine === "object" ? b.semaine : {};
   const defi = b.defi && typeof b.defi === "object" && jourValide(b.defi.lundi) && idFicheValide(b.defi.fiche) && nombreOk(b.defi.meilleur) ? { lundi: b.defi.lundi, fiche: b.defi.fiche, meilleur: b.defi.meilleur } : null;
