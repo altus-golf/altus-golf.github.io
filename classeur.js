@@ -268,16 +268,16 @@ async function texteDuFichierExcel(fichier) {
 /* ---------- Espace coachs : rapport Excel de chaque joueur ----------
    Demandé par le coach (20/11/2026). Le fichier est fabriqué dans le
    téléphone / l'ordinateur du coach (SheetJS) : rien ne passe par le dépôt.
-   Feuilles : « Résumé » (un joueur par ligne), « Records » (tous les
-   joueurs), puis une feuille par joueur (records, derniers scores,
-   réussite par distance). */
+   Une feuille (page) par joueur, avec TOUS les exos du programme, même
+   sans score (choix du coach, 20/11/2026) : records et moyennes de
+   l'année, derniers scores, réussite par distance. */
 
 let messageRapport = "";
 
 function blocRapportExcel() {
   return `<section class="bloc pr-bloc">
     <h2 class="bloc-titre">📊 Rapport Excel</h2>
-    <p class="petit">Un fichier Excel avec un résumé du groupe et une feuille par joueur (records, moyennes de l'année, derniers scores, réussite par distance).</p>
+    <p class="petit">Un fichier Excel avec une page par joueur : tous les exos (records, moyennes de l'année, derniers scores), et la réussite par distance.</p>
     <button type="button" class="bouton principal pleine-largeur" data-a="rapport-excel">⬇️ Télécharger le rapport</button>
     ${messageRapport ? `<p class="${messageRapport.startsWith("✅") ? "petit" : "erreur"}">${echapper(messageRapport)}</p>` : ""}
   </section>`;
@@ -298,7 +298,10 @@ function joueursDuRapport() {
 
 // Records et moyennes de l'année d'un joueur : une ligne par exo, dans l'ordre du programme
 function lignesRecords(j) {
-  return ITEMS_ALTUS.filter((it) => j.exos[it.id] || (j.hist[it.id] || []).length).map((it) => {
+  // Tous les exos possibles, même sans score (choix du coach, 20/11/2026)
+  // Rangés comme les progrès : Putting, Chipping, Test Center
+  const rang = (id) => CATEGORIES_PROGRES.findIndex((c) => c.contient(id));
+  return [...ITEMS_ALTUS].sort((a, b) => rang(a.id) - rang(b.id)).map((it) => {
     const e = j.exos[it.id];
     const h = j.hist[it.id] || [];
     const dernier = h[h.length - 1];
@@ -328,22 +331,11 @@ async function telechargerRapport() {
     const lundi = lundiDe();
     const annee = new Date().getFullYear();
 
-    // 1. Résumé : un joueur par ligne
-    const resume = [["Rapport Altus Performance", "", `le ${dateRapport(dateEnTexte(new Date()))}`], [],
-      ["Joueur", "Origine", "Mis à jour", "Exos cette semaine", `Scores ${annee}`, "Exos travaillés"]];
-    joueurs.forEach((j) => resume.push([j.prenom, j.source === "classeur" ? "Classeur importé" : "Site",
-      dateRapport(j.maj), j.source === "classeur" ? "" : (j.semaine.lundi === lundi ? j.semaine.n : 0),
-      Object.values(j.exos).reduce((t, e) => t + e.n, 0), Object.keys(j.exos).length]));
-    XLSX.utils.book_append_sheet(classeur, XLSX.utils.aoa_to_sheet(resume), nomDeFeuille("Résumé", pris));
-
-    // 2. Records de tout le groupe (pratique pour trier / filtrer dans Excel)
-    const records = [["Joueur", ...TITRES_RECORDS]];
-    joueurs.forEach((j) => lignesRecords(j).forEach((l) => records.push([j.prenom, ...l])));
-    XLSX.utils.book_append_sheet(classeur, XLSX.utils.aoa_to_sheet(records), nomDeFeuille("Records", pris));
-
-    // 3. Une feuille par joueur
+    // Une feuille (page) par joueur, avec tous les exos (choix du coach, 20/11/2026)
     joueurs.forEach((j) => {
-      const f = [[`${j.prenom}${j.source === "classeur" ? " (historique du classeur)" : ""}`], [], [`Records et moyennes ${annee}`], TITRES_RECORDS, ...lignesRecords(j)];
+      const f = [[`${j.prenom}${j.source === "classeur" ? " (historique du classeur)" : ""}`, "", `Rapport du ${dateRapport(dateEnTexte(new Date()))}`],
+        ["Mis à jour", dateRapport(j.maj), "Exos cette semaine", j.source === "classeur" ? "" : (j.semaine.lundi === lundi ? j.semaine.n : 0)],
+        [], [`Tous les exos : records et moyennes ${annee}`], TITRES_RECORDS, ...lignesRecords(j)];
       f.push([], ["Derniers scores (jusqu'à 30 par exo)"], ["Date", "Catégorie", "Exo", "Score", "Sur"]);
       const scores = [];
       for (const [id, l] of Object.entries(j.hist)) if (itemDe(id)) l.forEach(([d, v]) => scores.push([d, id, v]));
