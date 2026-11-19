@@ -282,14 +282,29 @@ function chargerPrenomsAccueil() {
 }
 
 // Entrer dans le groupe avec un prénom ; si le classeur a un historique à ce prénom, il est récupéré
+// Pas de fenêtre « confirm » (bloquée dans certains navigateurs d'applis, 20/11/2026) :
+// la confirmation se fait dans la page, avec un message d'attente.
+let prenomChoisi = null;     // prénom touché, en attente de « Oui, c'est moi »
+let entreeEnCours = false;   // connexion au groupe en cours
+
 async function entrerAvecPrenom(prenom) {
-  const erreur = await rejoindreGroupe(prenom);
-  if (erreur) { messageAccueil = erreur; return afficherVue(); }
-  await chargerGroupe();
-  const importe = groupeDonnees && bilansImportesLibres(groupeDonnees.bilans).find((b) => slugPrenom(b.prenom) === slugPrenom(prenom));
-  if (importe) await reprendreHistorique(importe.uid);   // classeur.js (publie aussi le bilan)
-  else await publierBilan(calculerBilan());
-  changerVue("seance");
+  entreeEnCours = true;
+  afficherVue();
+  try {
+    const erreur = await rejoindreGroupe(prenom);
+    if (erreur) { messageAccueil = erreur; return; }
+    prenomChoisi = null;
+    vue = "seance";
+    await chargerGroupe();
+    const importe = groupeDonnees && bilansImportesLibres(groupeDonnees.bilans).find((b) => slugPrenom(b.prenom) === slugPrenom(prenom));
+    if (importe) await reprendreHistorique(importe.uid);   // classeur.js (publie aussi le bilan)
+    else await publierBilan(calculerBilan());
+  } catch (e) {
+    messageAccueil = `Problème pendant l'entrée dans le groupe : réessaie. (${(e && (e.code || e.message)) || "erreur inconnue"})`;
+  } finally {
+    entreeEnCours = false;
+    if (moi()) changerVue("seance"); else afficherVue();
+  }
 }
 
 function vueAccueil() {
@@ -299,6 +314,18 @@ function vueAccueil() {
   if (prenomsAccueil === null) {
     chargerPrenomsAccueil();
     return `<section class="bloc pr-bloc accueil-altus"><h2 class="bloc-titre">Bienvenue chez Altus 👋</h2><p class="petit">Chargement des joueurs…</p></section>`;
+  }
+  if (entreeEnCours) {
+    return `<section class="bloc pr-bloc accueil-altus"><h2 class="bloc-titre">Bienvenue chez Altus 👋</h2><p>⏳ Connexion au groupe…</p></section>`;
+  }
+  if (prenomChoisi) {
+    return `<section class="bloc pr-bloc accueil-altus">
+      <h2 class="bloc-titre">Bienvenue chez Altus 👋</h2>
+      ${erreur}
+      <p class="confirmer-prenom">Tu es <strong>${echapper(prenomChoisi)}</strong> ?</p>
+      <button type="button" class="bouton principal pleine-largeur" data-a="confirmer-prenom">✅ Oui, c'est moi</button>
+      <button type="button" class="bouton pleine-largeur" data-a="liste-prenoms">← Non, revenir à la liste</button>
+    </section>`;
   }
   if (prenomsAccueil.length && !accueilAutrePrenom) {
     return `<section class="bloc pr-bloc accueil-altus">
@@ -647,11 +674,12 @@ document.addEventListener("DOMContentLoaded", () => {
       connecterGoogle().then((erreur) => { messageConnexion = erreur; afficherVue(); });
     }
     if (a === "deconnexion" && confirm("Se déconnecter ? Tes scores restent sur ce téléphone.")) {
-      deconnecter().then(() => { groupeDonnees = null; prenomsAccueil = null; accueilAutrePrenom = false; changerVue("seance"); });
+      deconnecter().then(() => { groupeDonnees = null; prenomsAccueil = null; accueilAutrePrenom = false; prenomChoisi = null; changerVue("seance"); });
     }
     if (a.startsWith("coach-")) actionCoach(a, bouton);
-    if (a === "choisir-prenom" && confirm(`Tu es ${bouton.dataset.prenom} ?`)) { messageAccueil = ""; entrerAvecPrenom(bouton.dataset.prenom); }
-    if (a === "autre-prenom" || a === "liste-prenoms") { accueilAutrePrenom = a === "autre-prenom"; messageAccueil = ""; afficherVue(); }
+    if (a === "choisir-prenom") { prenomChoisi = bouton.dataset.prenom; messageAccueil = ""; afficherVue(); window.scrollTo(0, 0); }
+    if (a === "confirmer-prenom" && prenomChoisi && !entreeEnCours) { messageAccueil = ""; entrerAvecPrenom(prenomChoisi); }
+    if (a === "autre-prenom" || a === "liste-prenoms") { accueilAutrePrenom = a === "autre-prenom"; prenomChoisi = null; messageAccueil = ""; afficherVue(); }
   });
   document.addEventListener("change", (e) => {
     if (e.target.id === "choix-exo-classement") { exoClassement = e.target.value; afficherVue(); }

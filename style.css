@@ -656,3 +656,4 @@ details[open] > summary::before { transform: rotate(90deg); }
 .liste-ressentis { padding-left: 1.1rem; }
 .liste-ressentis li { margin: 8px 0; }
 .cat-technique { --couleur-cat: #8a6d1f; }
+.confirmer-prenom { font-size: 1.3rem; text-align: center; margin: 12px 0; }
