@@ -696,3 +696,32 @@ body.theme-rose-renard .bouton { border-color: #ff0f8f; color: #ff0f8f; }
 body.theme-rose-renard .bouton.principal { background: #ff0f8f; border-color: #ff0f8f; color: #fff; box-shadow: 0 3px 10px rgba(255, 15, 143, 0.45); }
 body.theme-rose-renard .message-coach { background: #ffe0f1; border-color: #ff0f8f; }
 body.theme-rose-renard .classement li.moi, body.theme-rose-renard .table-matchs tr.moi td { background: #ffe0f1; }
+
+/* ---------- Thème perso « Noël » (Stan, 20/11/2026) ----------
+   Rouge et vert de Noël, flocons et sapins en fond, bordures dorées.
+   Ajouté au <body> seulement quand le joueur connecté s'appelle Stan (THEMES_JOUEURS, app.js). */
+body.theme-noel {
+  --accent: #c8102e;          /* rouge Noël */
+  --accent-texte: #ffffff;
+  --accent-doux: #fde8ea;
+  --rouge-altus: #0f7a3a;     /* vert sapin sous l'onglet actif */
+  --fond: #f6fbf7;
+  --bord: #0f7a3a;
+  background-color: #f6fbf7;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Ctext x='6' y='34' font-size='22' opacity='0.35'%3E❄️%3C/text%3E%3Ctext x='70' y='60' font-size='24' opacity='0.22'%3E🎄%3C/text%3E%3Ctext x='30' y='108' font-size='18' opacity='0.3'%3E❄️%3C/text%3E%3C/svg%3E");
+  background-attachment: fixed;
+}
+body.theme-noel .titre-altus { color: #c8102e; white-space: nowrap; font-size: clamp(1.4rem, 7vw, 2rem); }
+body.theme-noel .titre-altus::after { content: " 🎅"; font-size: 0.8em; }
+body.theme-noel .date, body.theme-noel .semaine-info { color: #0f7a3a; font-weight: 600; }
+body.theme-noel .onglet { background: #0f7a3a; color: #ffffff; border: 2px solid #d4af37; }
+body.theme-noel .onglet.actif { background: #c8102e; color: #ffffff; box-shadow: 0 4px 12px rgba(200, 16, 46, 0.4), inset 0 -5px 0 #d4af37; }
+body.theme-noel .bloc, body.theme-noel .carte { background: #ffffff; border: 3px solid #0f7a3a; box-shadow: 0 0 0 2px #d4af37 inset, 0 4px 14px rgba(15, 122, 58, 0.2); }
+body.theme-noel .carte { --couleur-cat: #c8102e; }
+body.theme-noel .bloc-titre, body.theme-noel .carte-titre, body.theme-noel h2, body.theme-noel h3 { color: #c8102e; }
+body.theme-noel .bloc-titre::after { content: " 🎁"; font-size: 0.8em; }
+body.theme-noel .pastille { background: #0f7a3a; color: #fff; }
+body.theme-noel .bouton { border-color: #c8102e; color: #c8102e; }
+body.theme-noel .bouton.principal { background: #c8102e; border-color: #c8102e; color: #fff; box-shadow: 0 3px 10px rgba(200, 16, 46, 0.35); }
+body.theme-noel .message-coach { background: #eaf6ee; border-color: #0f7a3a; }
+body.theme-noel .classement li.moi, body.theme-noel .table-matchs tr.moi td { background: #fde8ea; }

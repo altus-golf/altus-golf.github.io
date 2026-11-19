@@ -48,6 +48,7 @@
 - ✅ Long jeu : 6 Test Center Trackman (score tapé à la main, /100). Score /100, plus haut = mieux (confirmé). Règles connues de tous : pas de détail sur les cartes (choix de l’utilisateur).
 - ✅ Rapport d'analyse (20/11/2026) puis lot 1 : sauvegarde en ligne de tous les scores + restauration au démarrage (plus de bilan écrasé par un téléphone vide / Safari qui efface après 7 jours), plus aucune fenêtre alert/confirm native, effacer un score tapé par erreur (finalement réservé aux coachs, dans l'espace coachs, pour éviter la triche). ⚠ Recoller les règles (bloc `sauvegardes`, limites exos/hist à 60).
 - ✅ Logo Altus comme icône quand on ajoute le site à l'écran d'accueil (iPhone + Android), nom court « Altus ».
+- ✅ Thème perso de Stan : Noël (rouge, vert, doré, flocons, sapins).
 - ✅ Thème perso de Clara : rose fuchsia avec des renards 🦊 (seulement chez elle).
 - ✅ Rapport Excel : TOUS les scores (sauvegardes lisibles par les coachs ; historiques importés gardés en entier). ⚠ Recoller les règles.
 - 📋 Lot 2 proposé : reprendre les défis de la semaine dernière, texte du Snail, limite des règles. Lot 3 : connexion Google dans tous les navigateurs, match confirmé par l'adversaire, groupe réservé.
