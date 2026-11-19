@@ -182,7 +182,8 @@ function blocDistances(j) {
 function blocRecords(hist, titre) {
   const lignes = Object.entries(hist)
     .filter(([id, l]) => itemDe(id) && l.length)
-    .sort((a, b) => b[1][b[1].length - 1][0].localeCompare(a[1][a[1].length - 1][0]))
+    // Dans l'ordre du programme (Pelz complet, Pelz A à I ensemble, puis les autres exos) : choix de l'utilisateur, 19/11/2026
+    .sort((a, b) => ITEMS_ALTUS.findIndex((it) => it.id === a[0]) - ITEMS_ALTUS.findIndex((it) => it.id === b[0]))
     .map(([id, l]) => {
       const vals = l.map(([, v]) => v);
       const record = meilleurScore(id, vals);
