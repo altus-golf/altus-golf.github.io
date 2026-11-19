@@ -125,7 +125,7 @@ async function restaurerDepuisEnLigne() {
   const monBilan = groupeDonnees.bilans.find((b) => b.uid === m.uid);
   const effaces = new Set([...(lireStockage("effaces", [], PREFIXE_SCORES) || []), ...(sauvegarde ? sauvegarde.effaces : [])]);
   const scores = lireScores();
-  let ajoutes = 0;
+  let ajoutes = 0;   // nombre de choses récupérées (scores + tours) : renvoyé à chargerGroupe
   if (sauvegarde) ajoutes += fusionnerScores(scores, sauvegarde.scores, effaces);
   if (monBilan) ajoutes += fusionnerScores(scores, mapObjet(monBilan.hist, (l) => l.map(([d, v]) => ({ d, v }))), effaces);
   if (ajoutes) ecrireStockage("scores", scores, PREFIXE_SCORES);
@@ -148,7 +148,10 @@ async function restaurerDepuisEnLigne() {
       const locaux = toursDe(exo);   // exos-points.js
       const connus = new Set(locaux.map((t) => t.t));
       const nouveaux = liste.filter((t) => !connus.has(t.t));
-      if (nouveaux.length) ecrireStockage(EXOS_POINTS[exo].cleTours, [...locaux, ...nouveaux].sort((a, b) => a.t - b.t), PREFIXE_SCORES);
+      if (nouveaux.length) {
+        ecrireStockage(EXOS_POINTS[exo].cleTours, [...locaux, ...nouveaux].sort((a, b) => a.t - b.t), PREFIXE_SCORES);
+        ajoutes += nouveaux.length;
+      }
     }
   }
   // Effacements du coach déjà appliqués (sinon ils effaceraient un 2e score identique)
@@ -157,6 +160,7 @@ async function restaurerDepuisEnLigne() {
     ecrireStockage("effacesCoach", [...deja].slice(-300), PREFIXE_SCORES);
   }
   sauvegardeVerifiee = true;
+  return ajoutes;
 }
 
 // Envoie mon bilan au groupe ET la sauvegarde complète de mes scores
@@ -195,13 +199,13 @@ async function chargerGroupe() {
   const donnees = await lireGroupe(vue === "coach" && coachConnecte());
   erreurGroupe = !donnees;
   if (donnees) groupeDonnees = donnees;
-  // Premier chargement : on récupère d'abord ce qui est en ligne (voir publierMonBilan)
-  if (donnees && moi() && vue !== "coach" && !sauvegardeVerifiee) {
-    await restaurerDepuisEnLigne();
-    appliquerEffacementsCoach();
-    await publierMonBilan();
-  } else if (donnees && moi() && vue !== "coach" && appliquerEffacementsCoach()) {
-    await publierMonBilan();
+  // À CHAQUE chargement (pas seulement le premier, 20/11/2026) : on récupère ce qui est en ligne
+  // (ce qu'un autre appareil a joué entre-temps), puis on publie si quelque chose a changé.
+  if (donnees && moi() && vue !== "coach") {
+    const premiereFois = !sauvegardeVerifiee;
+    const recuperes = await restaurerDepuisEnLigne();
+    const effaces = appliquerEffacementsCoach();
+    if (premiereFois || recuperes || effaces) await publierMonBilan();
   }
   // Technique faite mais pas encore reçue par le coach : on la renvoie (exos-altus.js)
   if (donnees && moi() && vue !== "coach" && lireStockage("consignesEnAttente", null, PREFIXE_SCORES)) await envoyerTechniquesEnAttente();
