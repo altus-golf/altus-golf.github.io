@@ -36,7 +36,7 @@
 - ✅ Logo Altus redessiné en SVG (`images/logo.svg`) d'après l'image fournie : en-tête, icône de l'onglet et de l'écran d'accueil. Couleurs reprises du logo : bleu marine #365571 (couleur principale) et rouge #EB574C (onglet actif, cadre du défi). Mode sombre : fond clair derrière le logo.
 
 ## v8 (19/11/2026) : pieds jusqu'à 10 ft, mètres au-delà
-- ✅ Nouvelle règle de l'utilisateur : distances jusqu'à 10 pieds en pieds (« 10 ft »), au-delà en mètres (« 6,1 m ») ; les zones restent en pieds (cercle de 1 / 2 pieds, demi-lune de 4 pieds, zones du Lowry, barème du Pelz). Speed Drill 5 à 10 m, Demi-lune et 2 Feet Circle 4 à 11 m, 9 Putt Circle 4,3 / 4,9 / 5,5 m, Lowry et Start Line 6,1 m et 9,1 m. Unité écrite dans chaque puce (texte un peu plus petit).
+- ✅ Nouvelle règle de l'utilisateur : distances jusqu'à 10 pieds en pieds (« 10 ft »), au-delà en mètres (« 6,1 m ») ; les zones restent en pieds (cercle de 1 / 2 pieds, demi-lune de 4 pieds, zones du Lowry, barème du Pelz). Speed Drill 5 à 10 m, Demi-lune et 2 Feet Circle 4 à 11 m, Exceptions demandées ensuite : Lowry Putt (10, 20, 30 ft) et Start Line (5, 10, 20 ft) tout en pieds ; 9 Putt Circle affiché 4, 5, 6 m. Unité écrite dans chaque puce (texte un peu plus petit).
 
 ## Décisions (avec l'utilisateur)
 - Site séparé de l'appli perso, dans l'organisation GitHub `altus-golf` (pour que le nom du compte perso n'apparaisse pas).

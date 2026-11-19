@@ -20,7 +20,7 @@ const FICHES_ALTUS = [
   { id: "pelz", titre: "Test de Pelz", type: "Test",
     regles: "9 situations de petit jeu, 10 balles consécutives par situation.\nBarème par balle : balle rentrée = 4 pts ; moins de 3 pieds = 2 pts ; entre 3 et 6 pieds = 1 pt ; au-delà de 6 pieds = 0 pt (3 pieds ≈ une longueur de fer 5 ≈ un grand pas).\nUn Pelz par semaine : les 9 situations sont à faire entre le lundi et le dimanche, en une ou plusieurs fois." },
   { id: "9-putt-circle", titre: "9 Putt Circle", type: "Jeu",
-    regles: "9 puces sur 3 lignes autour du trou, à 4,3, 4,9 et 5,5 m (14, 16 et 18 ft). 1 balle par puce.\nZone : cercle de 1 ft autour du trou." },
+    regles: "9 puces sur 3 lignes autour du trou, à 4, 5 et 6 m (14, 16 et 18 ft). 1 balle par puce.\nZone : cercle de 1 ft autour du trou." },
   { id: "demi-lune", titre: "Demi-lune", type: "Jeu",
     regles: "4 puces alignées à 4, 7, 9 et 11 m du trou. 3 balles par puce.\nZone : demi-cercle de 4 ft derrière le trou." },
   { id: "2-feet-circle", titre: "2 Feet Circle", type: "Test",
@@ -30,9 +30,9 @@ const FICHES_ALTUS = [
   { id: "speed-drill-cross", titre: "Speed Drill Cross", type: "Jeu",
     regles: "Croix de marques autour d'un faux trou, à 3, 4 et 5 ft sur 4 lignes (12 putts, 1 par marque).\nRéussi si la balle touche le faux trou et finit entre 1 et 2 ft derrière." },
   { id: "lowry-putt", titre: "Lowry Putt", type: "Jeu",
-    regles: "Puces à 10 ft, 6,1 m et 9,1 m (20 et 30 ft) de chaque côté du trou (6 putts, 1 balle par puce).\nZone 1 = 1 ft pour la puce de 10 ft, zone 2 = 2 ft pour 6,1 m, zone 3 = 3 ft pour 9,1 m." },
+    regles: "Puces à 10, 20 et 30 ft de chaque côté du trou (6 putts, 1 balle par puce).\nZone 1 = 1 ft pour la puce de 10 ft, zone 2 = 2 ft pour 20 ft, zone 3 = 3 ft pour 30 ft." },
   { id: "start-line", titre: "Start Line", type: "Test",
-    regles: "Faire sortir la balle sur la ligne visée, à 5 ft, 10 ft et 6,1 m (20 ft). 10 balles par distance." },
+    regles: "Faire sortir la balle sur la ligne visée, à 5, 10 et 20 ft. 10 balles par distance." },
   { id: "trefle", titre: "Trèfle", type: "Jeu",
     regles: "16 putts autour du trou à 3, 4 et 5 ft, en forme de trèfle.\nObjectif : rentrer les 16 putts d'affilée en moins de 45 min.\nScore : ta meilleure série de putts rentrés d'affilée." },
   { id: "snail-3-10-feet", titre: "Snail 3-10 ft", type: "Jeu",
@@ -68,7 +68,7 @@ const ITEMS_ALTUS = [
   { id: "lowry-putt", titre: "Lowry Putt", fiche: "lowry-putt", unite: "/ 6", max: 6 },
   { id: "start-line-5", titre: "Start Line 5 ft", fiche: "start-line", unite: "/ 10", max: 10 },
   { id: "start-line-10", titre: "Start Line 10 ft", fiche: "start-line", unite: "/ 10", max: 10 },
-  { id: "start-line-20", titre: "Start Line 6,1 m (20 ft)", fiche: "start-line", unite: "/ 10", max: 10 },
+  { id: "start-line-20", titre: "Start Line 20 ft", fiche: "start-line", unite: "/ 10", max: 10 },
   { id: "trefle", titre: "Trèfle (série)", fiche: "trefle", unite: "/ 16", max: 16 },
   { id: "snail-3-10-feet", titre: "Snail 3-10 ft", fiche: "snail-3-10-feet", unite: "/ 8", max: 8 },
   { id: "leap-frog", titre: "Leap Frog (série)", fiche: "leap-frog", unite: "d'affilée", max: 15 },
@@ -85,7 +85,7 @@ function ficheDe(id) { return FICHES_ALTUS.find((f) => f.id === id) || null; }
 ["cercle-mickelson", "echelle-de-dosage", "echelle-inversee", "couloir-precision-fers", "neuf-trajectoires"].forEach((exo) => { delete EXOS_POINTS[exo]; });
 // Start Line : seulement la version complète (10 balles à 5, 10 et 20 ft)
 delete EXOS_POINTS["start-line"].modes.court;
-EXOS_POINTS["start-line"].modes.tour.nom = "Commencer (10 balles à 5 ft, 10 ft et 6,1 m)";
+EXOS_POINTS["start-line"].modes.tour.nom = "Commencer (10 balles à 5, 10 et 20 ft)";
 // Snail : il a un score chez Altus
 EXOS_POINTS.snail.modes["montante-descendante"].sansScore = false;
 
@@ -100,10 +100,19 @@ function distanceAltus(pieds, metres) {
   const m = metres !== undefined ? metres : Math.round(pieds * 0.3048 * 10) / 10;
   return { court: `${virguleUneDecimale(m)} m`, long: `${virguleUneDecimale(m)} m` };
 }
-Object.values(EXOS_POINTS).forEach((config) => {
+// Exceptions demandées par l'utilisateur (19/11/2026) :
+//  - Lowry Putt et Start Line : tout en pieds (10, 20, 30 ft ; 5, 10, 20 ft), comme le classeur ;
+//  - 9 Putt Circle : 14, 16, 18 ft affichés 4, 5 et 6 m.
+const TOUT_EN_PIEDS = ["lowry-putt", "start-line"];
+const METRES_9_PUTT = { 14: 4, 16: 5, 18: 6 };
+Object.entries(EXOS_POINTS).forEach(([exo, config]) => {
   if (config.libelle) return;   // distances déjà écrites autrement (tees…)
   const enMetres = config.unite === "m";
-  const versAltus = (d) => (enMetres ? distanceAltus(d * 3.2808, d) : distanceAltus(d));
+  const versAltus = (d) => {
+    if (TOUT_EN_PIEDS.includes(exo)) return { court: `${d} ft`, long: `${d} pieds` };
+    if (exo === "9-putt-circle" && METRES_9_PUTT[d]) return { court: `${METRES_9_PUTT[d]} m`, long: `${METRES_9_PUTT[d]} m` };
+    return enMetres ? distanceAltus(d * 3.2808, d) : distanceAltus(d);
+  };
   config.libelle = (d) => versAltus(d).long;
   config.points.forEach((p) => { if (p.texte === undefined) p.texte = versAltus(p.d).court; });
   delete config.unite;   // le libellé suffit (sinon exos-points.js ajoute « en mètres »)
