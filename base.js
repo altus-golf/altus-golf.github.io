@@ -641,6 +641,7 @@ function normaliserSauvegarde(x) {
     repris: typeof d.repris === "string" && /^classeur-[a-z0-9-]{1,40}$/.test(d.repris) ? d.repris : "",
     techniques: (Array.isArray(d.techniques) ? d.techniques : []).filter((x) => x && idFicheValide(x.id) && jourValide(x.d)).map((x) => ({ id: x.id, d: x.d })).slice(-200),
     effaces: (Array.isArray(d.effaces) ? d.effaces : []).filter((t) => nombreOk(t, 1e13)).slice(-500),
+    effacesCoach: (Array.isArray(d.effacesCoach) ? d.effacesCoach : []).filter((t) => nombreOk(t, 1e13)).slice(-300),
   };
 }
 
@@ -660,5 +661,9 @@ function normaliserConsignes(c) {
   const ressentis = (Array.isArray(d.ressentis) ? d.ressentis : [])
     .filter((x) => x && idFicheValide(x.id) && jourValide(x.d) && typeof x.texte === "string")
     .map((x) => ({ id: x.id, d: x.d, texte: x.texte.slice(0, 300) })).slice(0, 30);
-  return { exos, message: typeof d.message === "string" ? d.message.slice(0, 300) : "", faits, reglages, ressentis };
+  // Scores à effacer demandés par un coach (erreur de saisie) : { id, d, v, cle }
+  const aEffacer = (Array.isArray(d.aEffacer) ? d.aEffacer : [])
+    .filter((e) => e && idFicheValide(e.id) && jourValide(e.d) && nombreOk(e.v) && nombreOk(e.cle, 1e13))
+    .map((e) => ({ id: e.id, d: e.d, v: e.v, cle: e.cle })).slice(-50);
+  return { exos, message: typeof d.message === "string" ? d.message.slice(0, 300) : "", faits, reglages, ressentis, aEffacer };
 }

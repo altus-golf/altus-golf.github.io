@@ -140,6 +140,11 @@ async function restaurerDepuisEnLigne() {
     ecrireStockage("techniques", liste.slice(-200), PREFIXE_SCORES);
   }
   ecrireStockage("effaces", [...effaces].slice(-500), PREFIXE_SCORES);
+  // Effacements du coach déjà appliqués (sinon ils effaceraient un 2e score identique)
+  if (sauvegarde && sauvegarde.effacesCoach.length) {
+    const deja = new Set([...(lireStockage("effacesCoach", [], PREFIXE_SCORES) || []), ...sauvegarde.effacesCoach]);
+    ecrireStockage("effacesCoach", [...deja].slice(-300), PREFIXE_SCORES);
+  }
   sauvegardeVerifiee = true;
 }
 
@@ -153,6 +158,7 @@ async function publierMonBilan() {
     repris: moi().repris || "",
     techniques: (Array.isArray(techniques) ? techniques : []).map((x) => ({ id: x.id, d: x.d })).slice(-200),
     effaces: (lireStockage("effaces", [], PREFIXE_SCORES) || []).slice(-500),
+    effacesCoach: (lireStockage("effacesCoach", [], PREFIXE_SCORES) || []).slice(-300),
     maj: Date.now(),
   });
 }
@@ -180,6 +186,9 @@ async function chargerGroupe() {
   // Premier chargement : on récupère d'abord ce qui est en ligne (voir publierMonBilan)
   if (donnees && moi() && vue !== "coach" && !sauvegardeVerifiee) {
     await restaurerDepuisEnLigne();
+    appliquerEffacementsCoach();
+    await publierMonBilan();
+  } else if (donnees && moi() && vue !== "coach" && appliquerEffacementsCoach()) {
     await publierMonBilan();
   }
   // Technique faite mais pas encore reçue par le coach : on la renvoie (exos-altus.js)
@@ -297,7 +306,7 @@ function blocRecords(hist, titre, options = {}) {
           <span>${moyenne30(id, l)}</span>
           <span>${l.length} score${l.length > 1 ? "s" : ""}</span>
         </p>
-        ${options.modifiable ? blocCorriger(id) : ""}
+        ${options.coach ? blocCorriger(id, l) : ""}
       </article>`;
   };
   const sections = CATEGORIES_PROGRES.map((cat) => {
@@ -313,34 +322,49 @@ function blocRecords(hist, titre, options = {}) {
   </section>`;
 }
 
-// 📈 Moi : effacer un de ses 5 derniers scores (erreur de saisie), 20/11/2026
-function blocCorriger(id) {
-  const derniers = (lireScores()[id] || []).slice(-5).reverse();
+// Espace coachs : effacer un score tapé par erreur (SEULEMENT les coachs, pour éviter la
+// triche : choix de l'utilisateur, 20/11/2026). l = [[d, v]] (historique en ligne du joueur).
+function blocCorriger(id, l) {
+  const derniers = l.slice(-5).reverse();
   if (!derniers.length) return "";
   return `<details class="corriger-score"><summary>✏️ Effacer un score (erreur)</summary>
-    <ul class="liste-consignes">${derniers.map((s) => `<li class="consigne">
-      <span><strong>${echapper(texteScore(id, s.v))}</strong><small>${echapper(dateLisible(s.d))}</small></span>
-      <button type="button" class="bouton danger" data-a="effacer-score" data-id="${echapper(id)}" data-t="${Number(s.t) || 0}" data-d="${echapper(s.d)}" data-v="${Number(s.v)}" aria-label="Effacer ce score">✕</button>
+    <ul class="liste-consignes">${derniers.map(([d, v]) => `<li class="consigne">
+      <span><strong>${echapper(texteScore(id, v))}</strong><small>${echapper(dateLisible(d))}</small></span>
+      <button type="button" class="bouton danger" data-a="coach-effacer-score" data-id="${echapper(id)}" data-d="${echapper(d)}" data-v="${Number(v)}" aria-label="Effacer ce score">✕</button>
     </li>`).join("")}</ul></details>`;
 }
 
-async function effacerScore(bouton) {
-  const id = bouton.dataset.id, t = Number(bouton.dataset.t), d = bouton.dataset.d, v = Number(bouton.dataset.v);
-  if (!itemDe(id)) return;
-  if (!(await demanderConfirmation(`Effacer ${itemDe(id).titre} : ${texteScore(id, v)} (${dateLisible(d)}) ?`, "Oui, effacer"))) return;
+// Côté joueur : applique les effacements demandés par un coach (consignes.aEffacer).
+// Chaque demande n'est appliquée qu'une fois (sa « cle » est gardée dans effacesCoach).
+// Renvoie true si des scores ont été effacés.
+function appliquerEffacementsCoach() {
+  const c = mesConsignes();
+  if (!c.aEffacer.length) return false;
+  const appliques = new Set(lireStockage("effacesCoach", [], PREFIXE_SCORES) || []);
   const scores = lireScores();
-  const liste = scores[id] || [];
-  const i = liste.findIndex((s) => (t ? s.t === t : true) && s.d === d && s.v === v);
-  if (i < 0) return;
-  const [efface] = liste.splice(i, 1);
-  scores[id] = liste;
-  ecrireStockage("scores", scores, PREFIXE_SCORES);
-  // Mémorisé pour qu'il ne revienne pas depuis la sauvegarde en ligne
   const effaces = lireStockage("effaces", [], PREFIXE_SCORES) || [];
-  if (efface.t) ecrireStockage("effaces", [...effaces, efface.t].slice(-500), PREFIXE_SCORES);
-  afficherVue();
-  await publierMonBilan();
-  await chargerGroupe();
+  let change = false;
+  c.aEffacer.forEach((e) => {
+    if (appliques.has(e.cle)) return;
+    appliques.add(e.cle);
+    const liste = scores[e.id] || [];
+    // le plus récent qui correspond (même date, même valeur)
+    for (let i = liste.length - 1; i >= 0; i--) {
+      if (liste[i].d === e.d && liste[i].v === e.v) {
+        const [efface] = liste.splice(i, 1);
+        if (efface.t) effaces.push(efface.t);
+        change = true;
+        break;
+      }
+    }
+    scores[e.id] = liste;
+  });
+  ecrireStockage("effacesCoach", [...appliques].slice(-300), PREFIXE_SCORES);
+  if (change) {
+    ecrireStockage("scores", scores, PREFIXE_SCORES);
+    ecrireStockage("effaces", effaces.slice(-500), PREFIXE_SCORES);
+  }
+  return change;
 }
 
 const medaille = (i) => ["🥇", "🥈", "🥉"][i] || `${i + 1}.`;
@@ -580,7 +604,7 @@ function vueMoi() {
   const hist = {};
   for (const [id, liste] of Object.entries(lireScores())) if (Array.isArray(liste) && liste.length) hist[id] = liste.map((s) => [s.d, s.v]);
   return `<p class="semaine-info">${exosDeLaSemaine()} exo${exosDeLaSemaine() > 1 ? "s" : ""} joué${exosDeLaSemaine() > 1 ? "s" : ""} cette semaine</p>
-    ${blocRecords(hist, "⭐ Mes records", { modifiable: true })}`;
+    ${blocRecords(hist, "⭐ Mes records")}`;
 }
 
 function vueExos() {
@@ -604,7 +628,7 @@ function vueCoach() {
       <p>Réservé aux coachs d'Altus.</p>${texte}</section>`;
   }
   let html = `<section class="bloc pr-bloc"><h2 class="bloc-titre">🧑‍🏫 Espace coachs</h2>
-    ${messageCoach ? `<p class="erreur">${echapper(messageCoach)}</p>` : ""}
+    ${messageCoach ? `<p class="${messageCoach.startsWith("✅") ? "petit" : "erreur"}">${echapper(messageCoach)}</p>` : ""}
     <p class="petit">Le groupe est ouvert : les joueurs entrent avec leur compte Google.</p></section>`;
   if (!groupeDonnees) return html + `<p class="petit">${erreurGroupe ? "Pas de connexion." : "Chargement…"}</p>`;
 
@@ -668,7 +692,7 @@ function vueCoach() {
       <button type="button" class="bouton" data-a="coach-message">Enregistrer le message</button>
     </section>
     ${blocDistances(j)}
-    ${blocRecords(j.hist, `📈 Progrès de ${echapper(j.prenom)}`)}
+    ${blocRecords(j.hist, `📈 Progrès de ${echapper(j.prenom)}`, { coach: true })}
     <section class="bloc pr-bloc">
       <button type="button" class="bouton danger pleine-largeur" data-a="coach-supprimer">🗑 Retirer ${echapper(j.prenom)}${j.source === "classeur" ? " 📄" : ""} du groupe</button>
       <p class="petit">Efface ses scores du groupe (pas ceux de son téléphone). S'il utilise encore le site, il réapparaîtra dès qu'il jouera un exo.</p>
@@ -719,6 +743,33 @@ async function actionCoach(a, bouton) {
   messageCoach = "";
   if (a === "coach-demo") { entrerCoachDemo(); return changerVue("coach"); }
   if (a === "coach-joueur") { joueurCoach = bouton.dataset.uid; return afficherVue(); }
+  if (a === "coach-effacer-score") {
+    const j = groupeDonnees.bilans.find((b) => b.uid === joueurCoach);
+    const id = bouton.dataset.id, d = bouton.dataset.d, v = Number(bouton.dataset.v);
+    if (!j || !itemDe(id)) return;
+    if (!(await demanderConfirmation(`Effacer le score de ${j.prenom} : ${itemDe(id).titre} ${texteScore(id, v)} (${dateLisible(d)}) ?`, "Oui, effacer"))) return;
+    if (j.source === "classeur") {
+      // Historique importé : le coach réécrit lui-même le bilan
+      const hist = JSON.parse(JSON.stringify(j.hist));
+      const l = hist[id] || [];
+      const i = l.map(([x, y]) => x + "|" + y).lastIndexOf(d + "|" + v);
+      if (i >= 0) l.splice(i, 1);
+      if (!l.length) delete hist[id];
+      const b = calculerBilanDepuis(j.uid, j.prenom, hist, j.semaine, null);
+      b.source = "classeur";
+      messageCoach = await importerBilans([b]);   // base.js
+      if (!messageCoach) messageCoach = "✅ Score effacé.";
+    } else {
+      // Joueur du site : ses scores sont dans son téléphone → demande d'effacement,
+      // appliquée à sa prochaine ouverture du site (appliquerEffacementsCoach)
+      const c = JSON.parse(JSON.stringify(groupeDonnees.consignes[j.uid] || normaliserConsignes(null)));
+      c.aEffacer = [...c.aEffacer, { id, d, v, cle: Date.now() }].slice(-50);
+      messageCoach = await ecrireConsignes(j.uid, normaliserConsignes(c));
+      if (!messageCoach) messageCoach = `✅ Ce score sera effacé dès que ${j.prenom} ouvrira le site.`;
+    }
+    if (messageCoach.startsWith("✅")) afficherMessage(messageCoach);
+    return chargerGroupe();
+  }
   if (a === "coach-supprimer") {
     const j = groupeDonnees.bilans.find((b) => b.uid === joueurCoach);
     if (!j || !(await demanderConfirmation(`Retirer ${j.prenom}${j.source === "classeur" ? " (historique importé)" : ""} du groupe ?`, "Oui, retirer"))) return;
@@ -787,7 +838,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
     if (a.startsWith("coach-")) actionCoach(a, bouton);
-    if (a === "effacer-score") effacerScore(bouton);
     if (a === "choisir-prenom") { prenomChoisi = bouton.dataset.prenom; messageAccueil = ""; afficherVue(); window.scrollTo(0, 0); }
     if (a === "confirmer-prenom" && prenomChoisi && !entreeEnCours) { messageAccueil = ""; entrerAvecPrenom(prenomChoisi); }
     if (a === "autre-prenom" || a === "liste-prenoms") { accueilAutrePrenom = a === "autre-prenom"; prenomChoisi = null; messageAccueil = ""; afficherVue(); }
