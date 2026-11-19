@@ -599,3 +599,5 @@ details[open] > summary::before { transform: rotate(90deg); }
 @media (prefers-color-scheme: dark) {
   .logo-altus { background: #f4f7f3; border-radius: 10px; padding: 3px; }
 }
+/* Puces des jeux : la distance porte son unité (« 10 ft », « 6,1 m ») : texte un peu plus petit pour tenir dans le rond */
+.point-trefle text { font-size: 20px; letter-spacing: -0.5px; }
