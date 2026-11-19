@@ -9,8 +9,9 @@
         avec des joueurs fictifs pour voir les classements ;
       - CONFIG_FIREBASE rempli  -> Firestore (règles : outils/regles-firestore.txt).
 
-   Organisation en ligne (code du groupe = G, ex. ALTUS2026) :
-     groupes/G                      { nom }  (créé par un coach : le code n'existe que s'il existe)
+   Organisation en ligne : un seul groupe, G = CODE_GROUPE (« ALTUS »), sans code
+   à taper (choix de l'utilisateur, 19/11/2026) :
+     groupes/G                      { nom }  (ouvert par un coach à sa première connexion)
      groupes/G/bilans/<uid>         bilan d'un joueur, écrit par lui seul (voir calculerBilan, app.js)
      groupes/G/reglages/defi        { fiche, lundi, message }  défi de la semaine (coachs)
      groupes/G/consignes/<uid>      { exos, message, faits }   exos donnés par un coach
@@ -87,10 +88,13 @@ const VERSION_FIREBASE = "10.12.2";
 
 function modeDemo() { return CONFIG_FIREBASE === null; }
 
-// Le joueur de ce téléphone : { code, prenom, uid } (null tant qu'il n'a pas rejoint)
+// Le seul groupe du site : les joueurs n'ont pas de code à taper
+const CODE_GROUPE = "ALTUS";
+
+// Le joueur de ce téléphone : { code, prenom, uid } (null tant qu'il n'a pas donné son prénom)
 function moi() {
   const m = lireStockage("moi", null);
-  return m && typeof m.code === "string" && typeof m.prenom === "string" && typeof m.uid === "string" ? m : null;
+  return m && typeof m.prenom === "string" && typeof m.uid === "string" ? { ...m, code: CODE_GROUPE } : null;
 }
 
 // --- Firebase (chargé seulement si configuré) ---
@@ -187,25 +191,24 @@ function calculerBilanDepuis(uid, prenom, hist, semaine, defi) {
 
 /* ---------- Ce que l'appli demande à la base ---------- */
 
-// Rejoindre un groupe : le code doit exister (créé par un coach). Renvoie un message d'erreur ou "".
-async function rejoindreGroupe(code, prenom) {
-  code = code.trim().toUpperCase();
+// Rejoindre le groupe avec son prénom. Le groupe doit avoir été ouvert par un coach.
+// Renvoie un message d'erreur ou "".
+async function rejoindreGroupe(prenom) {
   prenom = prenom.trim().slice(0, 30);
-  if (!/^[A-Z0-9-]{3,20}$/.test(code)) return "Le code du groupe : 3 à 20 lettres ou chiffres, sans espace.";
   if (!prenom) return "Écris ton prénom.";
   if (modeDemo()) {
-    ecrireStockage("moi", { code, prenom, uid: lireStockage("uidDemo", null) || "moi-" + Date.now() });
+    ecrireStockage("moi", { prenom, uid: lireStockage("uidDemo", null) || "moi-" + Date.now() });
     ecrireStockage("uidDemo", moi().uid);
     return "";
   }
   if (!(await demarrerFirebase())) return "Pas de connexion. Vérifie le réseau et réessaie.";
   try {
-    const doc = await groupe(code).get();
-    if (!doc.exists) return "Ce code de groupe n'existe pas. Demande le bon code à ton coach.";
+    const doc = await groupe(CODE_GROUPE).get();
+    if (!doc.exists) return "Le groupe n'est pas encore ouvert : demande à ton coach de se connecter une première fois à l'espace coachs.";
   } catch (e) {
-    return "Ce code de groupe n'existe pas. Demande le bon code à ton coach.";
+    return "Pas de connexion. Vérifie le réseau et réessaie.";
   }
-  ecrireStockage("moi", { code, prenom, uid: uidFirebase() });
+  ecrireStockage("moi", { prenom, uid: uidFirebase() });
   return "";
 }
 
@@ -295,7 +298,7 @@ async function suivreConnexionCoach(rappel) {
 }
 
 // Code du groupe suivi par le coach sur ce téléphone
-function codeCoach() { return lireStockage("codeCoach", "") || (moi() ? moi().code : ""); }
+function codeCoach() { return CODE_GROUPE; }
 
 // Connexion coach : compte Google (adresse autorisée dans les règles Firestore).
 // En démo : pas de compte, on entre directement.
@@ -318,13 +321,13 @@ async function deconnecterCoach() {
   try { await appCoach().auth().signOut(); } catch (e) { /* rien */ }
 }
 
-// Crée le groupe (son code) : seul un coach peut le faire
-async function creerGroupe(code, nom) {
-  if (modeDemo()) { ecrireStockage("codeCoach", code); return ""; }
+// Ouvre le groupe (appelé à chaque connexion d'un coach, sans risque si déjà ouvert) :
+// seul un coach peut le faire
+async function ouvrirGroupe() {
+  if (modeDemo()) return "";
   if (!(await demarrerFirebase())) return "Pas de connexion.";
   try {
-    await groupeCoach(code).set({ nom: nom.slice(0, 60) }, { merge: true });
-    ecrireStockage("codeCoach", code);
+    await groupeCoach(CODE_GROUPE).set({ nom: "Altus Performance" }, { merge: true });
     return "";
   } catch (e) {
     return "Refusé : ce compte Google n'est pas un coach autorisé.";

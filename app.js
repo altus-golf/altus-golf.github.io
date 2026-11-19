@@ -156,16 +156,13 @@ function ligneClassement(i, nom, valeur, estMoi) {
 function vueAccueil() {
   return `<section class="bloc pr-bloc accueil-altus">
     <h2 class="bloc-titre">Bienvenue chez Altus 👋</h2>
-    <p>Entre ton prénom et le code du groupe donné par ton coach.</p>
+    <p>Entre ton prénom pour rejoindre le groupe.</p>
     <form id="form-rejoindre">
       <label for="prenom">Prénom</label>
       <input id="prenom" name="prenom" autocomplete="given-name" maxlength="30" required>
-      <label for="code">Code du groupe</label>
-      <input id="code" name="code" autocapitalize="characters" maxlength="20" required placeholder="ex. ALTUS2026">
       <p class="erreur" id="erreur-rejoindre" hidden></p>
       <button type="submit" class="bouton principal pleine-largeur">C'est parti</button>
     </form>
-    ${modeDemo() ? `<p class="petit">Mode démo : n'importe quel code marche (ex. ALTUS2026).</p>` : ""}
   </section>`;
 }
 
@@ -288,17 +285,9 @@ function vueCoach() {
       ${messageCoach ? `<p class="erreur">${echapper(messageCoach)}</p>` : ""}
       <button type="button" class="bouton principal pleine-largeur" data-a="coach-connexion">${modeDemo() ? "Entrer (démo)" : "Se connecter avec Google"}</button></section>`;
   }
-  const code = codeCoach();
   let html = `<section class="bloc pr-bloc"><h2 class="bloc-titre">🧑‍🏫 Espace coachs</h2>
     ${messageCoach ? `<p class="erreur">${echapper(messageCoach)}</p>` : ""}
-    <p>Groupe suivi : <strong>${echapper(code || "aucun")}</strong></p>
-    <details ${code ? "" : "open"}><summary>Créer / changer de groupe</summary>
-      <label for="code-groupe">Code du groupe (les joueurs le tapent pour entrer)</label>
-      <input id="code-groupe" maxlength="20" autocapitalize="characters" value="${echapper(code)}">
-      <button type="button" class="bouton" data-a="coach-groupe">Enregistrer le groupe</button>
-    </details>
     <button type="button" class="lien-bouton" data-a="coach-deconnexion">Se déconnecter</button></section>`;
-  if (!code) return html;
   if (!groupeDonnees) return html + `<p class="petit">${erreurGroupe ? "Pas de connexion." : "Chargement…"}</p>`;
 
   // --- Défi de la semaine ---
@@ -317,7 +306,7 @@ function vueCoach() {
 
   // --- Joueurs ---
   const joueurs = [...groupeDonnees.bilans].sort((a, b) => a.prenom.localeCompare(b.prenom, "fr"));
-  if (!joueurs.length) return html + `<p class="petit">Aucun joueur n'a encore rejoint le groupe ${echapper(code)}.</p>`;
+  if (!joueurs.length) return html + `<p class="petit">Aucun joueur n'a encore rejoint le groupe.</p>`;
   if (!joueurs.some((j) => j.uid === joueurCoach)) joueurCoach = joueurs[0].uid;
   const j = joueurs.find((x) => x.uid === joueurCoach);
   const c = groupeDonnees.consignes[j.uid] || { exos: [], message: "", faits: {} };
@@ -354,7 +343,7 @@ function afficherVue() {
   document.getElementById("onglets").innerHTML = m && !enCoach
     ? ONGLETS.map(([id, nom]) => `<button type="button" class="onglet ${vue === id ? "actif" : ""}" data-a="vue" data-vue="${id}" aria-pressed="${vue === id}">${nom}</button>`).join("")
     : enCoach ? `<button type="button" class="onglet" data-a="vue" data-vue="seance">← Retour</button>` : "";
-  document.getElementById("sous-titre").textContent = m ? `${m.prenom} · groupe ${m.code}` : "Petit jeu et putting";
+  document.getElementById("sous-titre").textContent = m ? `${m.prenom} · groupe Altus` : "Petit jeu et putting";
   const contenu = document.getElementById("contenu");
   if (enCoach) contenu.innerHTML = vueCoach();
   else if (!m) contenu.innerHTML = vueAccueil();
@@ -375,15 +364,12 @@ function changerVue(nouvelle) {
 
 async function actionCoach(a, bouton) {
   messageCoach = "";
-  if (a === "coach-connexion") { messageCoach = await connecterCoach(); return changerVue("coach"); }
-  if (a === "coach-deconnexion") { await deconnecterCoach(); groupeDonnees = null; return changerVue("coach"); }
-  if (a === "coach-groupe") {
-    const code = document.getElementById("code-groupe").value.trim().toUpperCase();
-    if (!/^[A-Z0-9-]{3,20}$/.test(code)) { messageCoach = "Code : 3 à 20 lettres ou chiffres, sans espace."; return afficherVue(); }
-    messageCoach = await creerGroupe(code, code);
-    groupeDonnees = null;
-    return chargerGroupe();
+  if (a === "coach-connexion") {
+    messageCoach = await connecterCoach();
+    if (!messageCoach) messageCoach = await ouvrirGroupe();   // le groupe existe dès la 1re connexion d'un coach
+    return changerVue("coach");
   }
+  if (a === "coach-deconnexion") { await deconnecterCoach(); groupeDonnees = null; return changerVue("coach"); }
   if (a === "coach-joueur") { joueurCoach = bouton.dataset.uid; return afficherVue(); }
   if (a === "coach-defi") {
     const fiche = document.getElementById("choix-defi").value;
@@ -427,7 +413,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("submit", async (e) => {
     if (e.target.id !== "form-rejoindre") return;
     e.preventDefault();
-    const erreur = await rejoindreGroupe(e.target.code.value, e.target.prenom.value);
+    const erreur = await rejoindreGroupe(e.target.prenom.value);
     if (erreur) {
       const p = document.getElementById("erreur-rejoindre");
       p.textContent = erreur;
