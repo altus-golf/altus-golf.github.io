@@ -697,10 +697,10 @@ body.theme-rose-renard .bouton.principal { background: #ff0f8f; border-color: #f
 body.theme-rose-renard .message-coach { background: #ffe0f1; border-color: #ff0f8f; }
 body.theme-rose-renard .classement li.moi, body.theme-rose-renard .table-matchs tr.moi td { background: #ffe0f1; }
 
-/* ---------- Thème perso « Noël noir et orange » (Stan, 20/11/2026) ----------
-   Couleurs noir et orange (demande de Stan), décor de Noël gardé (flocons, sapins, 🎅 🎁).
+/* ---------- Thème perso « noir et orange » (Stan, 20/11/2026) ----------
+   Juste noir et orange, sans décor (demande de Stan).
    Ajouté au <body> seulement quand le joueur connecté s'appelle Stan (THEMES_JOUEURS, app.js). */
-body.theme-noel {
+body.theme-noir-orange {
   --accent: #ff7a00;          /* orange */
   --accent-texte: #111111;
   --accent-doux: #3a2410;
@@ -711,24 +711,20 @@ body.theme-noel {
   --texte-doux: #ffb877;
   --bord: #ff7a00;
   color: var(--texte);
-  background-color: #0d0d0d;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Ctext x='6' y='34' font-size='22' opacity='0.35'%3E❄️%3C/text%3E%3Ctext x='70' y='60' font-size='24' opacity='0.3'%3E🎄%3C/text%3E%3Ctext x='30' y='108' font-size='18' opacity='0.3'%3E❄️%3C/text%3E%3C/svg%3E");
-  background-attachment: fixed;
+  background: #0d0d0d;
 }
-body.theme-noel .titre-altus { color: #ff7a00; white-space: nowrap; font-size: clamp(1.4rem, 7vw, 2rem); }
-body.theme-noel .titre-altus::after { content: " 🎅"; font-size: 0.8em; }
-body.theme-noel .date, body.theme-noel .semaine-info { color: #ff9a3d; font-weight: 600; }
-body.theme-noel .onglet { background: #1a1a1a; color: #ff7a00; border: 2px solid #ff7a00; }
-body.theme-noel .onglet.actif { background: #ff7a00; color: #111111; box-shadow: 0 4px 12px rgba(255, 122, 0, 0.45), inset 0 -5px 0 #ffffff; }
-body.theme-noel .bloc, body.theme-noel .carte { background: #1a1a1a; color: #f5f5f5; border: 3px solid #ff7a00; box-shadow: 0 4px 14px rgba(255, 122, 0, 0.25); }
-body.theme-noel .carte { --couleur-cat: #ff7a00; }
-body.theme-noel .bloc-titre, body.theme-noel .carte-titre, body.theme-noel h2, body.theme-noel h3, body.theme-noel summary { color: #ff7a00; }
-body.theme-noel .bloc-titre::after { content: " 🎁"; font-size: 0.8em; }
-body.theme-noel .pastille { background: #ff7a00; color: #111; }
-body.theme-noel .bouton { background: #111; border-color: #ff7a00; color: #ff7a00; }
-body.theme-noel .bouton.principal { background: #ff7a00; border-color: #ff7a00; color: #111; box-shadow: 0 3px 10px rgba(255, 122, 0, 0.45); }
-body.theme-noel .message-coach { background: #2a1a0a; border-color: #ff7a00; color: #f5f5f5; }
-body.theme-noel .classement li.moi, body.theme-noel .table-matchs tr.moi td { background: #3a2410; }
-body.theme-noel .petit, body.theme-noel .bloc-info { color: #ffc48a; }
-body.theme-noel input, body.theme-noel select, body.theme-noel textarea { background: #111; color: #f5f5f5; border-color: #ff7a00; }
-body.theme-noel #trefle-jeu, body.theme-noel .trefle-jeu { background: #0d0d0d; color: #f5f5f5; }
+body.theme-noir-orange .titre-altus { color: #ff7a00; white-space: nowrap; font-size: clamp(1.4rem, 7vw, 2rem); }
+body.theme-noir-orange .date, body.theme-noir-orange .semaine-info { color: #ff9a3d; font-weight: 600; }
+body.theme-noir-orange .onglet { background: #1a1a1a; color: #ff7a00; border: 2px solid #ff7a00; }
+body.theme-noir-orange .onglet.actif { background: #ff7a00; color: #111111; box-shadow: 0 4px 12px rgba(255, 122, 0, 0.45), inset 0 -5px 0 #ffffff; }
+body.theme-noir-orange .bloc, body.theme-noir-orange .carte { background: #1a1a1a; color: #f5f5f5; border: 3px solid #ff7a00; box-shadow: 0 4px 14px rgba(255, 122, 0, 0.25); }
+body.theme-noir-orange .carte { --couleur-cat: #ff7a00; }
+body.theme-noir-orange .bloc-titre, body.theme-noir-orange .carte-titre, body.theme-noir-orange h2, body.theme-noir-orange h3, body.theme-noir-orange summary { color: #ff7a00; }
+body.theme-noir-orange .pastille { background: #ff7a00; color: #111; }
+body.theme-noir-orange .bouton { background: #111; border-color: #ff7a00; color: #ff7a00; }
+body.theme-noir-orange .bouton.principal { background: #ff7a00; border-color: #ff7a00; color: #111; box-shadow: 0 3px 10px rgba(255, 122, 0, 0.45); }
+body.theme-noir-orange .message-coach { background: #2a1a0a; border-color: #ff7a00; color: #f5f5f5; }
+body.theme-noir-orange .classement li.moi, body.theme-noir-orange .table-matchs tr.moi td { background: #3a2410; }
+body.theme-noir-orange .petit, body.theme-noir-orange .bloc-info { color: #ffc48a; }
+body.theme-noir-orange input, body.theme-noir-orange select, body.theme-noir-orange textarea { background: #111; color: #f5f5f5; border-color: #ff7a00; }
+body.theme-noir-orange #trefle-jeu, body.theme-noir-orange .trefle-jeu { background: #0d0d0d; color: #f5f5f5; }

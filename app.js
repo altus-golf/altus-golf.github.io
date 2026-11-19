@@ -705,9 +705,9 @@ function vueCoach() {
 
 // Sur téléphone : 3 onglets courts en haut, « Classements » (long) et Exos en bas (style.css)
 // Thèmes personnels : prénom (slugPrenom) → thème. Clara : rose fuchsia + renards (20/11/2026).
-// Stan : thème de Noël (20/11/2026).
-const THEMES_JOUEURS = { clara: "rose-renard", stan: "noel" };
-const EMOJI_THEME = { "rose-renard": " 🦊", noel: " 🎄" };
+// Stan : noir et orange (20/11/2026).
+const THEMES_JOUEURS = { clara: "rose-renard", stan: "noir-orange" };
+const EMOJI_THEME = { "rose-renard": " 🦊" };
 
 const ONGLETS = [["seance", "🎯 Séance"], ["matchs", "⚔️ Matchs"], ["moi", "📈 Moi"], ["classements", "🏆 Classements"], ["exos", "📚 Exos"]];
 
@@ -722,7 +722,7 @@ function afficherVue() {
   // Thème perso (demandé par la joueuse) : seulement sur SON téléphone, d'après son prénom
   const theme = m ? THEMES_JOUEURS[slugPrenom(m.prenom)] : null;
   document.body.classList.toggle("theme-rose-renard", theme === "rose-renard");
-  document.body.classList.toggle("theme-noel", theme === "noel");
+  document.body.classList.toggle("theme-noir-orange", theme === "noir-orange");
   document.getElementById("sous-titre").textContent = m ? `${m.prenom}${EMOJI_THEME[theme] || ""} · groupe Altus` : "Petit jeu et putting";
   const contenu = document.getElementById("contenu");
   document.getElementById("lien-deconnexion").hidden = !utilisateurGoogle() || modeDemo();
