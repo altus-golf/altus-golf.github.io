@@ -46,6 +46,8 @@ function exosDeLaSemaine() {
   const scores = lireScores();
   PELZ_SITUATIONS.forEach((s) => { n += (scores["pelz-" + s.id] || []).filter((x) => x.d >= lundi).length; });
   FICHES_ALTUS.filter((f) => f.saisie).forEach((f) => { n += (scores[f.id] || []).filter((x) => x.d >= lundi).length; });
+  const techniques = lireStockage("techniques", [], PREFIXE_SCORES);   // techniques faites (exos-altus.js)
+  n += (Array.isArray(techniques) ? techniques : []).filter((x) => x && x.d >= lundi).length;
   return n;
 }
 
@@ -111,21 +113,21 @@ async function chargerGroupe() {
 
 function mesConsignes() {
   const m = moi();
-  return (groupeDonnees && m && groupeDonnees.consignes[m.uid]) || { exos: [], message: "", faits: {} };
+  return (groupeDonnees && m && groupeDonnees.consignes[m.uid]) || normaliserConsignes(null);
 }
 
 
 /* ---------- 2. Morceaux de page ---------- */
 
 function carteExo(fiche, options = {}) {
-  return `<article class="carte ${fiche.longJeu ? "cat-long-jeu" : "cat-putting"} ${options.fait ? "faite" : ""}">
+  return `<article class="carte ${fiche.longJeu ? "cat-long-jeu" : fiche.technique ? "cat-technique" : "cat-putting"} ${options.fait ? "faite" : ""}">
     <div class="carte-haut"><span class="pastille">${echapper(options.etiquette || fiche.type)}</span></div>
     <h3 class="carte-titre">${echapper(fiche.titre)}</h3>
     <details ${options.ouvert ? "open" : ""}>
       <summary>Mise en place et règles</summary>
       <p class="regles">${echapper(fiche.regles)}</p>
     </details>
-    ${fiche.id === "pelz" ? zonePelz() : fiche.saisie ? zoneSaisie(fiche) : zoneExoPoints(fiche.id)}
+    ${fiche.id === "pelz" ? zonePelz() : fiche.saisie ? zoneSaisie(fiche) : fiche.technique ? zoneTechnique(fiche) : zoneExoPoints(fiche.id)}
   </article>`;
 }
 
@@ -448,7 +450,7 @@ function vueMoi() {
 }
 
 function vueExos() {
-  const court = FICHES.filter((f) => !f.longJeu);
+  const court = FICHES.filter((f) => !f.longJeu && !f.technique);   // technique = seulement donnée par le coach
   const long = FICHES.filter((f) => f.longJeu);
   return `<h2 class="bloc-titre">📚 Tous les exos</h2>
     <p class="bloc-info">${court.length} exos de petit jeu et de putting, à jouer quand tu veux</p>
@@ -502,7 +504,7 @@ function vueCoach() {
   if (!joueurs.length) return html + `<p class="petit">Aucun joueur n'a encore rejoint le groupe.</p>`;
   if (!joueurs.some((j) => j.uid === joueurCoach)) joueurCoach = joueurs[0].uid;
   const j = joueurs.find((x) => x.uid === joueurCoach);
-  const c = groupeDonnees.consignes[j.uid] || { exos: [], message: "", faits: {} };
+  const c = groupeDonnees.consignes[j.uid] || normaliserConsignes(null);
   const nSemaine = j.semaine.lundi === lundi ? j.semaine.n : 0;
   html += `<div class="filtres">${joueurs.map((x) => `<button type="button" class="filtre ${x.uid === j.uid ? "actif" : ""}" data-a="coach-joueur" data-uid="${echapper(x.uid)}">${echapper(x.prenom)}${x.source === "classeur" ? " 📄" : ""}</button>`).join("")}</div>
     <section class="bloc pr-bloc consignes-admin">
@@ -510,13 +512,23 @@ function vueCoach() {
       <p class="petit">${j.source === "classeur" ? "📄 Historique importé du classeur" : `Compte du site${moi() && j.uid === moi().uid ? " (c'est toi)" : ""}`} · ${Object.values(j.exos).reduce((t, e) => t + e.n, 0)} scores cette année${j.maj ? ` · mis à jour le ${echapper(dateLisible(j.maj))}` : ""}</p>
       <p class="bloc-info">${nSemaine} exo${nSemaine > 1 ? "s" : ""} joué${nSemaine > 1 ? "s" : ""} cette semaine · les exos donnés passent avant ses défis de la semaine</p>
       ${c.exos.length ? `<ul class="liste-consignes">${c.exos.map((id) => `<li class="consigne">
-        <span><strong>${echapper((ficheDe(id) || { titre: id }).titre)}</strong><small>${c.faits[id] ? "✓ fait le " + echapper(dateLisible(c.faits[id])) : "à faire"}</small></span>
+        <span><strong>${echapper((ficheDe(id) || { titre: id }).titre)}</strong>${c.reglages[id] ? ` <span class="reglage-technique">${echapper(texteReglage(c.reglages[id]))}</span>` : ""}<small>${c.faits[id] ? "✓ fait le " + echapper(dateLisible(c.faits[id])) : "à faire"}</small>
+          ${(() => { const r = c.ressentis.find((x) => x.id === id); return r ? `<small class="ressenti">💬 « ${echapper(r.texte)} » (${echapper(dateLisible(r.d))})</small>` : ""; })()}</span>
         ${c.faits[id] ? `<button type="button" class="bouton" data-a="coach-redonner" data-id="${echapper(id)}">↺ Redonner</button>` : ""}
         <button type="button" class="bouton danger" data-a="coach-retirer" data-id="${echapper(id)}" aria-label="Retirer">✕</button>
       </li>`).join("")}</ul>` : `<p class="petit">Aucun exo donné : il joue les défis de la semaine.</p>`}
       ${c.exos.length < 10 ? `<div class="ajout-consigne">
-        <select id="choix-consigne" aria-label="Exo à donner">${FICHES.filter((f) => !c.exos.includes(f.id)).map((f) => `<option value="${echapper(f.id)}">${echapper(f.titre)}</option>`).join("")}</select>
-        <button type="button" class="bouton principal" data-a="coach-donner">➕ Donner</button></div>` : ""}
+        <select id="choix-consigne" aria-label="Exo à donner">${FICHES.filter((f) => !c.exos.includes(f.id)).map((f) => `<option value="${echapper(f.id)}">${f.technique ? "🛠 " : ""}${echapper(f.titre)}</option>`).join("")}</select>
+        <button type="button" class="bouton principal" data-a="coach-donner">➕ Donner</button></div>
+        <div id="reglage-technique" class="reglage-technique-choix" hidden>
+          <p class="petit">🛠 Technique : une durée <strong>ou</strong> un nombre de balles (facultatif)</p>
+          <div class="ajout-consigne">
+            <input type="text" inputmode="numeric" id="technique-temps" placeholder="⏱ minutes" aria-label="Durée en minutes">
+            <input type="text" inputmode="numeric" id="technique-balles" placeholder="⚪ balles" aria-label="Nombre de balles">
+          </div>
+        </div>` : ""}
+      ${c.ressentis.length ? `<details class="mes-matchs"><summary>💬 Ressentis de ${echapper(j.prenom)} (${c.ressentis.length})</summary>
+        <ul class="liste-ressentis">${c.ressentis.map((r) => `<li><strong>${echapper((ficheDe(r.id) || { titre: r.id }).titre)}</strong> · ${echapper(dateLisible(r.d))}<br>« ${echapper(r.texte)} »</li>`).join("")}</ul></details>` : ""}
       <label for="message-consigne">💬 Message pour ${echapper(j.prenom)}</label>
       <textarea id="message-consigne" maxlength="300" rows="2">${echapper(c.message)}</textarea>
       <button type="button" class="bouton" data-a="coach-message">Enregistrer le message</button>
@@ -590,9 +602,20 @@ async function actionCoach(a, bouton) {
     return chargerGroupe();
   }
   // Exos donnés au joueur choisi
-  const c = JSON.parse(JSON.stringify(groupeDonnees.consignes[joueurCoach] || { exos: [], message: "", faits: {} }));
-  if (a === "coach-donner") { const id = document.getElementById("choix-consigne").value; if (id && !c.exos.includes(id)) { c.exos.push(id); delete c.faits[id]; } }
-  if (a === "coach-retirer") { c.exos = c.exos.filter((id) => id !== bouton.dataset.id); delete c.faits[bouton.dataset.id]; }
+  const c = JSON.parse(JSON.stringify(groupeDonnees.consignes[joueurCoach] || normaliserConsignes(null)));
+  if (a === "coach-donner") {
+    const id = document.getElementById("choix-consigne").value;
+    if (id && !c.exos.includes(id)) { c.exos.push(id); delete c.faits[id]; }
+    // Technique : durée OU nombre de balles
+    if (id && ficheDe(id) && ficheDe(id).technique) {
+      const temps = parseInt(document.getElementById("technique-temps").value, 10);
+      const balles = parseInt(document.getElementById("technique-balles").value, 10);
+      if (temps > 0) c.reglages[id] = { temps };
+      else if (balles > 0) c.reglages[id] = { balles };
+      else delete c.reglages[id];
+    }
+  }
+  if (a === "coach-retirer") { c.exos = c.exos.filter((id) => id !== bouton.dataset.id); delete c.faits[bouton.dataset.id]; delete c.reglages[bouton.dataset.id]; }
   if (a === "coach-redonner") delete c.faits[bouton.dataset.id];
   if (a === "coach-message") c.message = document.getElementById("message-consigne").value.trim().slice(0, 300);
   messageCoach = await ecrireConsignes(joueurCoach, normaliserConsignes(c));
@@ -631,6 +654,11 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("change", (e) => {
     if (e.target.id === "choix-exo-classement") { exoClassement = e.target.value; afficherVue(); }
     if (e.target.id === "choix-exo-distances") { exoDistances = e.target.value; afficherVue(); }
+    // Espace coachs : réglage durée / balles seulement pour une technique
+    if (e.target.id === "choix-consigne") {
+      const f = ficheDe(e.target.value);
+      document.getElementById("reglage-technique").hidden = !(f && f.technique);
+    }
   });
   document.addEventListener("submit", async (e) => {
     if (e.target.id !== "form-rejoindre") return;

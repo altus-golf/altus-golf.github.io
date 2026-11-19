@@ -69,8 +69,9 @@ service cloud.firestore {
         allow create, delete: if estCoach();
         allow update: if estCoach()
           || (connecte() && uid == request.auth.uid
-              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['faits'])
-              && request.resource.data.faits is map && request.resource.data.faits.size() <= 10);
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['faits', 'ressentis'])
+              && request.resource.data.faits is map && request.resource.data.faits.size() <= 10
+              && (!('ressentis' in request.resource.data) || (request.resource.data.ressentis is list && request.resource.data.ressentis.size() <= 30)));
       }
     }
   }

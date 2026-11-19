@@ -382,6 +382,12 @@ async function telechargerRapport() {
             f.push([config.nom, config.libelle ? config.libelle(Number(d)) : d, r, t, Math.round((100 * r) / t)]));
         });
       }
+      // Technique : ressentis écrits par le joueur (consignes du coach)
+      const consignes = groupeDonnees.consignes[j.uid];
+      if (consignes && consignes.ressentis.length) {
+        f.push([], ["Technique : ressentis"], ["Date", "Exo", "Ressenti"]);
+        consignes.ressentis.forEach((r) => f.push([dateRapport(r.d), (ficheDe(r.id) || { titre: r.id }).titre, r.texte]));
+      }
       const feuille = XLSX.utils.aoa_to_sheet(f);
       feuille["!cols"] = [{ wch: 14 }, { wch: 34 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 8 }];
       XLSX.utils.book_append_sheet(classeur, feuille, nomDeFeuille(j.prenom, pris));

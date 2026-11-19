@@ -57,6 +57,65 @@ TESTS_CENTER.forEach(([id, nom]) => FICHES_ALTUS.push({
   regles: `Test Center « ${nom} » sur Trackman.\nÀ la fin du test, entre le score donné par Trackman.`,
 }));
 
+// Technique (demandé par le coach, 20/11/2026) : exos PERSONNELS, seulement quand
+// un coach les donne à un joueur (pas dans l'onglet Exos, pas de score ni de classement).
+// Le coach fixe une durée (minutes) OU un nombre de balles ; à la fin, le joueur
+// écrit son ressenti (zoneTechnique ; enregistré dans consignes/<uid>.ressentis).
+const TECHNIQUES = [
+  ["technique-grand-jeu", "Technique grand jeu"],
+  ["technique-putting", "Technique putting"],
+  ["technique-chipping", "Technique chipping"],
+  ["technique-wedging", "Technique wedging"],
+];
+TECHNIQUES.forEach(([id, titre]) => FICHES_ALTUS.push({
+  id, titre, type: "Technique", technique: true,
+  regles: "Séance de technique donnée par ton coach : fais le temps ou le nombre de balles demandé, puis écris ton ressenti.",
+}));
+
+// « 20 min » / « 50 balles »
+function texteReglage(r) {
+  if (!r) return "";
+  return r.temps ? `⏱ ${r.temps} min` : `⚪ ${r.balles} balles`;
+}
+
+// Carte d'une technique : ce que le coach demande + ressenti + « J'ai fini »
+function zoneTechnique(fiche) {
+  const c = mesConsignes();   // app.js
+  const reglage = c.reglages[fiche.id];
+  const jour = dateEnTexte(new Date());
+  const ressenti = c.ressentis.find((x) => x.id === fiche.id && x.d === c.faits[fiche.id]);
+  const demande = reglage ? `<p class="consigne-technique">À faire : <strong>${echapper(texteReglage(reglage))}</strong></p>` : "";
+  if (c.faits[fiche.id] === jour) {
+    return `<div class="zone-technique">${demande}<p class="petit">✅ Fait aujourd'hui${ressenti ? ` · 💬 « ${echapper(ressenti.texte)} »` : ""}</p></div>`;
+  }
+  if (!c.exos.includes(fiche.id)) return `<div class="zone-technique"><p class="petit">Exo de technique : ton coach te le donne quand il en a besoin.</p></div>`;
+  return `<div class="zone-technique">
+    ${demande}
+    <label for="ressenti-${echapper(fiche.id)}">💬 Ton ressenti (facultatif)</label>
+    <textarea id="ressenti-${echapper(fiche.id)}" maxlength="300" rows="3" placeholder="Comment ça s'est passé ? Sensations, ce qui a marché, ce qui reste à travailler…"></textarea>
+    <button type="button" class="bouton principal pleine-largeur" data-a="technique-fini" data-id="${echapper(fiche.id)}">✅ J'ai fini</button>
+  </div>`;
+}
+
+async function finirTechnique(id) {
+  const c = JSON.parse(JSON.stringify(mesConsignes()));
+  const jour = dateEnTexte(new Date());
+  const texte = (document.getElementById("ressenti-" + id).value || "").trim().slice(0, 300);
+  c.faits[id] = jour;
+  if (texte) c.ressentis = [{ id, d: jour, texte }, ...c.ressentis].slice(0, 30);
+  // Compté dans « exos joués cette semaine » (et pour le flemmard)
+  const faites = lireStockage("techniques", [], PREFIXE_SCORES);
+  ecrireStockage("techniques", [...(Array.isArray(faites) ? faites : []), { id, d: jour }].slice(-200), PREFIXE_SCORES);
+  const erreur = await noterFaitConsigne(c.faits, c.ressentis);   // base.js
+  if (groupeDonnees && moi()) groupeDonnees.consignes[moi().uid] = c;
+  if (erreur) alert(erreur);
+  apresUnExo(null);   // app.js : bilan envoyé, page à jour
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-a='technique-fini']");
+  if (b) finirTechnique(b.dataset.id);
+});
+
 const PELZ_SITUATIONS = [
   { id: "a", nom: "Approche levée (15 m)", detail: "Fairway, par-dessus le bunker ; drapeau à 4 m max. du bord." },
   { id: "b", nom: "Chip long (20 m)", detail: "Fairway ; au moins 15 m de green devant le drapeau." },

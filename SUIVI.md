@@ -46,6 +46,7 @@
 - ✅ Accueil : après la connexion Google, plus de prénom à taper : la liste des prénoms du groupe, on choisit qui on est (historique du classeur récupéré tout de suite) ; « Je ne suis pas dans la liste » pour taper son prénom.
 - ✅ Espace coachs : 🎯 réussite par distance de chaque joueur (tous les exos interactifs ou un seul, % et putts). ⚠ Recoller les règles (champ `dist`).
 - ✅ Long jeu : 6 Test Center Trackman (score tapé à la main, /100). Score /100, plus haut = mieux (confirmé). Règles connues de tous : pas de détail sur les cartes (choix de l’utilisateur).
+- ✅ 🛠 Technique (grand jeu, putting, chipping, wedging) : exos perso donnés par le coach avec une durée ou un nombre de balles ; le joueur écrit son ressenti en appuyant sur « J'ai fini ». ⚠ Recoller les règles (le joueur doit pouvoir écrire `ressentis`).
 - ✅ Import Excel : lit aussi les onglets des joueurs (scores tapés hors de Saisie), sans doublon ; lignes sans date signalées. Tom : 1 séance sans date dans son onglet (à dater) ; Gatien et Issartelle : aucun score dans le fichier du 19/11, mais ils sont maintenant importés (bilan vide) pour apparaître dans les listes.
 - ✅ Progrès : moyenne des 30 derniers jours sur chaque exo (Moi + espace coachs).
 - ✅ ⚔️ Match play : un joueur entre le résultat d'un match (adversaire, gagné / égalité / perdu, score, date) ; classement de l'année V / N / D dans son propre onglet ⚔️ Matchs (onglets : Séance, Matchs, Moi / Classements, Exos). ⚠ Recoller les règles (bloc `matchs`).

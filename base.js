@@ -337,17 +337,21 @@ async function lireGroupe(commeCoach = false) {
 function mapObjet(objet, f) { return Object.fromEntries(Object.entries(objet || {}).map(([k, v]) => [k, f(v)])); }
 
 // Le joueur note qu'il a fait un exo du coach (il ne peut changer que « faits »)
-async function noterFaitConsigne(faits) {
+// Le joueur coche un exo du coach (et, pour une technique, ajoute son ressenti).
+// Renvoie un message d'erreur ou "".
+async function noterFaitConsigne(faits, ressentis) {
   const m = moi();
-  if (!m) return;
+  if (!m) return "";
+  const champs = ressentis ? { faits, ressentis } : { faits };
   if (modeDemo()) {
     const db = baseDemo();
-    db.consignes[m.uid] = { ...normaliserConsignes(db.consignes[m.uid]), faits };
+    db.consignes[m.uid] = { ...normaliserConsignes(db.consignes[m.uid]), ...champs };
     ecrireStockage("demo", db);
-    return;
+    return "";
   }
-  if (!(await demarrerFirebase())) return;
-  try { await groupe(m.code).collection("consignes").doc(m.uid).update({ faits }); } catch (e) { /* plus tard */ }
+  if (!(await demarrerFirebase())) return "Pas de connexion.";
+  try { await groupe(m.code).collection("consignes").doc(m.uid).update(champs); return ""; }
+  catch (e) { return "Ressenti refusé par Firebase : il faut recoller les dernières règles (outils/regles-firestore.txt)."; }
 }
 
 
@@ -538,5 +542,16 @@ function normaliserConsignes(c) {
   const exos = [...new Set((Array.isArray(d.exos) ? d.exos : []).filter(idFicheValide))].slice(0, 10);
   const faits = {};
   for (const [id, j] of Object.entries(d.faits && typeof d.faits === "object" ? d.faits : {})) if (idFicheValide(id) && jourValide(j)) faits[id] = j;
-  return { exos, message: typeof d.message === "string" ? d.message.slice(0, 300) : "", faits };
+  // Technique : durée (min) ou nombre de balles fixé par le coach
+  const reglages = {};
+  for (const [id, r] of Object.entries(d.reglages && typeof d.reglages === "object" ? d.reglages : {})) {
+    if (!idFicheValide(id) || !r || typeof r !== "object") continue;
+    if (Number.isInteger(r.temps) && r.temps > 0 && r.temps <= 600) reglages[id] = { temps: r.temps };
+    else if (Number.isInteger(r.balles) && r.balles > 0 && r.balles <= 1000) reglages[id] = { balles: r.balles };
+  }
+  // Ressentis écrits par le joueur après une technique (les plus récents d'abord)
+  const ressentis = (Array.isArray(d.ressentis) ? d.ressentis : [])
+    .filter((x) => x && idFicheValide(x.id) && jourValide(x.d) && typeof x.texte === "string")
+    .map((x) => ({ id: x.id, d: x.d, texte: x.texte.slice(0, 300) })).slice(0, 30);
+  return { exos, message: typeof d.message === "string" ? d.message.slice(0, 300) : "", faits, reglages, ressentis };
 }

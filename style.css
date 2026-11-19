@@ -644,3 +644,15 @@ details[open] > summary::before { transform: rotate(90deg); }
 .match-resultat input[type=radio] { width: 22px; height: 22px; min-height: 0; flex: none; margin: 0; padding: 0; accent-color: var(--accent); }
 .match-resultat label { justify-content: flex-start; text-align: left; }
 @media (min-width: 600px) { .onglets.onglets-altus .onglet { font-size: 0.9rem; } }
+
+/* Technique (exos donnés par le coach) */
+.zone-technique { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.zone-technique textarea { font: inherit; padding: 10px; border: 1px solid var(--bord); border-radius: 10px; background: var(--carte); color: var(--texte); resize: vertical; }
+.consigne-technique { font-size: 1.1rem; margin: 0; }
+.reglage-technique { font-size: 0.9rem; color: var(--accent); font-weight: bold; }
+.reglage-technique-choix input { flex: 1; min-width: 0; font: inherit; padding: 10px; border: 1px solid var(--bord); border-radius: 10px; background: var(--carte); color: var(--texte); }
+.reglage-technique-choix[hidden] { display: none !important; }
+.ressenti { font-style: italic; }
+.liste-ressentis { padding-left: 1.1rem; }
+.liste-ressentis li { margin: 8px 0; }
+.cat-technique { --couleur-cat: #8a6d1f; }
