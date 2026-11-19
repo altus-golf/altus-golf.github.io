@@ -309,7 +309,17 @@ async function connecterCoach() {
     await appCoach().auth().signInWithPopup(new firebase.auth.GoogleAuthProvider());
     return "";
   } catch (e) {
-    return "Connexion Google annulée ou refusée.";
+    // Message clair selon l'erreur de Firebase (le code entre parenthèses aide à dépanner)
+    const code = (e && e.code) || "inconnue";
+    const messages = {
+      "auth/popup-blocked": "La fenêtre de connexion Google a été bloquée : autorise les fenêtres (pop-up) pour ce site, puis réessaie.",
+      "auth/popup-closed-by-user": "Fenêtre de connexion fermée avant la fin. Réessaie.",
+      "auth/cancelled-popup-request": "Connexion annulée. Réessaie.",
+      "auth/unauthorized-domain": "Ce site n'est pas autorisé dans Firebase : Authentication > Paramètres > Domaines autorisés > ajouter altus-golf.github.io.",
+      "auth/operation-not-allowed": "La connexion Google n'est pas activée dans Firebase : Authentication > Méthode de connexion > Google.",
+      "auth/network-request-failed": "Pas de connexion. Vérifie le réseau et réessaie.",
+    };
+    return (messages[code] || "Connexion Google impossible.") + ` (erreur : ${code})`;
   }
 }
 function coachConnecte() {
@@ -330,7 +340,7 @@ async function ouvrirGroupe() {
     await groupeCoach(CODE_GROUPE).set({ nom: "Altus Performance" }, { merge: true });
     return "";
   } catch (e) {
-    return "Refusé : ce compte Google n'est pas un coach autorisé.";
+    return `Connecté, mais ce compte Google n'est pas dans la liste des coachs des règles Firestore (erreur : ${(e && e.code) || "inconnue"}).`;
   }
 }
 
