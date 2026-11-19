@@ -307,15 +307,18 @@ async function lireGroupe(commeCoach = false) {
       bilans: Object.values(db.bilans).map(normaliserBilan).filter(Boolean),
       defi: normaliserDefi(db.defi),
       consignes: commeCoach ? mapObjet(db.consignes, normaliserConsignes) : { [m.uid]: normaliserConsignes(db.consignes[m.uid]) },
+      matchs: (db.matchs || []).map(normaliserMatch).filter(Boolean).sort((a, b) => b.date.localeCompare(a.date)),
     };
   }
   if (!(await demarrerFirebase())) return null;
   try {
     const g = commeCoach ? groupeCoach(code) : groupe(code);
-    const [bilans, defi, consignes] = await Promise.all([
+    const [bilans, defi, consignes, matchs] = await Promise.all([
       g.collection("bilans").get(),
       g.collection("reglages").doc("defi").get(),
       commeCoach ? g.collection("consignes").get() : g.collection("consignes").doc(m.uid).get(),
+      // Matchs (match.js) : si les règles ne sont pas encore recollées, on fait sans
+      g.collection("matchs").get().catch(() => null),
     ]);
     const lesConsignes = {};
     if (commeCoach) consignes.docs.forEach((d) => { lesConsignes[d.id] = normaliserConsignes(d.data()); });
@@ -324,6 +327,7 @@ async function lireGroupe(commeCoach = false) {
       bilans: bilans.docs.map((d) => normaliserBilan({ ...d.data(), uid: d.id })).filter(Boolean),
       defi: normaliserDefi(defi.exists ? defi.data() : null),
       consignes: lesConsignes,
+      matchs: matchs ? matchs.docs.map((d) => normaliserMatch({ ...d.data(), id: d.id })).filter(Boolean).sort((a, b) => b.date.localeCompare(a.date)) : [],
     };
   } catch (e) {
     return null;
@@ -411,6 +415,34 @@ async function ecrireDefi(defi) {
   defi = { ...defi, fiche: defi.fiches[0] || "" };   // « fiche » : pour les téléphones encore sur l'ancienne version
   if (modeDemo()) { const db = baseDemo(); db.defi = defi; ecrireStockage("demo", db); return ""; }
   try { await groupeCoach(codeCoach()).collection("reglages").doc("defi").set(defi); return ""; } catch (e) { return "Enregistrement refusé (connexion coach ?)."; }
+}
+
+// Match play (match.js) : ajouter / effacer un match. Renvoie un message d'erreur ou "".
+async function ajouterMatch(match) {
+  if (modeDemo()) {
+    const db = baseDemo();
+    db.matchs = db.matchs || [];
+    db.matchs.push({ ...match, id: "m" + Date.now() });
+    ecrireStockage("demo", db);
+    return "";
+  }
+  if (!(await demarrerFirebase())) return "Pas de connexion.";
+  try {
+    await groupe(CODE_GROUPE).collection("matchs").add({ ...match, cree: Date.now() });
+    return "";
+  } catch (e) {
+    return "Match refusé par Firebase : il faut recoller les dernières règles (outils/regles-firestore.txt).";
+  }
+}
+async function effacerMatch(id) {
+  if (modeDemo()) {
+    const db = baseDemo();
+    db.matchs = (db.matchs || []).filter((x) => x.id !== id);
+    ecrireStockage("demo", db);
+    return "";
+  }
+  try { await groupe(CODE_GROUPE).collection("matchs").doc(id).delete(); return ""; }
+  catch (e) { return "Effacement refusé."; }
 }
 
 // Coach : retirer un joueur du groupe (son bilan + ses exos donnés).

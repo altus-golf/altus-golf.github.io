@@ -406,6 +406,9 @@ function vueClassements() {
     </section>`;
   }
 
+  // --- Match play (match.js) ---
+  html += blocMatchPlay();
+
   // --- Par exo : top 3 de l'année (moyenne) + record absolu ---
   const annee = new Date().getFullYear();
   const avecDonnees = ITEMS_ALTUS.filter((f) => bilans.some((b) => b.annee === annee && b.exos[f.id]));

@@ -623,3 +623,16 @@ details[open] > summary::before { transform: rotate(90deg); }
 .pr-categorie > summary { cursor: pointer; list-style: revert; }
 .pr-categorie-titre { display: inline; font-size: 1.15rem; margin: 0; }
 .pr-categorie-titre small { font-weight: normal; color: var(--texte-doux); }
+
+/* Match play */
+.table-matchs { width: 100%; border-collapse: collapse; margin: 6px 0; }
+.table-matchs th, .table-matchs td { padding: 0.4rem 0.25rem; border-bottom: 1px solid var(--bord); text-align: center; }
+.table-matchs th:nth-child(2), .table-matchs td:nth-child(2) { text-align: left; width: 100%; }
+.table-matchs tr.moi td { background: var(--accent-doux); font-weight: bold; }
+.form-match { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.form-match input[type=date], .form-match input:not([type]) { font: inherit; padding: 10px; border: 1px solid var(--bord); border-radius: 10px; background: var(--carte); color: var(--texte); }
+.match-resultat { border: 1px solid var(--bord); border-radius: 10px; display: flex; flex-direction: column; gap: 8px; padding: 8px 12px; }
+.match-resultat label { display: flex; align-items: center; gap: 8px; min-height: 36px; }
+.mes-matchs { margin-top: 10px; }
+.match-resultat input[type=radio] { width: 22px; height: 22px; min-height: 0; flex: none; margin: 0; padding: 0; accent-color: var(--accent); }
+.match-resultat label { justify-content: flex-start; text-align: left; }
