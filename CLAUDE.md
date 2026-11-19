@@ -6,7 +6,7 @@ Site **Altus Performance** (GitHub Pages, https://altus-golf.github.io/) : défi
 
 - Ne jamais pousser sans accord explicite de l'utilisateur. Le site est publié depuis `main`.
 - **À chaque modif publiée, augmenter `?v=N` dans index.html** (style.css et tous les .js) : sinon les téléphones gardent l'ancienne version en cache.
-- Tout accès `localStorage` passe par `lireStockage` / `ecrireStockage` (base.js, try/catch).
+- Tout accès `localStorage` passe par `lireStockage` / `ecrireStockage` (base.js, try/catch ; si le navigateur refuse d’enregistrer — navigation privée, navigateur d’appli — tout est gardé en mémoire le temps de la visite, `memoireSecours`, et le bandeau `#bandeau-stockage` prévient le joueur).
 - Données reçues en ligne = non fiables : toujours normalisées (`normaliserBilan`, `normaliserDefi`, `normaliserConsignes`) et échappées (`echapper`).
 - Adresses des coachs : jamais dans le dépôt (placeholders `ADRESSE_COACH_n` dans `outils/regles-firestore.txt`).
 - **Distances : jusqu'à 10 pieds en PIEDS, au-delà en MÈTRES ; les zones (1, 2, 4 pieds…) toujours en pieds** (choix de l'utilisateur, 19/11/2026) ; exceptions : **Lowry Putt et Start Line tout en pieds** (`TOUT_EN_PIEDS`), **9 Putt Circle affiché 4, 5, 6 m** (`METRES_9_PUTT`) : `distanceAltus` dans exos-altus.js (texte des puces `p.texte` + `config.libelle`, sans toucher aux distances `d`), `remplacerTextes` pour les zones ; barème du Pelz en pieds (< 3 / 3 à 6 / > 6).

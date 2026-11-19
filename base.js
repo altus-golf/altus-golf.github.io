@@ -25,7 +25,17 @@
 
 const PREFIXE_ALTUS = "altus-v1:";
 
+// Certains navigateurs (navigation privée, navigateur intégré à une appli…) refusent
+// d'enregistrer : on garde alors tout en mémoire le temps de la visite (20/11/2026),
+// sinon le joueur restait bloqué sur « Qui es-tu ? ». Un bandeau le prévient.
+const memoireSecours = {};
+let stockageBloque = false;
+
 function lireStockage(cle, valeurParDefaut, prefixe = PREFIXE_ALTUS) {
+  if ((prefixe + cle) in memoireSecours) {
+    const v = memoireSecours[prefixe + cle];
+    return v === null ? valeurParDefaut : JSON.parse(JSON.stringify(v));
+  }
   try {
     const texte = localStorage.getItem(prefixe + cle);
     return texte === null ? valeurParDefaut : JSON.parse(texte);
@@ -38,11 +48,17 @@ function ecrireStockage(cle, valeur, prefixe = PREFIXE_ALTUS) {
   try {
     if (valeur === null) localStorage.removeItem(prefixe + cle);
     else localStorage.setItem(prefixe + cle, JSON.stringify(valeur));
+    delete memoireSecours[prefixe + cle];
     return true;
   } catch (e) {
+    stockageBloque = true;
+    if (valeur === null) memoireSecours[prefixe + cle] = null;
+    else memoireSecours[prefixe + cle] = JSON.parse(JSON.stringify(valeur));
     return false;
   }
 }
+// Test au démarrage : le navigateur accepte-t-il d'enregistrer ?
+try { localStorage.setItem(PREFIXE_ALTUS + "test", "1"); localStorage.removeItem(PREFIXE_ALTUS + "test"); } catch (e) { stockageBloque = true; }
 
 
 /* ---------- 2. Dates ---------- */

@@ -581,6 +581,7 @@ function afficherVue() {
   const m = moi();
   const enCoach = vue === "coach";
   document.getElementById("bandeau-demo").hidden = !modeDemo();
+  document.getElementById("bandeau-stockage").hidden = !stockageBloque;
   document.getElementById("onglets").innerHTML = m && !enCoach
     ? ONGLETS.map(([id, nom]) => `<button type="button" class="onglet ${vue === id ? "actif" : ""}" data-a="vue" data-vue="${id}" aria-pressed="${vue === id}">${nom}</button>`).join("")
     : enCoach ? `<button type="button" class="onglet" data-a="vue" data-vue="seance">← Retour</button>` : "";
