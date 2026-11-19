@@ -36,10 +36,10 @@ service cloud.firestore {
 
       match /bilans/{uid} {
         allow read: if connecte() && groupeExiste(code);
-        // Un joueur écrit son bilan ; un coach écrit les bilans importés du classeur (« classeur-… »)
+        // Un joueur écrit son bilan ; un coach peut écrire tous les bilans (imports du classeur, correction d'un score)
         allow create, update: if groupeExiste(code) && bilanValide()
           && ((connecte() && uid == request.auth.uid && request.resource.data.uid == request.auth.uid)
-              || (estCoach() && uid.matches('classeur-[a-z0-9-]+') && request.resource.data.uid == uid));
+              || (estCoach() && request.resource.data.uid == uid));
         allow delete: if estCoach() || (connecte() && uid == request.auth.uid);
       }
 
@@ -62,7 +62,7 @@ service cloud.firestore {
       // Sauvegarde complète des scores d'un joueur : lui seul l'écrit ; lui et les coachs la lisent (rapport Excel)
       match /sauvegardes/{uid} {
         allow read: if estCoach() || (connecte() && uid == request.auth.uid && groupeExiste(code));
-        allow write: if connecte() && uid == request.auth.uid && groupeExiste(code);
+        allow write: if estCoach() || (connecte() && uid == request.auth.uid && groupeExiste(code));
       }
 
       match /reglages/{id} {

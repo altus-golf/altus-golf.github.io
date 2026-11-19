@@ -128,7 +128,15 @@ async function restaurerDepuisEnLigne() {
   let ajoutes = 0;   // nombre de choses récupérées (scores + tours) : renvoyé à chargerGroupe
   if (sauvegarde) ajoutes += fusionnerScores(scores, sauvegarde.scores, effaces);
   if (monBilan) ajoutes += fusionnerScores(scores, mapObjet(monBilan.hist, (l) => l.map(([d, v]) => ({ d, v }))), effaces);
-  if (ajoutes) ecrireStockage("scores", scores, PREFIXE_SCORES);
+  // Scores effacés ailleurs (par un coach ou un autre appareil) : on les enlève aussi d'ici
+  let enleves = 0;
+  for (const id of Object.keys(scores)) {
+    const avant = (scores[id] || []).length;
+    scores[id] = (scores[id] || []).filter((s) => !(s.t && effaces.has(s.t)));
+    enleves += avant - scores[id].length;
+  }
+  if (ajoutes || enleves) ecrireStockage("scores", scores, PREFIXE_SCORES);
+  ajoutes += enleves;
   // Historique du classeur déjà repris : on le garde (sinon il réapparaîtrait en double)
   const repris = m.repris || (sauvegarde && sauvegarde.repris) || (monBilan && monBilan.repris) || "";
   if (repris && !m.repris) ecrireStockage("moi", { ...lireStockage("moi", {}), repris });
@@ -364,7 +372,17 @@ function appliquerEffacementsCoach() {
     if (appliques.has(e.cle)) return;
     appliques.add(e.cle);
     const liste = scores[e.id] || [];
-    // le plus récent qui correspond (même date, même valeur)
+    // Score repéré par son heure (t) si le coach la connaît ; déjà effacé (via la sauvegarde) → rien à faire
+    if (e.t && !liste.some((s) => s.t === e.t) && effaces.includes(e.t)) return;
+    const parHeure = e.t ? liste.findIndex((s) => s.t === e.t) : -1;
+    if (parHeure >= 0) {
+      const [efface] = liste.splice(parHeure, 1);
+      effaces.push(efface.t);
+      change = true;
+      scores[e.id] = liste;
+      return;
+    }
+    // sinon le plus récent qui correspond (même date, même valeur)
     for (let i = liste.length - 1; i >= 0; i--) {
       if (liste[i].d === e.d && liste[i].v === e.v) {
         const [efface] = liste.splice(i, 1);
@@ -786,12 +804,37 @@ async function actionCoach(a, bouton) {
       messageCoach = await importerBilans([b]);   // base.js
       if (!messageCoach) messageCoach = "✅ Score effacé.";
     } else {
-      // Joueur du site : ses scores sont dans son téléphone → demande d'effacement,
-      // appliquée à sa prochaine ouverture du site (appliquerEffacementsCoach)
+      // Joueur du site (20/11/2026) : effacé TOUT DE SUITE dans sa sauvegarde et son bilan
+      // (le coach a le droit de les écrire), + demande d'effacement pour ses téléphones
+      // (appliquerEffacementsCoach), qui gardent aussi une copie de ses scores.
+      const cle = Date.now();
+      let t = 0, immediat = false;
+      const s = (await lireSauvegardesCoach([j.uid]))[j.uid];   // base.js
+      if (s) {
+        const liste = s.scores[id] || [];
+        let i = -1;
+        for (let k = liste.length - 1; k >= 0; k--) if (liste[k].d === d && liste[k].v === v) { i = k; break; }
+        if (i >= 0) {
+          t = liste[i].t || 0;
+          liste.splice(i, 1);
+          s.scores[id] = liste;
+          if (t) s.effaces = [...s.effaces, t].slice(-500);
+          const erreurSauvegarde = await ecrireSauvegardeDe(j.uid, { ...s, maj: Date.now() });
+          if (!erreurSauvegarde) {
+            // Bilan recalculé avec TOUS ses scores (moyennes et records de l'année justes)
+            const hist = mapObjet(s.scores, (l) => l.map((x) => [x.d, x.v]));
+            Object.keys(hist).forEach((k) => { if (!hist[k].length) delete hist[k]; });
+            const b = calculerBilanDepuis(j.uid, j.prenom, hist, j.semaine, null);
+            if (Object.keys(j.dist || {}).length) b.dist = j.dist;
+            if (j.repris) b.repris = j.repris;
+            immediat = !(await importerBilans([b]));
+          }
+        }
+      }
       const c = JSON.parse(JSON.stringify(groupeDonnees.consignes[j.uid] || normaliserConsignes(null)));
-      c.aEffacer = [...c.aEffacer, { id, d, v, cle: Date.now() }].slice(-50);
+      c.aEffacer = [...c.aEffacer, { id, d, v, cle, t }].slice(-50);
       messageCoach = await ecrireConsignes(j.uid, normaliserConsignes(c));
-      if (!messageCoach) messageCoach = `✅ Ce score sera effacé dès que ${j.prenom} ouvrira le site.`;
+      if (!messageCoach) messageCoach = immediat ? "✅ Score effacé." : `✅ Ce score sera effacé dès que ${j.prenom} ouvrira le site.`;
     }
     if (messageCoach.startsWith("✅")) afficherMessage(messageCoach);
     return chargerGroupe();

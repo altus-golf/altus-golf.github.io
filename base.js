@@ -365,6 +365,21 @@ async function lireSauvegardesCoach(uids) {
   return res;
 }
 
+// Coach : réécrire la sauvegarde d'un joueur (effacement d'un score tapé par erreur).
+// Renvoie un message d'erreur ou "".
+async function ecrireSauvegardeDe(uid, sauvegarde) {
+  if (modeDemo()) {
+    const db = baseDemo();
+    db.sauvegardes = db.sauvegardes || {};
+    db.sauvegardes[uid] = sauvegarde;
+    ecrireStockage("demo", db);
+    return "";
+  }
+  if (!(await demarrerFirebase())) return "Pas de connexion.";
+  try { await groupeCoach(codeCoach()).collection("sauvegardes").doc(uid).set(sauvegarde); return ""; }
+  catch (e) { return "refusé"; }
+}
+
 async function ecrireSauvegarde(sauvegarde) {
   const m = moi();
   if (!m) return;
@@ -705,6 +720,6 @@ function normaliserConsignes(c) {
   // Scores à effacer demandés par un coach (erreur de saisie) : { id, d, v, cle }
   const aEffacer = (Array.isArray(d.aEffacer) ? d.aEffacer : [])
     .filter((e) => e && idFicheValide(e.id) && jourValide(e.d) && nombreOk(e.v) && nombreOk(e.cle, 1e13))
-    .map((e) => ({ id: e.id, d: e.d, v: e.v, cle: e.cle })).slice(-50);
+    .map((e) => ({ id: e.id, d: e.d, v: e.v, cle: e.cle, t: nombreOk(e.t, 1e13) ? e.t : 0 })).slice(-50);
   return { exos, message: typeof d.message === "string" ? d.message.slice(0, 300) : "", faits, reglages, ressentis, aEffacer };
 }
