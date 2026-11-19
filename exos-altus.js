@@ -86,8 +86,10 @@ function ficheDe(id) { return FICHES_ALTUS.find((f) => f.id === id) || null; }
 // Start Line : seulement la version complète (10 balles à 5, 10 et 20 ft)
 delete EXOS_POINTS["start-line"].modes.court;
 EXOS_POINTS["start-line"].modes.tour.nom = "Commencer (10 balles à 5, 10 et 20 ft)";
-// Snail : il a un score chez Altus
-EXOS_POINTS.snail.modes["montante-descendante"].sansScore = false;
+// Snail chez Altus (choix de l'utilisateur, 19/11/2026) : PAS de montante /
+// descendante. Un tour = 8 putts, un par puce, de 3 à 10 ft dans l'ordre ;
+// score = putts rentrés sur 8.
+EXOS_POINTS.snail.modes = { tour: { nom: "🐌 Commencer (8 putts de 3 à 10 ft)", phases: [[0, 1, 2, 3, 4, 5, 6, 7]] } };
 
 // Distances (choix de l'utilisateur, 19/11/2026) : jusqu'à 10 pieds on parle en
 // PIEDS, au-delà en MÈTRES. Les zones (cercle de 1 pied, demi-lune de 4 pieds…)
@@ -141,7 +143,7 @@ function scoreAltus(tour) {
     tour.resultats.forEach((r) => { serie = r ? serie + 1 : 0; meilleure = Math.max(meilleure, serie); });
     return [["trefle", meilleure]];
   }
-  if (exo === "snail") return [["snail-3-10-feet", tour.coups.slice(0, 8).filter((c) => c.rentre).length]];
+  if (exo === "snail") return [["snail-3-10-feet", (tour.resultats || []).filter((r) => r === true).length]];
   if (exo === "start-line" && Array.isArray(tour.etapes)) {
     const points = EXOS_POINTS["start-line"].points;
     const reussis = { 5: 0, 10: 0, 20: 0 };
