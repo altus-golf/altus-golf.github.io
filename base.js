@@ -304,7 +304,13 @@ function codeCoach() { return CODE_GROUPE; }
 // En démo : pas de compte, on entre directement.
 async function connecterCoach() {
   if (modeDemo()) { ecrireStockage("coachDemo", true); return ""; }
-  if (!(await demarrerFirebase())) return "Pas de connexion. Vérifie le réseau et réessaie.";
+  // La fenêtre Google doit s'ouvrir TOUT DE SUITE après l'appui (sinon le téléphone
+  // la bloque) : Firebase est déjà chargé à l'ouverture de l'espace coachs
+  // (suivreConnexionCoach) ; sinon on le charge et on demande un 2e appui.
+  if (!window.firebase || !base) {
+    if (!(await demarrerFirebase())) return "Pas de connexion. Vérifie le réseau et réessaie.";
+    return "C'est prêt : appuie encore une fois sur le bouton de connexion.";
+  }
   try {
     await appCoach().auth().signInWithPopup(new firebase.auth.GoogleAuthProvider());
     return "";

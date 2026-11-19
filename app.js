@@ -367,7 +367,8 @@ async function actionCoach(a, bouton) {
   if (a === "coach-connexion") {
     messageCoach = await connecterCoach();
     if (!messageCoach) messageCoach = await ouvrirGroupe();   // le groupe existe dès la 1re connexion d'un coach
-    return changerVue("coach");
+    afficherVue();          // (pas changerVue : elle effacerait le message d'erreur)
+    return chargerGroupe();
   }
   if (a === "coach-deconnexion") { await deconnecterCoach(); groupeDonnees = null; return changerVue("coach"); }
   if (a === "coach-joueur") { joueurCoach = bouton.dataset.uid; return afficherVue(); }
