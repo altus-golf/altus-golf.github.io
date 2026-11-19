@@ -32,6 +32,9 @@
 - ✅ Un joueur qui se connecte avec le même prénom se voit proposer de récupérer son historique (pas de doublon dans les classements).
 - ⚠ Règles Firestore modifiées (un coach peut écrire les bilans « classeur-… », champs source/repris) : à recoller dans la console avant l'import.
 
+## v7 (19/11/2026) : logo et couleurs Altus
+- ✅ Logo Altus redessiné en SVG (`images/logo.svg`) d'après l'image fournie : en-tête, icône de l'onglet et de l'écran d'accueil. Couleurs reprises du logo : bleu marine #365571 (couleur principale) et rouge #EB574C (onglet actif, cadre du défi). Mode sombre : fond clair derrière le logo.
+
 ## Décisions (avec l'utilisateur)
 - Site séparé de l'appli perso, dans l'organisation GitHub `altus-golf` (pour que le nom du compte perso n'apparaisse pas).
 - Utilisateurs : joueurs (sur leur téléphone) + coachs (l'utilisateur et d'autres coachs d'Altus).

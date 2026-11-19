@@ -11,7 +11,7 @@
   --texte: #0b1a10;
   --texte-doux: #3a4a3f;
   --bord: #c9d4cc;
-  --accent: #14325c;        /* bleu Altus */
+  --accent: #365571;        /* bleu marine du logo Altus */
   --accent-texte: #ffffff;
   --accent-doux: #e3eaf5;
   --alerte-fond: #fff3cd;
@@ -28,7 +28,7 @@
     --texte: #eef4f0;
     --texte-doux: #b6c4ba;
     --bord: #2d3b32;
-    --accent: #7fb0f0;
+    --accent: #8fb3d9;
     --accent-texte: #05210f;
     --accent-doux: #1b2a40;
     --alerte-fond: #3a2f0b;
@@ -409,7 +409,7 @@ details[open] > summary::before { transform: rotate(90deg); }
 .pied { color: var(--texte-doux); font-size: 0.8rem; text-align: center; padding-top: 8px; }
 
 /* ---------- Couleurs des catégories (texte blanc lisible dessus) ---------- */
-.cat-putting   { --couleur-cat: #14325c; }
+.cat-putting   { --couleur-cat: #365571; }
 .cat-chipping  { --couleur-cat: #8a5300; }
 .cat-approches { --couleur-cat: #a3361a; }
 .cat-fers      { --couleur-cat: #2b4c9b; }
@@ -588,3 +588,14 @@ details[open] > summary::before { transform: rotate(90deg); }
 .pelz-boutons .bouton { min-height: 72px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 1.05rem; }
 .pelz-boutons small { font-weight: 600; opacity: 0.8; }
 .carte .pelz-liste { padding: 0; }
+
+/* Logo Altus (images/logo.svg) et rouge du logo */
+:root { --rouge-altus: #EB574C; }
+.titre-altus { display: flex; align-items: center; gap: 10px; }
+.logo-altus { width: 44px; height: 44px; flex: none; }
+.bloc-defi { border-color: var(--rouge-altus); }
+.onglet.actif { box-shadow: inset 0 -4px 0 var(--rouge-altus); }
+/* Mode sombre : fond clair derrière le logo (la flèche bleu marine resterait invisible) */
+@media (prefers-color-scheme: dark) {
+  .logo-altus { background: #f4f7f3; border-radius: 10px; padding: 3px; }
+}
