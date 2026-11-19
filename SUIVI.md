@@ -46,6 +46,7 @@
 - ✅ Accueil : après la connexion Google, plus de prénom à taper : la liste des prénoms du groupe, on choisit qui on est (historique du classeur récupéré tout de suite) ; « Je ne suis pas dans la liste » pour taper son prénom.
 - ✅ Espace coachs : 🎯 réussite par distance de chaque joueur (tous les exos interactifs ou un seul, % et putts). ⚠ Recoller les règles (champ `dist`).
 - ✅ Long jeu : 6 Test Center Trackman (score tapé à la main, /100). Score /100, plus haut = mieux (confirmé). Règles connues de tous : pas de détail sur les cartes (choix de l’utilisateur).
+- ✅ Espace coachs : « Putts rentrés par distance » : la vue d'ensemble ne compte que les putts rentrés (Trèfle, Snail) ; les exos à zone se choisissent un par un.
 - ✅ Espace coachs : 📊 rapport Excel téléchargeable : une page par joueur avec tous les exos (records et moyennes de l'année, même vides), 30 derniers scores par exo rangés par catégorie puis par exo (pas par date), réussite par distance.
 - ✅ Progrès rangés en 3 catégories : Putting, Chipping (Pelz), Test Center (« 📈 Moi » et espace coachs).
 - ✅ Progrès dans l'ordre du programme (Pelz ensemble) ; scores à virgule affichés « 72,5 ».

@@ -152,8 +152,13 @@ function blocDistances(j) {
   if (!exos.length) return `<section class="bloc pr-bloc"><h2 class="bloc-titre">🎯 Réussite par distance</h2>
     <p class="petit">Pas encore de données : elles arrivent quand ${echapper(j.prenom)} joue les exos interactifs sur le site${j.source === "classeur" ? " (le classeur ne donne pas le détail par distance)" : ""}.</p></section>`;
   if (exoDistances !== "tous" && !exos.includes(exoDistances)) exoDistances = "tous";
+  // « Tous » = seulement les PUTTS RENTRÉS (choix de l'utilisateur, 20/11/2026) : les exos où
+  // réussir = rentrer (Trèfle, Snail…), pas ceux où il suffit d'être dans une zone.
+  const exosRentres = exos.filter((exo) => motReussi(exo) === "rentrés");   // exos-points.js
+  const choisis = exoDistances === "tous" ? exosRentres : [exoDistances];
+  const mot = exoDistances === "tous" ? "rentrés" : motReussi(exoDistances);
   const lignes = {};
-  (exoDistances === "tous" ? exos : [exoDistances]).forEach((exo) => {
+  choisis.forEach((exo) => {
     const config = EXOS_POINTS[exo];
     for (const [d, [r, t]] of Object.entries(j.dist[exo])) {
       const texte = config.libelle ? config.libelle(Number(d)) : d;
@@ -164,19 +169,20 @@ function blocDistances(j) {
   });
   const tri = Object.entries(lignes).sort((a, b) => a[1].pieds - b[1].pieds);
   return `<section class="bloc pr-bloc">
-    <h2 class="bloc-titre">🎯 Réussite par distance (${new Date().getFullYear()})</h2>
+    <h2 class="bloc-titre">🎯 Putts rentrés par distance (${new Date().getFullYear()})</h2>
     <select id="choix-exo-distances" class="choix" aria-label="Exo">
-      <option value="tous">Tous les exos interactifs</option>
+      <option value="tous">Putts rentrés (tous les exos où on doit rentrer)</option>
       ${exos.map((exo) => `<option value="${echapper(exo)}" ${exo === exoDistances ? "selected" : ""}>${echapper(EXOS_POINTS[exo].nom)}</option>`).join("")}
     </select>
     <table class="table-distances">
-      <thead><tr><th>Distance</th><th>Réussite</th><th>Putts</th></tr></thead>
+      <thead><tr><th>Distance</th><th>${mot === "rentrés" ? "Rentrés" : echapper(mot.charAt(0).toUpperCase() + mot.slice(1))}</th><th>Putts</th></tr></thead>
       <tbody>${tri.map(([texte, l]) => {
         const pc = Math.round((100 * l.r) / l.t);
         return `<tr><td>${echapper(texte)}</td><td><span class="barre-pc"><span style="width:${pc}%"></span></span> <strong>${pc} %</strong></td><td>${l.r}/${l.t}</td></tr>`;
       }).join("")}</tbody>
     </table>
-    <p class="petit">Réussi = rentré, ou dans la zone / bien sorti selon l'exo.</p>
+    ${tri.length ? "" : `<p class="petit">Pas encore de putt dans un exo où on doit rentrer (Trèfle, Snail…).</p>`}
+    <p class="petit">${exoDistances === "tous" ? `Compte : ${echapper(exosRentres.map((exo) => EXOS_POINTS[exo].nom).join(", ") || "Trèfle, Snail")}. Les exos à zone (9 Putt Circle, Lowry…) sont à choisir un par un dans la liste.` : `Ici, réussi = ${echapper(mot)}.`}</p>
   </section>`;
 }
 
