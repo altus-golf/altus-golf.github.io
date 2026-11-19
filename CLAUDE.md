@@ -5,6 +5,7 @@ Site **Altus Performance** (GitHub Pages, https://altus-golf.github.io/) : défi
 ## Règles
 
 - Ne jamais pousser sans accord explicite de l'utilisateur. Le site est publié depuis `main`.
+- **À chaque modif publiée, augmenter `?v=N` dans index.html** (style.css et tous les .js) : sinon les téléphones gardent l'ancienne version en cache.
 - Tout accès `localStorage` passe par `lireStockage` / `ecrireStockage` (base.js, try/catch).
 - Données reçues en ligne = non fiables : toujours normalisées (`normaliserBilan`, `normaliserDefi`, `normaliserConsignes`) et échappées (`echapper`).
 - Adresses des coachs : jamais dans le dépôt (placeholders `ADRESSE_COACH_n` dans `outils/regles-firestore.txt`).
