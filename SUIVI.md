@@ -45,7 +45,7 @@
 - ✅ Espace coachs : « 🗑 Retirer du groupe » (doublons de prénom) + fiche du joueur : compte du site / importé, « c'est toi », nombre de scores, dernière mise à jour.
 - ✅ Accueil : après la connexion Google, plus de prénom à taper : la liste des prénoms du groupe, on choisit qui on est (historique du classeur récupéré tout de suite) ; « Je ne suis pas dans la liste » pour taper son prénom.
 - ✅ Espace coachs : 🎯 réussite par distance de chaque joueur (tous les exos interactifs ou un seul, % et putts). ⚠ Recoller les règles (champ `dist`).
-- ✅ Long jeu : 6 Test Center Trackman (score tapé à la main, /100). ❓ À confirmer : score sur 100 et plus haut = mieux ; règles détaillées de chaque test.
+- ✅ Long jeu : 6 Test Center Trackman (score tapé à la main, /100). Score /100, plus haut = mieux (confirmé). ❓ Règles détaillées de chaque test à recevoir.
 - ✅ Progrès dans l'ordre du programme (Pelz ensemble) ; scores à virgule affichés « 72,5 ».
 - ✅ Plusieurs défis par semaine (5 max) : le coach en ajoute / retire dans l'espace coachs ; un classement par défi, calculé depuis les scores de la semaine (hist).
 

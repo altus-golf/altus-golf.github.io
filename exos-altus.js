@@ -43,7 +43,7 @@ const FICHES_ALTUS = [
 
 // Long jeu : Test Center au Trackman (demandés par l'utilisateur, 20/11/2026).
 // Pas de jeu interactif : on tape le score donné par Trackman à la fin du test
-// (« saisie: true » ; score sur 100, plus haut = mieux : à confirmer).
+// (« saisie: true » ; score sur 100, plus haut = mieux, confirmé par l’utilisateur).
 const TESTS_CENTER = [
   ["tc-fix-wedge-60-90", "Fix Wedge 60-90 m"],
   ["tc-random-60-90", "Random 60-90 m"],
