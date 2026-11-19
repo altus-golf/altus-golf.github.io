@@ -57,6 +57,12 @@ function classementMatchs(matchs) {
 
 const textePoints = (n) => String(n).replace(".5", ",5");
 
+// Onglet ⚔️ Matchs (choix de l'utilisateur, 20/11/2026)
+function vueMatchs() {
+  if (!groupeDonnees) return `<p class="petit">${erreurGroupe ? "Pas de connexion : impossible de charger les matchs." : "Chargement…"}</p>`;
+  return blocMatchPlay();
+}
+
 function blocMatchPlay() {
   const m = moi();
   const matchs = (groupeDonnees && groupeDonnees.matchs) || [];

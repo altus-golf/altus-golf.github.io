@@ -406,9 +406,6 @@ function vueClassements() {
     </section>`;
   }
 
-  // --- Match play (match.js) ---
-  html += blocMatchPlay();
-
   // --- Par exo : top 3 de l'année (moyenne) + record absolu ---
   const annee = new Date().getFullYear();
   const avecDonnees = ITEMS_ALTUS.filter((f) => bilans.some((b) => b.annee === annee && b.exos[f.id]));
@@ -526,7 +523,8 @@ function vueCoach() {
 
 /* ---------- 4. Affichage ---------- */
 
-const ONGLETS = [["seance", "🎯 Séance"], ["classements", "🏆 Classements"], ["moi", "📈 Moi"], ["exos", "📚 Exos"]];
+// Sur téléphone : 3 onglets courts en haut, « Classements » (long) et Exos en bas (style.css)
+const ONGLETS = [["seance", "🎯 Séance"], ["matchs", "⚔️ Matchs"], ["moi", "📈 Moi"], ["classements", "🏆 Classements"], ["exos", "📚 Exos"]];
 
 function afficherVue() {
   const m = moi();
@@ -542,7 +540,7 @@ function afficherVue() {
   else if (!utilisateurGoogle()) contenu.innerHTML = vueConnexion();
   else if (enCoach) contenu.innerHTML = vueCoach();
   else if (!m) contenu.innerHTML = vueAccueil();
-  else contenu.innerHTML = { seance: vueSeance, classements: vueClassements, moi: vueMoi, exos: vueExos }[vue]();
+  else contenu.innerHTML = { seance: vueSeance, classements: vueClassements, matchs: vueMatchs, moi: vueMoi, exos: vueExos }[vue]();
 }
 
 function changerVue(nouvelle) {

@@ -549,7 +549,14 @@ details[open] > summary::before { transform: rotate(90deg); }
 .bandeau-demo { margin: 0 0 10px; padding: 8px 12px; border-radius: 10px; background: var(--alerte-fond); color: var(--alerte-texte); font-weight: 600; font-size: 0.85rem; }
 .bandeau-demo[hidden] { display: none; }
 .onglets.onglets-altus { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-@media (min-width: 600px) { .onglets.onglets-altus { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+/* 5 onglets : 3 + 2 sur téléphone, tous sur une ligne en grand */
+.onglets.onglets-altus { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.onglets.onglets-altus .onglet { grid-column: span 2; font-size: 0.95rem; padding-left: 4px; padding-right: 4px; }
+.onglets.onglets-altus .onglet:nth-child(4), .onglets.onglets-altus .onglet:nth-child(5) { grid-column: span 3; }
+@media (min-width: 600px) {
+  .onglets.onglets-altus { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .onglets.onglets-altus .onglet, .onglets.onglets-altus .onglet:nth-child(4), .onglets.onglets-altus .onglet:nth-child(5) { grid-column: auto; }
+}
 .semaine-info { margin: 4px 0 14px; color: var(--texte-doux); }
 .bloc-defi { border: 2px solid var(--accent); border-radius: 14px; padding: 14px 12px 4px; }
 .accueil-altus form { display: flex; flex-direction: column; gap: 6px; }
