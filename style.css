@@ -665,3 +665,24 @@ details[open] > summary::before { transform: rotate(90deg); }
 .fenetre-boutons { display: flex; flex-direction: column; gap: 8px; }
 .corriger-score { margin-top: 6px; font-size: 0.95rem; }
 .corriger-score summary { cursor: pointer; color: var(--texte-doux); }
+
+/* ---------- Thème perso « rose fuchsia + renards » (Clara, 20/11/2026) ----------
+   Ajouté au <body> seulement quand la joueuse connectée s'appelle Clara (THEMES_JOUEURS, app.js). */
+body.theme-rose-renard {
+  --accent: #d6248f;
+  --accent-texte: #ffffff;
+  --accent-doux: #fde3f2;
+  --rouge-altus: #ff7a1a;   /* orange renard sous l'onglet actif */
+  --fond: #fff5fb;
+  background-color: var(--fond);
+  /* petits renards discrets en fond */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Ctext x='10' y='40' font-size='26' opacity='0.13'%3E🦊%3C/text%3E%3Ctext x='70' y='100' font-size='22' opacity='0.1'%3E🦊%3C/text%3E%3C/svg%3E");
+  background-attachment: fixed;
+}
+body.theme-rose-renard .titre-altus::after { content: " 🦊"; }
+body.theme-rose-renard .bloc, body.theme-rose-renard .carte { border-color: #f6b6dc; }
+@media (prefers-color-scheme: dark) {
+  body.theme-rose-renard { --accent: #ff6ec7; --accent-texte: #2a0018; --accent-doux: #4a1036; --fond: #1e0f19; }
+}
+body.theme-rose-renard .pastille { background: var(--accent); color: var(--accent-texte); }
+body.theme-rose-renard .carte { --couleur-cat: #d6248f; }

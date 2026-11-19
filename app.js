@@ -704,6 +704,9 @@ function vueCoach() {
 /* ---------- 4. Affichage ---------- */
 
 // Sur téléphone : 3 onglets courts en haut, « Classements » (long) et Exos en bas (style.css)
+// Thèmes personnels : prénom (slugPrenom) → thème. Clara : rose fuchsia + renards (20/11/2026).
+const THEMES_JOUEURS = { clara: "rose-renard" };
+
 const ONGLETS = [["seance", "🎯 Séance"], ["matchs", "⚔️ Matchs"], ["moi", "📈 Moi"], ["classements", "🏆 Classements"], ["exos", "📚 Exos"]];
 
 function afficherVue() {
@@ -714,7 +717,10 @@ function afficherVue() {
   document.getElementById("onglets").innerHTML = m && !enCoach
     ? ONGLETS.map(([id, nom]) => `<button type="button" class="onglet ${vue === id ? "actif" : ""}" data-a="vue" data-vue="${id}" aria-pressed="${vue === id}">${nom}</button>`).join("")
     : enCoach ? `<button type="button" class="onglet" data-a="vue" data-vue="seance">← Retour</button>` : "";
-  document.getElementById("sous-titre").textContent = m ? `${m.prenom} · groupe Altus` : "Petit jeu et putting";
+  // Thème perso (demandé par la joueuse) : seulement sur SON téléphone, d'après son prénom
+  const theme = m ? THEMES_JOUEURS[slugPrenom(m.prenom)] : null;
+  document.body.classList.toggle("theme-rose-renard", theme === "rose-renard");
+  document.getElementById("sous-titre").textContent = m ? `${m.prenom}${theme === "rose-renard" ? " 🦊" : ""} · groupe Altus` : "Petit jeu et putting";
   const contenu = document.getElementById("contenu");
   document.getElementById("lien-deconnexion").hidden = !utilisateurGoogle() || modeDemo();
   if (!firebasePret()) contenu.innerHTML = `<p class="petit">Chargement…</p>`;
