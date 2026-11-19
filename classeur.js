@@ -138,9 +138,9 @@ function blocImportClasseur() {
     : "";
   return `<section class="bloc pr-bloc">
     <details ${lectureClasseur || messageImport ? "open" : ""}><summary><strong>📥 Importer l'historique du classeur</strong></summary>
-      <p class="petit">Dans le classeur Google, onglet <strong>Saisie</strong> : sélectionne les colonnes <strong>A à E</strong> (Date, Joueur, Exercice, Situation, Score), copie (Ctrl+C), puis colle ci-dessous (Ctrl+V). Ou choisis le fichier CSV de l'onglet (Fichier > Télécharger > CSV).</p>
+      <p class="petit">Dans le classeur Google, onglet <strong>Saisie</strong> : sélectionne les colonnes <strong>A à E</strong> (Date, Joueur, Exercice, Situation, Score), copie (Ctrl+C), puis colle ci-dessous (Ctrl+V). Le plus simple : choisis directement le fichier <strong>Excel (.xlsx)</strong> du classeur (Fichier > Télécharger > Microsoft Excel) : l'onglet Saisie est lu tout seul. Un CSV marche aussi.</p>
       <textarea id="texte-classeur" rows="4" placeholder="Colle ici les lignes du classeur"></textarea>
-      <input type="file" id="fichier-classeur" accept=".csv,text/csv,text/plain">
+      <input type="file" id="fichier-classeur" accept=".xlsx,.csv,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
       <button type="button" class="bouton" data-a="import-lire">Lire</button>
       ${messageImport ? `<p class="${messageImport.startsWith("✅") ? "petit" : "erreur"}">${echapper(messageImport)}</p>` : ""}
       ${apercu}
@@ -219,5 +219,47 @@ document.addEventListener("click", (e) => {
 });
 document.addEventListener("change", async (e) => {
   if (e.target.id !== "fichier-classeur" || !e.target.files[0]) return;
-  document.getElementById("texte-classeur").value = await e.target.files[0].text();
+  const fichier = e.target.files[0];
+  try {
+    // Fichier Excel (.xlsx) : on lit directement l'onglet « Saisie » (choix de l'utilisateur, 19/11/2026)
+    const texte = /\.xlsx?$/i.test(fichier.name) ? await texteDuFichierExcel(fichier) : await fichier.text();
+    document.getElementById("texte-classeur").value = "";
+    lectureClasseur = lireClasseur(texte);
+    messageImport = lectureClasseur.lignes ? "" : "Rien de lisible dans ce fichier : il faut l'onglet Saisie du classeur.";
+  } catch (err) {
+    lectureClasseur = null;
+    messageImport = String(err && err.message ? err.message : err);
+  }
+  afficherVue();
 });
+
+// Bibliothèque SheetJS (lecture des fichiers Excel), chargée seulement quand on en a besoin
+const ADRESSE_SHEETJS = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+function chargerSheetJS() {
+  if (window.XLSX) return Promise.resolve();
+  return new Promise((ok, pasOk) => {
+    const script = document.createElement("script");
+    script.src = ADRESSE_SHEETJS;
+    script.onload = ok;
+    script.onerror = () => pasOk(new Error("Impossible de charger le lecteur Excel (pas de connexion ?)."));
+    document.head.appendChild(script);
+  });
+}
+
+// Fichier .xlsx -> lignes « Date⇥Joueur⇥Exercice⇥Situation⇥Score » (onglet Saisie)
+async function texteDuFichierExcel(fichier) {
+  await chargerSheetJS();
+  const classeur = XLSX.read(await fichier.arrayBuffer(), { type: "array" });
+  const nom = classeur.SheetNames.find((n) => sansAccents(n) === "saisie");
+  if (!nom) throw new Error("Pas d'onglet « Saisie » dans ce fichier.");
+  const lignes = XLSX.utils.sheet_to_json(classeur.Sheets[nom], { header: 1, raw: true, defval: "" });
+  return lignes.map((l) => {
+    let date = l[0];
+    // Date Excel = nombre de jours depuis le 30/12/1899
+    if (typeof date === "number") {
+      const j = new Date(Date.UTC(1899, 11, 30) + Math.round(date) * 86400000);
+      date = `${String(j.getUTCDate()).padStart(2, "0")}/${String(j.getUTCMonth() + 1).padStart(2, "0")}/${j.getUTCFullYear()}`;
+    }
+    return [date, ...l.slice(1, 5)].map((c) => String(c).replace(/[\t\r\n]+/g, " ")).join("\t");
+  }).join("\n");
+}
