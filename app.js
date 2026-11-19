@@ -88,6 +88,75 @@ function calculerBilan() {
   return bilan;
 }
 
+/* ---------- 1 bis. Sauvegarde en ligne de mes scores (20/11/2026) ----------
+   Avant, au démarrage, le bilan était recalculé SEULEMENT avec les scores du téléphone :
+   nouveau téléphone, autre navigateur ou données effacées par Safari (site pas ouvert
+   pendant 7 jours) = bilan en ligne écrasé par un bilan vide. Maintenant :
+   1. au premier chargement du groupe, on remet dans le téléphone ce qui est en ligne
+      (sauvegarde complète + mon bilan) ;
+   2. on ne publie RIEN tant que cette vérification n'est pas faite. */
+let sauvegardeVerifiee = false;
+
+// Ajoute à mes scores ceux d'une autre liste qui manquent (même date + même valeur,
+// en comptant les doublons), sauf ceux que j'ai effacés. Renvoie le nombre ajouté.
+function fusionnerScores(scores, autres, effaces) {
+  let ajoutes = 0;
+  for (const [id, liste] of Object.entries(autres)) {
+    if (!itemDe(id) || !Array.isArray(liste)) continue;
+    const l = Array.isArray(scores[id]) ? scores[id] : [];
+    const compte = {};
+    l.forEach((s) => { const k = s.d + "|" + s.v; compte[k] = (compte[k] || 0) + 1; });
+    liste.forEach((s) => {
+      if (s.t && effaces.has(s.t)) return;
+      const k = s.d + "|" + s.v;
+      if (compte[k]) { compte[k]--; return; }
+      l.push({ t: s.t || texteEnDate(s.d).getTime() + 12 * 3600000, d: s.d, v: s.v });
+      ajoutes++;
+    });
+    scores[id] = l.sort((a, b) => a.d.localeCompare(b.d) || a.t - b.t);
+  }
+  return ajoutes;
+}
+
+async function restaurerDepuisEnLigne() {
+  const m = moi();
+  if (!m || !groupeDonnees) return;
+  const sauvegarde = await lireSauvegarde();   // base.js (null si pas de connexion / règles)
+  const monBilan = groupeDonnees.bilans.find((b) => b.uid === m.uid);
+  const effaces = new Set([...(lireStockage("effaces", [], PREFIXE_SCORES) || []), ...(sauvegarde ? sauvegarde.effaces : [])]);
+  const scores = lireScores();
+  let ajoutes = 0;
+  if (sauvegarde) ajoutes += fusionnerScores(scores, sauvegarde.scores, effaces);
+  if (monBilan) ajoutes += fusionnerScores(scores, mapObjet(monBilan.hist, (l) => l.map(([d, v]) => ({ d, v }))), effaces);
+  if (ajoutes) ecrireStockage("scores", scores, PREFIXE_SCORES);
+  // Historique du classeur déjà repris : on le garde (sinon il réapparaîtrait en double)
+  const repris = m.repris || (sauvegarde && sauvegarde.repris) || (monBilan && monBilan.repris) || "";
+  if (repris && !m.repris) ecrireStockage("moi", { ...lireStockage("moi", {}), repris });
+  // Techniques faites (comptent dans les exos de la semaine)
+  if (sauvegarde && sauvegarde.techniques.length) {
+    const locales = lireStockage("techniques", [], PREFIXE_SCORES);
+    const liste = Array.isArray(locales) ? locales : [];
+    sauvegarde.techniques.forEach((x) => { if (!liste.some((y) => y.id === x.id && y.d === x.d)) liste.push(x); });
+    ecrireStockage("techniques", liste.slice(-200), PREFIXE_SCORES);
+  }
+  ecrireStockage("effaces", [...effaces].slice(-500), PREFIXE_SCORES);
+  sauvegardeVerifiee = true;
+}
+
+// Envoie mon bilan au groupe ET la sauvegarde complète de mes scores
+async function publierMonBilan() {
+  if (!moi() || !sauvegardeVerifiee) return;   // jamais avant d'avoir récupéré ce qui est en ligne
+  await publierBilan(calculerBilan());
+  const techniques = lireStockage("techniques", [], PREFIXE_SCORES);
+  await ecrireSauvegarde({
+    scores: lireScores(),
+    repris: moi().repris || "",
+    techniques: (Array.isArray(techniques) ? techniques : []).map((x) => ({ id: x.id, d: x.d })).slice(-200),
+    effaces: (lireStockage("effaces", [], PREFIXE_SCORES) || []).slice(-500),
+    maj: Date.now(),
+  });
+}
+
 // Après chaque exo terminé (scores.js) : exo du coach coché, bilan envoyé, page à jour
 async function apresUnExo(idFiche) {
   const m = moi();
@@ -99,7 +168,7 @@ async function apresUnExo(idFiche) {
     if (groupeDonnees) groupeDonnees.consignes[m.uid] = c;
   }
   afficherVue();
-  await publierBilan(calculerBilan());
+  await publierMonBilan();
   await chargerGroupe();
 }
 
@@ -108,6 +177,11 @@ async function chargerGroupe() {
   const donnees = await lireGroupe(vue === "coach" && coachConnecte());
   erreurGroupe = !donnees;
   if (donnees) groupeDonnees = donnees;
+  // Premier chargement : on récupère d'abord ce qui est en ligne (voir publierMonBilan)
+  if (donnees && moi() && vue !== "coach" && !sauvegardeVerifiee) {
+    await restaurerDepuisEnLigne();
+    await publierMonBilan();
+  }
   // Technique faite mais pas encore reçue par le coach : on la renvoie (exos-altus.js)
   if (donnees && moi() && vue !== "coach" && lireStockage("consignesEnAttente", null, PREFIXE_SCORES)) await envoyerTechniquesEnAttente();
   afficherVue();
@@ -206,7 +280,7 @@ function moyenne30(id, l) {
   return `Moyenne 30 j : <strong>${echapper(texteScore(id, moy))}</strong> (${vals.length} score${vals.length > 1 ? "s" : ""})`;
 }
 
-function blocRecords(hist, titre) {
+function blocRecords(hist, titre, options = {}) {
   // Dans l'ordre du programme (Pelz complet, Pelz A à I ensemble…) : choix de l'utilisateur, 19/11/2026
   const avecScores = Object.entries(hist)
     .filter(([id, l]) => itemDe(id) && l.length)
@@ -223,6 +297,7 @@ function blocRecords(hist, titre) {
           <span>${moyenne30(id, l)}</span>
           <span>${l.length} score${l.length > 1 ? "s" : ""}</span>
         </p>
+        ${options.modifiable ? blocCorriger(id) : ""}
       </article>`;
   };
   const sections = CATEGORIES_PROGRES.map((cat) => {
@@ -236,6 +311,36 @@ function blocRecords(hist, titre) {
     <h2 class="bloc-titre">${titre}</h2>
     ${sections}
   </section>`;
+}
+
+// 📈 Moi : effacer un de ses 5 derniers scores (erreur de saisie), 20/11/2026
+function blocCorriger(id) {
+  const derniers = (lireScores()[id] || []).slice(-5).reverse();
+  if (!derniers.length) return "";
+  return `<details class="corriger-score"><summary>✏️ Effacer un score (erreur)</summary>
+    <ul class="liste-consignes">${derniers.map((s) => `<li class="consigne">
+      <span><strong>${echapper(texteScore(id, s.v))}</strong><small>${echapper(dateLisible(s.d))}</small></span>
+      <button type="button" class="bouton danger" data-a="effacer-score" data-id="${echapper(id)}" data-t="${Number(s.t) || 0}" data-d="${echapper(s.d)}" data-v="${Number(s.v)}" aria-label="Effacer ce score">✕</button>
+    </li>`).join("")}</ul></details>`;
+}
+
+async function effacerScore(bouton) {
+  const id = bouton.dataset.id, t = Number(bouton.dataset.t), d = bouton.dataset.d, v = Number(bouton.dataset.v);
+  if (!itemDe(id)) return;
+  if (!(await demanderConfirmation(`Effacer ${itemDe(id).titre} : ${texteScore(id, v)} (${dateLisible(d)}) ?`, "Oui, effacer"))) return;
+  const scores = lireScores();
+  const liste = scores[id] || [];
+  const i = liste.findIndex((s) => (t ? s.t === t : true) && s.d === d && s.v === v);
+  if (i < 0) return;
+  const [efface] = liste.splice(i, 1);
+  scores[id] = liste;
+  ecrireStockage("scores", scores, PREFIXE_SCORES);
+  // Mémorisé pour qu'il ne revienne pas depuis la sauvegarde en ligne
+  const effaces = lireStockage("effaces", [], PREFIXE_SCORES) || [];
+  if (efface.t) ecrireStockage("effaces", [...effaces, efface.t].slice(-500), PREFIXE_SCORES);
+  afficherVue();
+  await publierMonBilan();
+  await chargerGroupe();
 }
 
 const medaille = (i) => ["🥇", "🥈", "🥉"][i] || `${i + 1}.`;
@@ -298,7 +403,7 @@ async function entrerAvecPrenom(prenom) {
     await chargerGroupe();
     const importe = groupeDonnees && bilansImportesLibres(groupeDonnees.bilans).find((b) => slugPrenom(b.prenom) === slugPrenom(prenom));
     if (importe) await reprendreHistorique(importe.uid);   // classeur.js (publie aussi le bilan)
-    else await publierBilan(calculerBilan());
+    else await publierMonBilan();
   } catch (e) {
     messageAccueil = `Problème pendant l'entrée dans le groupe : réessaie. (${(e && (e.code || e.message)) || "erreur inconnue"})`;
   } finally {
@@ -475,7 +580,7 @@ function vueMoi() {
   const hist = {};
   for (const [id, liste] of Object.entries(lireScores())) if (Array.isArray(liste) && liste.length) hist[id] = liste.map((s) => [s.d, s.v]);
   return `<p class="semaine-info">${exosDeLaSemaine()} exo${exosDeLaSemaine() > 1 ? "s" : ""} joué${exosDeLaSemaine() > 1 ? "s" : ""} cette semaine</p>
-    ${blocRecords(hist, "⭐ Mes records")}`;
+    ${blocRecords(hist, "⭐ Mes records", { modifiable: true })}`;
 }
 
 function vueExos() {
@@ -616,7 +721,7 @@ async function actionCoach(a, bouton) {
   if (a === "coach-joueur") { joueurCoach = bouton.dataset.uid; return afficherVue(); }
   if (a === "coach-supprimer") {
     const j = groupeDonnees.bilans.find((b) => b.uid === joueurCoach);
-    if (!j || !confirm(`Retirer ${j.prenom}${j.source === "classeur" ? " (historique importé)" : ""} du groupe ?`)) return;
+    if (!j || !(await demanderConfirmation(`Retirer ${j.prenom}${j.source === "classeur" ? " (historique importé)" : ""} du groupe ?`, "Oui, retirer"))) return;
     messageCoach = await supprimerJoueur(j.uid);
     joueurCoach = null;
     return chargerGroupe();
@@ -661,7 +766,8 @@ document.addEventListener("DOMContentLoaded", () => {
   suivreConnexion(() => {
     afficherVue();
     if (vue === "coach" && estCoachConfirme === null && utilisateurGoogle() && !modeDemo()) changerVue("coach");
-    chargerGroupe().then(() => { if (moi()) publierBilan(calculerBilan()); });
+    sauvegardeVerifiee = false;   // autre compte possible : on revérifie ce qui est en ligne
+    chargerGroupe();   // récupère ce qui est en ligne puis publie (publierMonBilan)
   });
 
   document.addEventListener("click", (e) => {
@@ -674,10 +780,14 @@ document.addEventListener("DOMContentLoaded", () => {
       // Pas d'attente avant connecterGoogle : la fenêtre Google doit s'ouvrir tout de suite
       connecterGoogle().then((erreur) => { messageConnexion = erreur; afficherVue(); });
     }
-    if (a === "deconnexion" && confirm("Se déconnecter ? Tes scores restent sur ce téléphone.")) {
-      deconnecter().then(() => { groupeDonnees = null; prenomsAccueil = null; accueilAutrePrenom = false; prenomChoisi = null; changerVue("seance"); });
+    if (a === "deconnexion") {
+      demanderConfirmation("Se déconnecter ? Tes scores restent sur ce téléphone et en ligne.", "Oui, me déconnecter").then((oui) => {
+        if (!oui) return;
+        deconnecter().then(() => { groupeDonnees = null; prenomsAccueil = null; accueilAutrePrenom = false; prenomChoisi = null; sauvegardeVerifiee = false; changerVue("seance"); });
+      });
     }
     if (a.startsWith("coach-")) actionCoach(a, bouton);
+    if (a === "effacer-score") effacerScore(bouton);
     if (a === "choisir-prenom") { prenomChoisi = bouton.dataset.prenom; messageAccueil = ""; afficherVue(); window.scrollTo(0, 0); }
     if (a === "confirmer-prenom" && prenomChoisi && !entreeEnCours) { messageAccueil = ""; entrerAvecPrenom(prenomChoisi); }
     if (a === "autre-prenom" || a === "liste-prenoms") { accueilAutrePrenom = a === "autre-prenom"; prenomChoisi = null; messageAccueil = ""; afficherVue(); }
@@ -701,7 +811,8 @@ document.addEventListener("DOMContentLoaded", () => {
       p.hidden = false;
       return;
     }
-    await publierBilan(calculerBilan());
+    sauvegardeVerifiee = false;
+    await chargerGroupe();   // récupère ce qui est en ligne, puis publie (publierMonBilan)
     changerVue("seance");
   });
   // Retour sur l'appli : classements frais

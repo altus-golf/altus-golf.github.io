@@ -218,7 +218,7 @@ async function reprendreHistorique(id) {
   ecrireStockage("scores", scores, PREFIXE_SCORES);
   ecrireStockage("moi", { ...lireStockage("moi", {}), repris: id });
   afficherVue();
-  await publierBilan(calculerBilan());
+  await publierMonBilan();   // app.js
   await chargerGroupe();
 }
 

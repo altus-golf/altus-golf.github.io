@@ -133,7 +133,7 @@ document.addEventListener("click", async (e) => {
   const a = b.dataset.a;
   messageMatch = "";
   if (a === "match-ouvrir" || a === "match-fermer") { formulaireMatch = a === "match-ouvrir"; return afficherVue(); }
-  if (a === "match-effacer" && confirm("Effacer ce match ?")) {
+  if (a === "match-effacer" && (await demanderConfirmation("Effacer ce match ?", "Oui, effacer"))) {
     messageMatch = await effacerMatch(b.dataset.id);   // base.js
     await chargerGroupe();
   }

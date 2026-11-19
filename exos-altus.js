@@ -358,14 +358,14 @@ function afficherPelz() {
   zone.hidden = false;
 }
 
-function actionPelz(a, bouton) {
+async function actionPelz(a, bouton) {
   let t = pelzEnCours();
   if (a === "pelz-commencer") {
-    if (t && t.balles.length && t.s !== bouton.dataset.s && !confirm(`La situation ${t.s.toUpperCase()} est en cours : l'abandonner ?`)) return;
+    if (t && t.balles.length && t.s !== bouton.dataset.s && !(await demanderConfirmation(`La situation ${t.s.toUpperCase()} est en cours : l'abandonner ?`, "Oui, l'abandonner"))) return;
     t = { s: bouton.dataset.s, balles: [] };
   }
   if (a === "pelz-abandonner") {
-    if (!confirm("Abandonner cette situation ? Les balles notées seront effacées.")) return;
+    if (!(await demanderConfirmation("Abandonner cette situation ? Les balles notées seront effacées.", "Oui, abandonner"))) return;
     ecrireStockage("pelzEnCours", null, PREFIXE_SCORES);
     document.getElementById("trefle-jeu").hidden = true;
     return afficherVue();
@@ -402,10 +402,21 @@ function terminerPelz(t) {
   alert(`Pelz ${t.s.toUpperCase()} : ${score} / 40.${record}${texteTotal}`);
 }
 
-document.addEventListener("click", (e) => {
+document.addEventListener("click", async (e) => {
   const bouton = e.target.closest("[data-a^='pelz-']");
   if (!bouton) return;
   if (bouton.dataset.a === "pelz-reprendre") return afficherPelz();
-  actionPelz(bouton.dataset.a, bouton);
+  await actionPelz(bouton.dataset.a, bouton);
   if (bouton.dataset.a === "pelz-commencer") afficherPelz();
 });
+
+// « Abandonner » des jeux de exos-points.js : la question est posée dans la page
+// (son confirm() est bloqué dans certains navigateurs d'applis), puis on laisse faire le jeu.
+const abandonnerExoGolf = abandonnerExo;
+abandonnerExo = async function () {
+  if (!exoAffiche) return;
+  if (!(await demanderConfirmation("Abandonner ? Les putts notés seront effacés (rien n'est compté).", "Oui, abandonner"))) return;
+  const confirmNormal = window.confirm;
+  window.confirm = () => true;
+  try { abandonnerExoGolf(); } finally { window.confirm = confirmNormal; }
+};

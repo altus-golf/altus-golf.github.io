@@ -61,6 +61,51 @@ function ecrireStockage(cle, valeur, prefixe = PREFIXE_ALTUS) {
 try { localStorage.setItem(PREFIXE_ALTUS + "test", "1"); localStorage.removeItem(PREFIXE_ALTUS + "test"); } catch (e) { stockageBloque = true; }
 
 
+/* ---------- 1 bis. Messages dans la page (à la place de alert / confirm) ----------
+   Les navigateurs intégrés aux applis (WhatsApp, Instagram…) bloquent souvent les
+   fenêtres alert() / confirm() sans rien dire : le bouton semblait « ne rien faire »
+   (20/11/2026). On affiche donc nos propres fenêtres, dans la page. */
+
+// Fenêtre dans la page. boutons = [{ texte, valeur, principal }] ; renvoie une promesse
+// qui donne la valeur du bouton appuyé.
+function fenetreDansLaPage(texte, boutons) {
+  return new Promise((ok) => {
+    const fond = document.createElement("div");
+    fond.className = "fenetre-fond";
+    fond.setAttribute("role", "dialog");
+    fond.setAttribute("aria-modal", "true");
+    const boite = document.createElement("div");
+    boite.className = "fenetre-boite";
+    const p = document.createElement("p");
+    p.className = "fenetre-texte";
+    p.textContent = String(texte);   // textContent : jamais de HTML venu d'ailleurs
+    boite.appendChild(p);
+    const zone = document.createElement("div");
+    zone.className = "fenetre-boutons";
+    boutons.forEach((b) => {
+      const bouton = document.createElement("button");
+      bouton.type = "button";
+      bouton.className = "bouton pleine-largeur" + (b.principal ? " principal" : "");
+      bouton.textContent = b.texte;
+      bouton.addEventListener("click", () => { fond.remove(); ok(b.valeur); });
+      zone.appendChild(bouton);
+    });
+    boite.appendChild(zone);
+    fond.appendChild(boite);
+    document.body.appendChild(fond);
+    const premier = zone.querySelector(".principal") || zone.querySelector("button");
+    if (premier) premier.focus();
+  });
+}
+// Message simple (remplace alert, y compris celui des jeux de exos-points.js)
+function afficherMessage(texte) { return fenetreDansLaPage(texte, [{ texte: "OK", valeur: true, principal: true }]); }
+// Question oui / non (remplace confirm) : await demanderConfirmation("…") → true / false
+function demanderConfirmation(texte, oui = "Oui", non = "Annuler") {
+  return fenetreDansLaPage(texte, [{ texte: oui, valeur: true, principal: true }, { texte: non, valeur: false }]);
+}
+window.alert = (texte) => { afficherMessage(texte); };
+
+
 /* ---------- 2. Dates ---------- */
 
 function dateEnTexte(date) {
@@ -280,6 +325,36 @@ async function publierBilan(bilan) {
     // Règles Firebase pas encore recollées (champ « dist » refusé) : on envoie sans
     try { const { dist, ...sansDist } = bilan; await doc.set(bilanEnLigne(sansDist)); } catch (e2) { /* plus tard */ }
   }
+}
+
+// Sauvegarde en ligne de TOUS mes scores (20/11/2026) : groupes/ALTUS/sauvegardes/<uid>,
+// lisible et modifiable seulement par moi. Sert à tout retrouver sur un nouveau téléphone,
+// un autre navigateur, ou si Safari a effacé les données du site.
+// { scores: { item: [{ t, d, v }] }, repris, techniques: [{ id, d }], effaces: [t], maj }
+async function lireSauvegarde() {
+  const m = moi();
+  if (!m) return null;
+  if (modeDemo()) return normaliserSauvegarde((baseDemo().sauvegardes || {})[m.uid]);
+  if (!(await demarrerFirebase())) return null;
+  try {
+    const doc = await groupe(m.code).collection("sauvegardes").doc(m.uid).get();
+    return normaliserSauvegarde(doc.exists ? doc.data() : null);
+  } catch (e) {
+    return null;   // règles pas encore recollées : on fait sans
+  }
+}
+async function ecrireSauvegarde(sauvegarde) {
+  const m = moi();
+  if (!m) return;
+  if (modeDemo()) {
+    const db = baseDemo();
+    db.sauvegardes = db.sauvegardes || {};
+    db.sauvegardes[m.uid] = sauvegarde;
+    ecrireStockage("demo", db);
+    return;
+  }
+  if (!(await demarrerFirebase())) return;
+  try { await groupe(m.code).collection("sauvegardes").doc(m.uid).set(sauvegarde); } catch (e) { /* plus tard */ }
 }
 
 // Firestore n'accepte pas les tableaux de tableaux : hist part en [{ d, v }].
@@ -552,6 +627,22 @@ function normaliserDefi(d) {
   return { fiches, lundi: d.lundi, message: typeof d.message === "string" ? d.message.slice(0, 200) : "" };
 }
 const MAX_DEFIS = 40;   // pas de vraie limite : le coach peut mettre tous les exos (choix de l’utilisateur, 20/11/2026)
+
+function normaliserSauvegarde(x) {
+  const d = x && typeof x === "object" ? x : {};
+  const scores = {};
+  for (const [id, liste] of Object.entries(d.scores && typeof d.scores === "object" ? d.scores : {})) {
+    if (!idFicheValide(id) || !Array.isArray(liste)) continue;
+    scores[id] = liste.filter((s) => s && jourValide(s.d) && nombreOk(s.v))
+      .map((s) => ({ t: nombreOk(s.t, 1e13) ? s.t : 0, d: s.d, v: s.v })).slice(-2000);
+  }
+  return {
+    scores,
+    repris: typeof d.repris === "string" && /^classeur-[a-z0-9-]{1,40}$/.test(d.repris) ? d.repris : "",
+    techniques: (Array.isArray(d.techniques) ? d.techniques : []).filter((x) => x && idFicheValide(x.id) && jourValide(x.d)).map((x) => ({ id: x.id, d: x.d })).slice(-200),
+    effaces: (Array.isArray(d.effaces) ? d.effaces : []).filter((t) => nombreOk(t, 1e13)).slice(-500),
+  };
+}
 
 function normaliserConsignes(c) {
   const d = c && typeof c === "object" ? c : {};
