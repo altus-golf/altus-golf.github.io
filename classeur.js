@@ -263,3 +263,113 @@ async function texteDuFichierExcel(fichier) {
     return [date, ...l.slice(1, 5)].map((c) => String(c).replace(/[\t\r\n]+/g, " ")).join("\t");
   }).join("\n");
 }
+
+
+/* ---------- Espace coachs : rapport Excel de chaque joueur ----------
+   Demandé par le coach (20/11/2026). Le fichier est fabriqué dans le
+   téléphone / l'ordinateur du coach (SheetJS) : rien ne passe par le dépôt.
+   Feuilles : « Résumé » (un joueur par ligne), « Records » (tous les
+   joueurs), puis une feuille par joueur (records, derniers scores,
+   réussite par distance). */
+
+let messageRapport = "";
+
+function blocRapportExcel() {
+  return `<section class="bloc pr-bloc">
+    <h2 class="bloc-titre">📊 Rapport Excel</h2>
+    <p class="petit">Un fichier Excel avec un résumé du groupe et une feuille par joueur (records, moyennes de l'année, derniers scores, réussite par distance).</p>
+    <button type="button" class="bouton principal pleine-largeur" data-a="rapport-excel">⬇️ Télécharger le rapport</button>
+    ${messageRapport ? `<p class="${messageRapport.startsWith("✅") ? "petit" : "erreur"}">${echapper(messageRapport)}</p>` : ""}
+  </section>`;
+}
+
+// Catégorie d'un score (Putting, Chipping, Test Center), sans emoji
+function categorieRapport(id) {
+  const cat = CATEGORIES_PROGRES.find((c) => c.contient(id));   // app.js
+  return cat ? cat.nom.replace(/^\S+\s/, "") : "";
+}
+const dateRapport = (d) => (d ? d.split("-").reverse().join("/") : "");
+const arrondi1 = (n) => Math.round(n * 10) / 10;
+
+function joueursDuRapport() {
+  const reprisIds = new Set(groupeDonnees.bilans.map((b) => b.repris).filter(Boolean));
+  return groupeDonnees.bilans.filter((b) => !reprisIds.has(b.uid)).sort((a, b) => a.prenom.localeCompare(b.prenom, "fr"));
+}
+
+// Records et moyennes de l'année d'un joueur : une ligne par exo, dans l'ordre du programme
+function lignesRecords(j) {
+  return ITEMS_ALTUS.filter((it) => j.exos[it.id] || (j.hist[it.id] || []).length).map((it) => {
+    const e = j.exos[it.id];
+    const h = j.hist[it.id] || [];
+    const dernier = h[h.length - 1];
+    return [categorieRapport(it.id), it.titre, e ? e.n : "", e ? arrondi1(e.moy) : "", e ? e.record : "", e ? dateRapport(e.recordD) : "",
+      dernier ? dernier[1] : "", dernier ? dateRapport(dernier[0]) : "", it.unite];
+  });
+}
+const TITRES_RECORDS = ["Catégorie", "Exo", "Scores (année)", "Moyenne (année)", "Record", "Date du record", "Dernier score", "Date", "Sur"];
+
+// Nom de feuille Excel : 31 caractères max, sans : \ / ? * [ ], unique
+function nomDeFeuille(nom, pris) {
+  let base = nom.replace(/[:\\/?*\[\]]/g, " ").trim().slice(0, 28) || "Joueur";
+  let n = base, i = 2;
+  while (pris.has(n.toLowerCase())) n = `${base} ${i++}`;
+  pris.add(n.toLowerCase());
+  return n;
+}
+
+async function telechargerRapport() {
+  messageRapport = "";
+  if (!groupeDonnees) { messageRapport = "Groupe pas encore chargé."; return afficherVue(); }
+  try {
+    await chargerSheetJS();
+    const joueurs = joueursDuRapport();
+    const classeur = XLSX.utils.book_new();
+    const pris = new Set();
+    const lundi = lundiDe();
+    const annee = new Date().getFullYear();
+
+    // 1. Résumé : un joueur par ligne
+    const resume = [["Rapport Altus Performance", "", `le ${dateRapport(dateEnTexte(new Date()))}`], [],
+      ["Joueur", "Origine", "Mis à jour", "Exos cette semaine", `Scores ${annee}`, "Exos travaillés"]];
+    joueurs.forEach((j) => resume.push([j.prenom, j.source === "classeur" ? "Classeur importé" : "Site",
+      dateRapport(j.maj), j.source === "classeur" ? "" : (j.semaine.lundi === lundi ? j.semaine.n : 0),
+      Object.values(j.exos).reduce((t, e) => t + e.n, 0), Object.keys(j.exos).length]));
+    XLSX.utils.book_append_sheet(classeur, XLSX.utils.aoa_to_sheet(resume), nomDeFeuille("Résumé", pris));
+
+    // 2. Records de tout le groupe (pratique pour trier / filtrer dans Excel)
+    const records = [["Joueur", ...TITRES_RECORDS]];
+    joueurs.forEach((j) => lignesRecords(j).forEach((l) => records.push([j.prenom, ...l])));
+    XLSX.utils.book_append_sheet(classeur, XLSX.utils.aoa_to_sheet(records), nomDeFeuille("Records", pris));
+
+    // 3. Une feuille par joueur
+    joueurs.forEach((j) => {
+      const f = [[`${j.prenom}${j.source === "classeur" ? " (historique du classeur)" : ""}`], [], [`Records et moyennes ${annee}`], TITRES_RECORDS, ...lignesRecords(j)];
+      f.push([], ["Derniers scores (jusqu'à 30 par exo)"], ["Date", "Catégorie", "Exo", "Score", "Sur"]);
+      const scores = [];
+      for (const [id, l] of Object.entries(j.hist)) if (itemDe(id)) l.forEach(([d, v]) => scores.push([d, id, v]));
+      scores.sort((a, b) => b[0].localeCompare(a[0])).forEach(([d, id, v]) => f.push([dateRapport(d), categorieRapport(id), itemDe(id).titre, v, itemDe(id).unite]));
+      const dist = Object.entries(j.dist || {}).filter(([exo]) => EXOS_POINTS[exo]);
+      if (dist.length) {
+        f.push([], [`Réussite par distance ${annee} (exos interactifs)`], ["Exo", "Distance", "Réussis", "Tentés", "%"]);
+        dist.forEach(([exo, parD]) => {
+          const config = EXOS_POINTS[exo];
+          Object.entries(parD).sort((a, b) => Number(a[0]) - Number(b[0])).forEach(([d, [r, t]]) =>
+            f.push([config.nom, config.libelle ? config.libelle(Number(d)) : d, r, t, Math.round((100 * r) / t)]));
+        });
+      }
+      const feuille = XLSX.utils.aoa_to_sheet(f);
+      feuille["!cols"] = [{ wch: 14 }, { wch: 34 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 8 }];
+      XLSX.utils.book_append_sheet(classeur, feuille, nomDeFeuille(j.prenom, pris));
+    });
+
+    XLSX.writeFile(classeur, `Rapport Altus ${dateEnTexte(new Date())}.xlsx`);
+    messageRapport = `✅ Rapport téléchargé (${joueurs.length} joueurs).`;
+  } catch (e) {
+    messageRapport = String(e && e.message ? e.message : e);
+  }
+  afficherVue();
+}
+
+document.addEventListener("click", (e) => {
+  if (e.target.closest("[data-a='rapport-excel']")) telechargerRapport();
+});

@@ -477,6 +477,7 @@ function vueCoach() {
   </section>`;
 
   // --- Import de l'historique du classeur (classeur.js) ---
+  html += blocRapportExcel();   // classeur.js
   html += blocImportClasseur();
 
   // --- Joueurs (sans les historiques importés déjà repris par un joueur) ---
