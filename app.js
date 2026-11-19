@@ -55,13 +55,8 @@ function calculerBilan() {
     if (Array.isArray(liste) && liste.length) hist[id] = liste.map((s) => [s.d, s.v]);
   }
   const lundi = lundiDe();
-  const defi = groupeDonnees && groupeDonnees.defi;
-  let monDefi = null;
-  if (defi && defi.lundi === lundi && hist[defi.fiche]) {
-    const cetteSemaine = hist[defi.fiche].filter(([d]) => d >= lundi).map(([, v]) => v);
-    if (cetteSemaine.length) monDefi = { lundi, fiche: defi.fiche, meilleur: meilleurScore(defi.fiche, cetteSemaine) };
-  }
-  const bilan = calculerBilanDepuis(m.uid, m.prenom, hist, { lundi, n: exosDeLaSemaine() }, monDefi);
+  // Plus de champ « defi » : les classements des défis se calculent avec hist (meilleurCetteSemaine)
+  const bilan = calculerBilanDepuis(m.uid, m.prenom, hist, { lundi, n: exosDeLaSemaine() }, null);
   if (m.repris) bilan.repris = m.repris;   // historique du classeur repris (classeur.js)
   return bilan;
 }
@@ -181,6 +176,19 @@ function vueAccueil() {
   </section>`;
 }
 
+// Défis de la semaine en cours : { fiches, message } ou null
+function defisDeLaSemaine() {
+  const d = groupeDonnees && groupeDonnees.defi;
+  return d && d.lundi === lundiDe() && d.fiches.some(itemDe) ? { ...d, fiches: d.fiches.filter(itemDe) } : null;
+}
+// Meilleur score d'un joueur depuis lundi sur un exo (null = pas joué)
+function meilleurCetteSemaine(b, id) {
+  const lundi = lundiDe();
+  const valeurs = (b.hist[id] || []).filter(([d]) => d >= lundi).map(([, v]) => v);
+  if (b.defi && b.defi.lundi === lundi && b.defi.fiche === id) valeurs.push(b.defi.meilleur);   // ancien format
+  return valeurs.length ? meilleurScore(id, valeurs) : null;
+}
+
 function vueSeance() {
   const m = moi();
   const jour = dateEnTexte(new Date());
@@ -188,8 +196,7 @@ function vueSeance() {
   // Exos du coach : à faire, ou faits aujourd'hui (grisés) ; faits avant, ils disparaissent
   const duCoach = c.exos.map(ficheDe).filter((f) => f && (!c.faits[f.id] || c.faits[f.id] === jour));
   const aFaire = duCoach.filter((f) => !c.faits[f.id]);
-  const defi = groupeDonnees && groupeDonnees.defi && groupeDonnees.defi.lundi === lundiDe() ? groupeDonnees.defi : null;
-  const ficheDefi = defi && ficheDeItem(defi.fiche);
+  const defi = defisDeLaSemaine();
 
   let html = `<p class="semaine-info">Salut <strong>${echapper(m.prenom)}</strong> · ${exosDeLaSemaine()} exo${exosDeLaSemaine() > 1 ? "s" : ""} joué${exosDeLaSemaine() > 1 ? "s" : ""} cette semaine</p>`;
   html += blocReprendreHistorique();   // classeur.js
@@ -201,17 +208,24 @@ function vueSeance() {
       ${duCoach.map((f) => carteExo(f, { fait: !!c.faits[f.id], etiquette: c.faits[f.id] ? "✓ Fait" : "⭐ Coach" })).join("")}
     </section>`;
   }
-  if (ficheDefi) {
-    const meilleur = (lireScores()[defi.fiche] || []).filter((s) => s.d >= lundiDe()).map((s) => s.v);
-    const resume = meilleur.length ? `Ton meilleur score cette semaine : <strong>${echapper(texteScore(defi.fiche, meilleurScore(defi.fiche, meilleur)))}</strong>` : "Tu ne l'as pas encore joué cette semaine.";
-    // Le défi se joue toujours d'ici (choix de l'utilisateur, 19/11/2026) ;
-    // s'il reste des exos du coach, il est affiché après eux avec un rappel.
+  if (defi) {
+    // Les défis se jouent toujours d'ici (choix de l'utilisateur, 19/11/2026) ;
+    // s'il reste des exos du coach, ils sont affichés après eux avec un rappel.
+    const scores = lireScores();
+    const lignes = defi.fiches.map((id) => {
+      const valeurs = (scores[id] || []).filter((s) => s.d >= lundiDe()).map((s) => s.v);
+      return `<li><strong>${echapper(itemDe(id).titre)}</strong> : ${valeurs.length ? `ton meilleur cette semaine ${echapper(texteScore(id, meilleurScore(id, valeurs)))}` : "pas encore joué"}</li>`;
+    }).join("");
+    // Une seule carte par jeu (ex. Pelz B et Pelz C = le même Test de Pelz)
+    const cartes = [...new Set(defi.fiches.map(ficheDeItem).filter(Boolean))];
+    const titre = defi.fiches.length > 1 ? "🎯 Défis de la semaine" : `🎯 Défi de la semaine : ${echapper(itemDe(defi.fiches[0]).titre)}`;
     html += `<section class="bloc bloc-defi">
-      <h2 class="bloc-titre">🎯 Défi de la semaine : ${echapper(itemDe(defi.fiche).titre)}</h2>
+      <h2 class="bloc-titre">${titre}</h2>
       ${defi.message ? `<p class="message-coach">💬 ${echapper(defi.message)}</p>` : ""}
       ${aFaire.length ? `<p class="petit">Conseil : fais d'abord les exos de ton coach (au-dessus).</p>` : ""}
-      <p class="bloc-info">${resume} · classement dans 🏆</p>
-      ${carteExo(ficheDefi, { etiquette: "🎯 Défi" })}
+      <ul class="liste-defis">${lignes}</ul>
+      <p class="bloc-info">Classement dans 🏆</p>
+      ${cartes.map((f) => carteExo(f, { etiquette: "🎯 Défi" })).join("")}
     </section>`;
   } else if (!duCoach.length) {
     html += `<section class="bloc pr-bloc"><h2 class="bloc-titre">🎯 Défi de la semaine</h2>
@@ -229,16 +243,18 @@ function vueClassements() {
   const bilans = groupeDonnees.bilans.filter((b) => !reprisIds.has(b.uid));
   let html = "";
 
-  // --- Défi de la semaine ---
-  const defi = groupeDonnees.defi && groupeDonnees.defi.lundi === lundi ? groupeDonnees.defi : null;
-  if (defi && itemDe(defi.fiche)) {
-    const joues = bilans.filter((b) => b.defi && b.defi.lundi === lundi && b.defi.fiche === defi.fiche)
-      .sort((a, b) => (meilleurQue(defi.fiche, a.defi.meilleur, b.defi.meilleur) ? -1 : 1));
-    html += `<section class="bloc pr-bloc">
-      <h2 class="bloc-titre">🎯 Défi : ${echapper(itemDe(defi.fiche).titre)}</h2>
-      <p class="bloc-info">Meilleur score de chacun cette semaine</p>
-      ${joues.length ? `<ol class="classement">${joues.map((b, i) => ligneClassement(i, b.prenom, echapper(texteScore(defi.fiche, b.defi.meilleur)), m && b.uid === m.uid)).join("")}</ol>` : `<p class="petit">Personne ne l'a encore joué.</p>`}
-    </section>`;
+  // --- Défis de la semaine : un classement par défi ---
+  const defi = defisDeLaSemaine();
+  if (defi) {
+    defi.fiches.forEach((id) => {
+      const joues = bilans.map((b) => ({ b, v: meilleurCetteSemaine(b, id) })).filter((x) => x.v !== null)
+        .sort((x, y) => (meilleurQue(id, x.v, y.v) ? -1 : 1));
+      html += `<section class="bloc pr-bloc">
+        <h2 class="bloc-titre">🎯 Défi : ${echapper(itemDe(id).titre)}</h2>
+        <p class="bloc-info">Meilleur score de chacun cette semaine</p>
+        ${joues.length ? `<ol class="classement">${joues.map((x, i) => ligneClassement(i, x.b.prenom, echapper(texteScore(id, x.v)), m && x.b.uid === m.uid)).join("")}</ol>` : `<p class="petit">Personne ne l'a encore joué.</p>`}
+      </section>`;
+    });
   }
 
   // --- Flemmard de la semaine : le moins d'exos joués ---
@@ -260,7 +276,7 @@ function vueClassements() {
   // --- Par exo : top 3 de l'année (moyenne) + record absolu ---
   const annee = new Date().getFullYear();
   const avecDonnees = ITEMS_ALTUS.filter((f) => bilans.some((b) => b.annee === annee && b.exos[f.id]));
-  if (!avecDonnees.some((f) => f.id === exoClassement)) exoClassement = (defi && avecDonnees.some((f) => f.id === defi.fiche)) ? defi.fiche : avecDonnees.length ? avecDonnees[0].id : null;
+  if (!avecDonnees.some((f) => f.id === exoClassement)) exoClassement = (defi && avecDonnees.some((f) => f.id === defi.fiches[0])) ? defi.fiches[0] : avecDonnees.length ? avecDonnees[0].id : null;
   if (exoClassement) {
     const id = exoClassement;
     const lignes = bilans.filter((b) => b.annee === annee && b.exos[id]);
@@ -310,16 +326,22 @@ function vueCoach() {
 
   // --- Défi de la semaine ---
   const lundi = lundiDe();
-  const defi = groupeDonnees.defi && groupeDonnees.defi.lundi === lundi ? groupeDonnees.defi : null;
-  html += `<section class="bloc pr-bloc">
-    <h2 class="bloc-titre">🎯 Défi de la semaine du ${echapper(dateLisible(lundi))}</h2>
-    <select id="choix-defi" class="choix" aria-label="Exo du défi">
-      ${defi ? "" : `<option value="">— choisir un exo —</option>`}
-      ${ITEMS_ALTUS.map((f) => `<option value="${echapper(f.id)}" ${defi && defi.fiche === f.id ? "selected" : ""}>${echapper(f.titre)}</option>`).join("")}
-    </select>
-    <label for="message-defi">💬 Message (facultatif)</label>
+  const defi = defisDeLaSemaine();
+  const fichesDefi = defi ? defi.fiches : [];
+  html += `<section class="bloc pr-bloc consignes-admin">
+    <h2 class="bloc-titre">🎯 Défis de la semaine du ${echapper(dateLisible(lundi))}</h2>
+    ${fichesDefi.length ? `<ul class="liste-consignes">${fichesDefi.map((id) => `<li class="consigne">
+      <span><strong>${echapper(itemDe(id).titre)}</strong></span>
+      <button type="button" class="bouton danger" data-a="coach-defi-retirer" data-id="${echapper(id)}" aria-label="Retirer ce défi">✕</button>
+    </li>`).join("")}</ul>` : `<p class="petit">Pas encore de défi cette semaine.</p>`}
+    ${fichesDefi.length < MAX_DEFIS ? `<div class="ajout-consigne">
+      <select id="choix-defi" class="choix" aria-label="Exo du défi">
+        ${ITEMS_ALTUS.filter((f) => !fichesDefi.includes(f.id)).map((f) => `<option value="${echapper(f.id)}">${echapper(f.titre)}</option>`).join("")}
+      </select>
+      <button type="button" class="bouton principal" data-a="coach-defi-ajouter">➕ Ajouter</button></div>` : `<p class="petit">${MAX_DEFIS} défis au maximum.</p>`}
+    <label for="message-defi">💬 Message pour tout le groupe (facultatif)</label>
     <input id="message-defi" maxlength="200" value="${echapper(defi ? defi.message : "")}">
-    <button type="button" class="bouton principal" data-a="coach-defi">${defi ? "Changer le défi" : "Lancer le défi"}</button>
+    <button type="button" class="bouton" data-a="coach-defi-message">Enregistrer le message</button>
   </section>`;
 
   // --- Import de l'historique du classeur (classeur.js) ---
@@ -336,12 +358,12 @@ function vueCoach() {
   html += `<div class="filtres">${joueurs.map((x) => `<button type="button" class="filtre ${x.uid === j.uid ? "actif" : ""}" data-a="coach-joueur" data-uid="${echapper(x.uid)}">${echapper(x.prenom)}${x.source === "classeur" ? " 📄" : ""}</button>`).join("")}</div>
     <section class="bloc pr-bloc consignes-admin">
       <h2 class="bloc-titre">⭐ Exos pour ${echapper(j.prenom)}</h2>
-      <p class="bloc-info">${nSemaine} exo${nSemaine > 1 ? "s" : ""} joué${nSemaine > 1 ? "s" : ""} cette semaine · les exos donnés remplacent son défi jusqu'à ce qu'il les fasse</p>
+      <p class="bloc-info">${nSemaine} exo${nSemaine > 1 ? "s" : ""} joué${nSemaine > 1 ? "s" : ""} cette semaine · les exos donnés passent avant ses défis de la semaine</p>
       ${c.exos.length ? `<ul class="liste-consignes">${c.exos.map((id) => `<li class="consigne">
         <span><strong>${echapper((ficheDe(id) || { titre: id }).titre)}</strong><small>${c.faits[id] ? "✓ fait le " + echapper(dateLisible(c.faits[id])) : "à faire"}</small></span>
         ${c.faits[id] ? `<button type="button" class="bouton" data-a="coach-redonner" data-id="${echapper(id)}">↺ Redonner</button>` : ""}
         <button type="button" class="bouton danger" data-a="coach-retirer" data-id="${echapper(id)}" aria-label="Retirer">✕</button>
-      </li>`).join("")}</ul>` : `<p class="petit">Aucun exo donné : il joue le défi de la semaine.</p>`}
+      </li>`).join("")}</ul>` : `<p class="petit">Aucun exo donné : il joue les défis de la semaine.</p>`}
       ${c.exos.length < 10 ? `<div class="ajout-consigne">
         <select id="choix-consigne" aria-label="Exo à donner">${FICHES.filter((f) => !c.exos.includes(f.id)).map((f) => `<option value="${echapper(f.id)}">${echapper(f.titre)}</option>`).join("")}</select>
         <button type="button" class="bouton principal" data-a="coach-donner">➕ Donner</button></div>` : ""}
@@ -394,10 +416,14 @@ async function actionCoach(a, bouton) {
   messageCoach = "";
   if (a === "coach-demo") { entrerCoachDemo(); return changerVue("coach"); }
   if (a === "coach-joueur") { joueurCoach = bouton.dataset.uid; return afficherVue(); }
-  if (a === "coach-defi") {
-    const fiche = document.getElementById("choix-defi").value;
-    if (!fiche) return;
-    messageCoach = await ecrireDefi({ fiche, lundi: lundiDe(), message: document.getElementById("message-defi").value.trim().slice(0, 200) });
+  if (a.startsWith("coach-defi-")) {
+    const actuel = defisDeLaSemaine() || { fiches: [], message: "" };
+    let fiches = [...actuel.fiches];
+    let message = actuel.message;
+    if (a === "coach-defi-ajouter") { const id = document.getElementById("choix-defi").value; if (id && !fiches.includes(id)) fiches.push(id); }
+    if (a === "coach-defi-retirer") fiches = fiches.filter((id) => id !== bouton.dataset.id);
+    if (a === "coach-defi-message") message = document.getElementById("message-defi").value.trim().slice(0, 200);
+    messageCoach = await ecrireDefi({ fiches: fiches.slice(0, MAX_DEFIS), lundi: lundiDe(), message });
     return chargerGroupe();
   }
   // Exos donnés au joueur choisi

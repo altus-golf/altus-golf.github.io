@@ -601,3 +601,7 @@ details[open] > summary::before { transform: rotate(90deg); }
 }
 /* Puces des jeux : la distance porte son unité (« 10 ft », « 6,1 m ») : texte un peu plus petit pour tenir dans le rond */
 .point-trefle text { font-size: 20px; letter-spacing: -0.5px; }
+
+/* Défis de la semaine (plusieurs) */
+.liste-defis { margin: 0.4rem 0 0.6rem; padding-left: 1.2rem; }
+.liste-defis li { margin: 0.2rem 0; }

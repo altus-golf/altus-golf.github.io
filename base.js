@@ -13,7 +13,7 @@
    à taper (choix de l'utilisateur, 19/11/2026) :
      groupes/G                      { nom }  (ouvert par un coach à sa première connexion)
      groupes/G/bilans/<uid>         bilan d'un joueur, écrit par lui seul (voir calculerBilan, app.js)
-     groupes/G/reglages/defi        { fiche, lundi, message }  défi de la semaine (coachs)
+     groupes/G/reglages/defi        { fiches, fiche, lundi, message }  défis de la semaine (coachs ; « fiche » = le 1er, pour les anciennes versions)
      groupes/G/consignes/<uid>      { exos, message, faits }   exos donnés par un coach
    Un bilan par joueur (et pas un document par score) : ouvrir les
    classements ne lit qu'un document par joueur.
@@ -171,7 +171,7 @@ const PRENOMS_DEMO = ["Lucas", "Emma", "Hugo", "Léa", "Nathan", "Chloé"];
 function baseDemo() {
   let db = lireStockage("demo", null);
   if (db && db.version === 1) return db;
-  db = { version: 1, bilans: {}, defi: { fiche: "trefle", lundi: lundiDe(), message: "Meilleure série au Trèfle : qui fera 16 d'affilée ?" }, consignes: {} };
+  db = { version: 1, bilans: {}, defi: { fiches: ["trefle", "lowry-putt"], lundi: lundiDe(), message: "Meilleure série au Trèfle : qui fera 16 d'affilée ?" }, consignes: {} };
   const fiches = ITEMS_ALTUS.map((it) => it.id).filter((id) => id !== "pelz-total");
   const lundi = lundiDe();
   PRENOMS_DEMO.forEach((prenom, k) => {
@@ -389,6 +389,7 @@ async function verifierCoach() {
 }
 
 async function ecrireDefi(defi) {
+  defi = { ...defi, fiche: defi.fiches[0] || "" };   // « fiche » : pour les téléphones encore sur l'ancienne version
   if (modeDemo()) { const db = baseDemo(); db.defi = defi; ecrireStockage("demo", db); return ""; }
   try { await groupeCoach(codeCoach()).collection("reglages").doc("defi").set(defi); return ""; } catch (e) { return "Enregistrement refusé (connexion coach ?)."; }
 }
@@ -440,10 +441,16 @@ function normaliserBilan(b) {
   };
 }
 
+// Plusieurs défis par semaine (choix de l'utilisateur, 19/11/2026) : { fiches: [ids ≤ 5], lundi, message }.
+// L'ancien format { fiche } (un seul défi) est encore accepté.
 function normaliserDefi(d) {
-  if (!d || typeof d !== "object" || !idFicheValide(d.fiche) || !jourValide(d.lundi)) return null;
-  return { fiche: d.fiche, lundi: d.lundi, message: typeof d.message === "string" ? d.message.slice(0, 200) : "" };
+  if (!d || typeof d !== "object" || !jourValide(d.lundi)) return null;
+  const liste = Array.isArray(d.fiches) ? d.fiches : [d.fiche];
+  const fiches = [...new Set(liste.filter(idFicheValide))].slice(0, MAX_DEFIS);
+  if (!fiches.length) return null;
+  return { fiches, lundi: d.lundi, message: typeof d.message === "string" ? d.message.slice(0, 200) : "" };
 }
+const MAX_DEFIS = 5;
 
 function normaliserConsignes(c) {
   const d = c && typeof c === "object" ? c : {};

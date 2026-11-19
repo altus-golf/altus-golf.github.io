@@ -38,6 +38,11 @@
 ## v8 (19/11/2026) : pieds jusqu'à 10 ft, mètres au-delà
 - ✅ Nouvelle règle de l'utilisateur : distances jusqu'à 10 pieds en pieds (« 10 ft »), au-delà en mètres (« 6,1 m ») ; les zones restent en pieds (cercle de 1 / 2 pieds, demi-lune de 4 pieds, zones du Lowry, barème du Pelz). Speed Drill 5 à 10 m, Demi-lune et 2 Feet Circle 4 à 11 m, Exceptions demandées ensuite : Lowry Putt (10, 20, 30 ft) et Start Line (5, 10, 20 ft) tout en pieds ; 9 Putt Circle affiché 4, 5, 6 m. Unité écrite dans chaque puce (texte un peu plus petit).
 
+## v9 (19/11/2026) : Snail, défis
+- ✅ Snail : plus de montante / descendante ; 8 putts de 3 à 10 ft dans l'ordre, score = rentrés /8.
+- ✅ Défi de la semaine jouable même s'il reste des exos du coach (affiché après eux, avec un conseil).
+- ✅ Plusieurs défis par semaine (5 max) : le coach en ajoute / retire dans l'espace coachs ; un classement par défi, calculé depuis les scores de la semaine (hist).
+
 ## Décisions (avec l'utilisateur)
 - Site séparé de l'appli perso, dans l'organisation GitHub `altus-golf` (pour que le nom du compte perso n'apparaisse pas).
 - Utilisateurs : joueurs (sur leur téléphone) + coachs (l'utilisateur et d'autres coachs d'Altus).
