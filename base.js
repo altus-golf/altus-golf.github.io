@@ -257,7 +257,13 @@ async function publierBilan(bilan) {
     return;
   }
   if (!(await demarrerFirebase())) return;
-  try { await groupe(m.code).collection("bilans").doc(m.uid).set(bilanEnLigne(bilan)); } catch (e) { /* plus tard */ }
+  const doc = groupe(m.code).collection("bilans").doc(m.uid);
+  try {
+    await doc.set(bilanEnLigne(bilan));
+  } catch (e) {
+    // Règles Firebase pas encore recollées (champ « dist » refusé) : on envoie sans
+    try { const { dist, ...sansDist } = bilan; await doc.set(bilanEnLigne(sansDist)); } catch (e2) { /* plus tard */ }
+  }
 }
 
 // Firestore n'accepte pas les tableaux de tableaux : hist part en [{ d, v }].
@@ -460,6 +466,7 @@ function normaliserBilan(b) {
     annee: Number.isInteger(b.annee) ? b.annee : 0,
     maj: jourValide(b.maj) ? b.maj : "",
     exos,
+    dist: normaliserDist(b.dist),
     hist,
     semaine: { lundi: jourValide(s.lundi) ? s.lundi : "", n: nombreOk(s.n, 10000) ? s.n : 0 },
     defi,
@@ -471,6 +478,20 @@ function normaliserBilan(b) {
 
 // Plusieurs défis par semaine (choix de l'utilisateur, 19/11/2026) : { fiches: [ids ≤ 5], lundi, message }.
 // L'ancien format { fiche } (un seul défi) est encore accepté.
+// Réussite par distance des exos interactifs : { exo: { distance: [réussis, tentés] } }
+function normaliserDist(dist) {
+  const res = {};
+  for (const [exo, parD] of Object.entries(dist && typeof dist === "object" ? dist : {})) {
+    if (!EXOS_POINTS[exo] || !parD || typeof parD !== "object") continue;
+    const ok = {};
+    for (const [d, x] of Object.entries(parD)) {
+      if (/^\d{1,3}(\.\d{1,2})?$/.test(d) && Array.isArray(x) && Number.isInteger(x[0]) && Number.isInteger(x[1]) && x[0] >= 0 && x[0] <= x[1] && x[1] <= 100000) ok[d] = [x[0], x[1]];
+    }
+    if (Object.keys(ok).length) res[exo] = ok;
+  }
+  return res;
+}
+
 function normaliserDefi(d) {
   if (!d || typeof d !== "object" || !jourValide(d.lundi)) return null;
   const liste = Array.isArray(d.fiches) ? d.fiches : [d.fiche];

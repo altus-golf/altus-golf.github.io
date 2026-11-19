@@ -117,6 +117,7 @@ Object.entries(EXOS_POINTS).forEach(([exo, config]) => {
   };
   config.libelle = (d) => versAltus(d).long;
   config.points.forEach((p) => { if (p.texte === undefined) p.texte = versAltus(p.d).court; });
+  config.piedsDe = (d) => (enMetres ? d * 3.2808 : d);   // pour trier les distances (espace coachs)
   delete config.unite;   // le libellé suffit (sinon exos-points.js ajoute « en mètres »)
 });
 function remplacerTextes(exo, remplacements) {

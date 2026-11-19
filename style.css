@@ -605,3 +605,10 @@ details[open] > summary::before { transform: rotate(90deg); }
 /* Défis de la semaine (plusieurs) */
 .liste-defis { margin: 0.4rem 0 0.6rem; padding-left: 1.2rem; }
 .liste-defis li { margin: 0.2rem 0; }
+
+/* Espace coachs : réussite par distance */
+.table-distances { width: 100%; border-collapse: collapse; margin-top: 0.6rem; }
+.table-distances th, .table-distances td { text-align: left; padding: 0.35rem 0.25rem; border-bottom: 1px solid var(--bord); }
+.table-distances td:last-child, .table-distances th:last-child { text-align: right; white-space: nowrap; }
+.barre-pc { display: inline-block; width: 70px; height: 10px; border-radius: 5px; background: var(--bord); vertical-align: middle; overflow: hidden; }
+.barre-pc span { display: block; height: 100%; background: var(--accent, #365571); }

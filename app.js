@@ -48,6 +48,28 @@ function exosDeLaSemaine() {
   return n;
 }
 
+// Réussite par distance de mes exos interactifs, année en cours :
+// { exo: { distance: [réussis, tentés] } } (distance telle que dans exos-points.js)
+function distancesDeLAnnee() {
+  const annee = String(new Date().getFullYear());
+  const res = {};
+  for (const exo of Object.keys(EXOS_POINTS)) {
+    const config = EXOS_POINTS[exo];
+    if (!ficheDe(config.idFiche) || !config.points.length) continue;
+    const parD = {};
+    toursDe(exo).filter((t) => t.d.startsWith(annee)).forEach((t) => {
+      for (const [d, n] of Object.entries(t.tentes || {})) {
+        if (!n) continue;
+        const x = (parD[d] = parD[d] || [0, 0]);
+        x[0] += n - ((t.rates && t.rates[d]) || 0);
+        x[1] += n;
+      }
+    });
+    if (Object.keys(parD).length) res[exo] = parD;
+  }
+  return res;
+}
+
 function calculerBilan() {
   const m = moi();
   const hist = {};
@@ -57,6 +79,8 @@ function calculerBilan() {
   const lundi = lundiDe();
   // Plus de champ « defi » : les classements des défis se calculent avec hist (meilleurCetteSemaine)
   const bilan = calculerBilanDepuis(m.uid, m.prenom, hist, { lundi, n: exosDeLaSemaine() }, null);
+  const dist = distancesDeLAnnee();
+  if (Object.keys(dist).length) bilan.dist = dist;
   if (m.repris) bilan.repris = m.repris;   // historique du classeur repris (classeur.js)
   return bilan;
 }
@@ -119,6 +143,42 @@ function courbe(valeurs) {
 }
 
 // Records et courbes d'un joueur, à partir de son historique { fiche: [[d, v]] }
+// Espace coachs : % de réussite par distance (exos interactifs), tous les exos ou un seul.
+// Les distances sont regroupées par leur texte affiché (« 3 pieds », « 4 m »…).
+let exoDistances = "tous";
+function blocDistances(j) {
+  const exos = Object.keys(j.dist || {}).filter((exo) => EXOS_POINTS[exo]);
+  if (!exos.length) return `<section class="bloc pr-bloc"><h2 class="bloc-titre">🎯 Réussite par distance</h2>
+    <p class="petit">Pas encore de données : elles arrivent quand ${echapper(j.prenom)} joue les exos interactifs sur le site${j.source === "classeur" ? " (le classeur ne donne pas le détail par distance)" : ""}.</p></section>`;
+  if (exoDistances !== "tous" && !exos.includes(exoDistances)) exoDistances = "tous";
+  const lignes = {};
+  (exoDistances === "tous" ? exos : [exoDistances]).forEach((exo) => {
+    const config = EXOS_POINTS[exo];
+    for (const [d, [r, t]] of Object.entries(j.dist[exo])) {
+      const texte = config.libelle ? config.libelle(Number(d)) : d;
+      const l = (lignes[texte] = lignes[texte] || { r: 0, t: 0, pieds: Infinity });
+      l.r += r; l.t += t;
+      l.pieds = Math.min(l.pieds, config.piedsDe ? config.piedsDe(Number(d)) : Number(d));
+    }
+  });
+  const tri = Object.entries(lignes).sort((a, b) => a[1].pieds - b[1].pieds);
+  return `<section class="bloc pr-bloc">
+    <h2 class="bloc-titre">🎯 Réussite par distance (${new Date().getFullYear()})</h2>
+    <select id="choix-exo-distances" class="choix" aria-label="Exo">
+      <option value="tous">Tous les exos interactifs</option>
+      ${exos.map((exo) => `<option value="${echapper(exo)}" ${exo === exoDistances ? "selected" : ""}>${echapper(EXOS_POINTS[exo].nom)}</option>`).join("")}
+    </select>
+    <table class="table-distances">
+      <thead><tr><th>Distance</th><th>Réussite</th><th>Putts</th></tr></thead>
+      <tbody>${tri.map(([texte, l]) => {
+        const pc = Math.round((100 * l.r) / l.t);
+        return `<tr><td>${echapper(texte)}</td><td><span class="barre-pc"><span style="width:${pc}%"></span></span> <strong>${pc} %</strong></td><td>${l.r}/${l.t}</td></tr>`;
+      }).join("")}</tbody>
+    </table>
+    <p class="petit">Réussi = rentré, ou dans la zone / bien sorti selon l'exo.</p>
+  </section>`;
+}
+
 function blocRecords(hist, titre) {
   const lignes = Object.entries(hist)
     .filter(([id, l]) => itemDe(id) && l.length)
@@ -423,6 +483,7 @@ function vueCoach() {
       <textarea id="message-consigne" maxlength="300" rows="2">${echapper(c.message)}</textarea>
       <button type="button" class="bouton" data-a="coach-message">Enregistrer le message</button>
     </section>
+    ${blocDistances(j)}
     ${blocRecords(j.hist, `📈 Progrès de ${echapper(j.prenom)}`)}
     <section class="bloc pr-bloc">
       <button type="button" class="bouton danger pleine-largeur" data-a="coach-supprimer">🗑 Retirer ${echapper(j.prenom)}${j.source === "classeur" ? " 📄" : ""} du groupe</button>
@@ -530,6 +591,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   document.addEventListener("change", (e) => {
     if (e.target.id === "choix-exo-classement") { exoClassement = e.target.value; afficherVue(); }
+    if (e.target.id === "choix-exo-distances") { exoDistances = e.target.value; afficherVue(); }
   });
   document.addEventListener("submit", async (e) => {
     if (e.target.id !== "form-rejoindre") return;
