@@ -42,6 +42,7 @@
 - ✅ Snail : plus de montante / descendante ; 8 putts de 3 à 10 ft dans l'ordre, score = rentrés /8.
 - ✅ Défi de la semaine jouable même s'il reste des exos du coach (affiché après eux, avec un conseil).
 - ✅ Import du classeur : on peut choisir directement le fichier Excel (.xlsx) ; l'onglet Saisie est lu tout seul (testé : 16 joueurs, 381 scores).
+- ✅ Espace coachs : « 🗑 Retirer du groupe » (doublons de prénom) + fiche du joueur : compte du site / importé, « c'est toi », nombre de scores, dernière mise à jour.
 - ✅ Plusieurs défis par semaine (5 max) : le coach en ajoute / retire dans l'espace coachs ; un classement par défi, calculé depuis les scores de la semaine (hist).
 
 ## Décisions (avec l'utilisateur)

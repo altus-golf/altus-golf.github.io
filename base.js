@@ -394,6 +394,20 @@ async function ecrireDefi(defi) {
   try { await groupeCoach(codeCoach()).collection("reglages").doc("defi").set(defi); return ""; } catch (e) { return "Enregistrement refusé (connexion coach ?)."; }
 }
 
+// Coach : retirer un joueur du groupe (son bilan + ses exos donnés).
+// Un joueur qui utilise encore le site réapparaît dès qu'il joue un exo.
+async function supprimerJoueur(uid) {
+  if (modeDemo()) { const db = baseDemo(); delete db.bilans[uid]; delete db.consignes[uid]; ecrireStockage("demo", db); return ""; }
+  try {
+    const g = groupeCoach(codeCoach());
+    await g.collection("bilans").doc(uid).delete();
+    await g.collection("consignes").doc(uid).delete();
+    return "";
+  } catch (e) {
+    return "Suppression refusée (connexion coach ?).";
+  }
+}
+
 async function ecrireConsignes(uid, c) {
   if (modeDemo()) { const db = baseDemo(); db.consignes[uid] = c; ecrireStockage("demo", db); return ""; }
   try {
@@ -431,6 +445,7 @@ function normaliserBilan(b) {
     uid: b.uid,
     prenom: b.prenom.slice(0, 30),
     annee: Number.isInteger(b.annee) ? b.annee : 0,
+    maj: jourValide(b.maj) ? b.maj : "",
     exos,
     hist,
     semaine: { lundi: jourValide(s.lundi) ? s.lundi : "", n: nombreOk(s.n, 10000) ? s.n : 0 },

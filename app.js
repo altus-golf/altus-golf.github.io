@@ -358,6 +358,7 @@ function vueCoach() {
   html += `<div class="filtres">${joueurs.map((x) => `<button type="button" class="filtre ${x.uid === j.uid ? "actif" : ""}" data-a="coach-joueur" data-uid="${echapper(x.uid)}">${echapper(x.prenom)}${x.source === "classeur" ? " 📄" : ""}</button>`).join("")}</div>
     <section class="bloc pr-bloc consignes-admin">
       <h2 class="bloc-titre">⭐ Exos pour ${echapper(j.prenom)}</h2>
+      <p class="petit">${j.source === "classeur" ? "📄 Historique importé du classeur" : `Compte du site${moi() && j.uid === moi().uid ? " (c'est toi)" : ""}`} · ${Object.values(j.exos).reduce((t, e) => t + e.n, 0)} scores cette année${j.maj ? ` · mis à jour le ${echapper(dateLisible(j.maj))}` : ""}</p>
       <p class="bloc-info">${nSemaine} exo${nSemaine > 1 ? "s" : ""} joué${nSemaine > 1 ? "s" : ""} cette semaine · les exos donnés passent avant ses défis de la semaine</p>
       ${c.exos.length ? `<ul class="liste-consignes">${c.exos.map((id) => `<li class="consigne">
         <span><strong>${echapper((ficheDe(id) || { titre: id }).titre)}</strong><small>${c.faits[id] ? "✓ fait le " + echapper(dateLisible(c.faits[id])) : "à faire"}</small></span>
@@ -371,7 +372,11 @@ function vueCoach() {
       <textarea id="message-consigne" maxlength="300" rows="2">${echapper(c.message)}</textarea>
       <button type="button" class="bouton" data-a="coach-message">Enregistrer le message</button>
     </section>
-    ${blocRecords(j.hist, `📈 Progrès de ${echapper(j.prenom)}`)}`;
+    ${blocRecords(j.hist, `📈 Progrès de ${echapper(j.prenom)}`)}
+    <section class="bloc pr-bloc">
+      <button type="button" class="bouton danger pleine-largeur" data-a="coach-supprimer">🗑 Retirer ${echapper(j.prenom)}${j.source === "classeur" ? " 📄" : ""} du groupe</button>
+      <p class="petit">Efface ses scores du groupe (pas ceux de son téléphone). S'il utilise encore le site, il réapparaîtra dès qu'il jouera un exo.</p>
+    </section>`;
   return html;
 }
 
@@ -416,6 +421,13 @@ async function actionCoach(a, bouton) {
   messageCoach = "";
   if (a === "coach-demo") { entrerCoachDemo(); return changerVue("coach"); }
   if (a === "coach-joueur") { joueurCoach = bouton.dataset.uid; return afficherVue(); }
+  if (a === "coach-supprimer") {
+    const j = groupeDonnees.bilans.find((b) => b.uid === joueurCoach);
+    if (!j || !confirm(`Retirer ${j.prenom}${j.source === "classeur" ? " (historique importé)" : ""} du groupe ?`)) return;
+    messageCoach = await supprimerJoueur(j.uid);
+    joueurCoach = null;
+    return chargerGroupe();
+  }
   if (a.startsWith("coach-defi-")) {
     const actuel = defisDeLaSemaine() || { fiches: [], message: "" };
     let fiches = [...actuel.fiches];
