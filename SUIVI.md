@@ -21,10 +21,16 @@
 - ✅ Plus de code de groupe : un seul groupe « ALTUS », le joueur tape juste son prénom. Le groupe s'ouvre à la 1re connexion d'un coach. Contrepartie : toute personne qui a le lien peut entrer et voir les prénoms et scores du groupe.
 - À faire : un coach se connecte une première fois (ouvre le groupe) puis lance le défi de la semaine.
 
+## v5 (19/11/2026) : connexion Google pour tous
+- ✅ Joueurs ET coachs se connectent avec Google (plus de connexion anonyme). Le prénom affiché est choisi par le joueur (pré-rempli avec son prénom Google) ; l'adresse n'est jamais affichée. Même compte sur plusieurs téléphones = même joueur dans les classements (les scores détaillés restent sur chaque téléphone).
+- ✅ Espace coachs : plus de bouton de connexion à part ; le site vérifie si le compte est coach (et ouvre le groupe à la 1re visite d'un coach).
+- ✅ Messages d'erreur de connexion précis (ex. « auth/operation-not-allowed » = Google pas activé dans Firebase).
+- À faire (utilisateur) : activer Google dans Authentication > Méthode de connexion.
+
 ## Décisions (avec l'utilisateur)
 - Site séparé de l'appli perso, dans l'organisation GitHub `altus-golf` (pour que le nom du compte perso n'apparaisse pas).
 - Utilisateurs : joueurs (sur leur téléphone) + coachs (l'utilisateur et d'autres coachs d'Altus).
-- Accès joueur : prénom seulement (le code du groupe a été retiré le 19/11/2026). Défi de la semaine choisi par les coachs. Exos donnés par un coach = prioritaires sur le défi.
+- Accès joueur : compte Google + prénom (code du groupe retiré, connexion Google pour tous le 19/11/2026). Défi de la semaine choisi par les coachs. Exos donnés par un coach = prioritaires sur le défi.
 - Exos : putting interactifs ; d'autres seront choisis un par un.
 
 ## À faire

@@ -111,7 +111,9 @@ function chargerScript(adresse) {
   });
 }
 
-// Prépare Firebase et connecte ce téléphone en anonyme. Renvoie true si prêt.
+// Prépare Firebase et attend qu'il retrouve la connexion Google déjà faite sur ce
+// téléphone (s'il y en a une). Renvoie true si prêt. Tout le monde (joueurs et
+// coachs) se connecte avec Google : choix de l'utilisateur, 19/11/2026.
 function demarrerFirebase() {
   if (modeDemo()) return Promise.resolve(false);
   if (base) return Promise.resolve(true);
@@ -125,8 +127,7 @@ function demarrerFirebase() {
           await chargerScript(racine + "firebase-firestore-compat.js");
         }
         if (!firebase.apps.length) firebase.initializeApp(CONFIG_FIREBASE);
-        const deja = await new Promise((ok) => { const stop = firebase.auth().onAuthStateChanged((u) => { stop(); ok(u); }); });
-        if (!deja) await firebase.auth().signInAnonymously();
+        await new Promise((ok) => { const stop = firebase.auth().onAuthStateChanged(() => { stop(); ok(); }); });
         base = firebase.firestore();
         return true;
       } catch (e) {
@@ -139,6 +140,26 @@ function demarrerFirebase() {
   return promesseFirebase;
 }
 function uidFirebase() { return firebase.auth().currentUser.uid; }
+
+// Compte Google connecté sur ce téléphone (null sinon). En démo : un faux compte.
+function utilisateurGoogle() {
+  if (modeDemo()) return { uid: "demo", displayName: "" };
+  try { const u = base && firebase.auth().currentUser; return u && !u.isAnonymous ? u : null; } catch (e) { return null; }
+}
+function firebasePret() { return modeDemo() || !!base; }
+
+// Prévient l'appli à chaque connexion / déconnexion (et une fois au démarrage)
+async function suivreConnexion(rappel) {
+  if (modeDemo()) { rappel(); return; }
+  if (!(await demarrerFirebase())) { rappel(); return; }
+  firebase.auth().onAuthStateChanged((u) => {
+    // Autre compte (ou ancienne connexion anonyme) : le prénom est redemandé
+    const m = moi();
+    if (u && m && m.uid !== u.uid) ecrireStockage("moi", null);
+    estCoachConfirme = null;
+    rappel();
+  });
+}
 const groupe = (code) => base.collection("groupes").doc(code);
 
 
@@ -280,39 +301,25 @@ async function noterFaitConsigne(faits) {
 }
 
 
-/* ---------- Coachs ---------- */
+/* ---------- Connexion Google et coachs ---------- */
 
-// Les coachs utilisent une 2e « application » Firebase nommée « coach » :
-// leur connexion Google ne remplace pas la connexion anonyme du joueur
-// (sinon un coach qui joue aussi perdrait son bilan de joueur).
-function appCoach() {
-  try { return firebase.app("coach"); } catch (e) { return firebase.initializeApp(CONFIG_FIREBASE, "coach"); }
-}
-const groupeCoach = (code) => appCoach().firestore().collection("groupes").doc(code);
-let suiviCoach = false;
-// Firebase retrouve la connexion Google tout seul au démarrage : on redessine quand c'est fait
-async function suivreConnexionCoach(rappel) {
-  if (modeDemo() || suiviCoach || !(await demarrerFirebase())) return;
-  suiviCoach = true;
-  appCoach().auth().onAuthStateChanged(rappel);
-}
-
-// Code du groupe suivi par le coach sur ce téléphone
+// Un coach = un compte Google dont l'adresse est dans les règles Firestore.
+// On le découvre en essayant d'ouvrir le groupe (seul un coach en a le droit).
+let estCoachConfirme = null;   // null = pas encore vérifié, true / false
+const groupeCoach = (code) => groupe(code);
 function codeCoach() { return CODE_GROUPE; }
 
-// Connexion coach : compte Google (adresse autorisée dans les règles Firestore).
-// En démo : pas de compte, on entre directement.
-async function connecterCoach() {
-  if (modeDemo()) { ecrireStockage("coachDemo", true); return ""; }
-  // La fenêtre Google doit s'ouvrir TOUT DE SUITE après l'appui (sinon le téléphone
-  // la bloque) : Firebase est déjà chargé à l'ouverture de l'espace coachs
-  // (suivreConnexionCoach) ; sinon on le charge et on demande un 2e appui.
+// Connexion Google (joueurs et coachs). La fenêtre Google doit s'ouvrir TOUT DE
+// SUITE après l'appui, sinon le téléphone la bloque : Firebase est chargé dès
+// l'ouverture de la page ; s'il ne l'est pas encore, on demande un 2e appui.
+async function connecterGoogle() {
+  if (modeDemo()) return "";
   if (!window.firebase || !base) {
     if (!(await demarrerFirebase())) return "Pas de connexion. Vérifie le réseau et réessaie.";
     return "C'est prêt : appuie encore une fois sur le bouton de connexion.";
   }
   try {
-    await appCoach().auth().signInWithPopup(new firebase.auth.GoogleAuthProvider());
+    await firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider());
     return "";
   } catch (e) {
     // Message clair selon l'erreur de Firebase (le code entre parenthèses aide à dépanner)
@@ -328,25 +335,29 @@ async function connecterCoach() {
     return (messages[code] || "Connexion Google impossible.") + ` (erreur : ${code})`;
   }
 }
-function coachConnecte() {
-  if (modeDemo()) return lireStockage("coachDemo", false) === true;
-  try { const u = window.firebase && appCoach().auth().currentUser; return !!(u && !u.isAnonymous); } catch (e) { return false; }
-}
-async function deconnecterCoach() {
+
+async function deconnecter() {
+  ecrireStockage("moi", null);
+  estCoachConfirme = null;
   if (modeDemo()) { ecrireStockage("coachDemo", null); return; }
-  try { await appCoach().auth().signOut(); } catch (e) { /* rien */ }
+  try { await firebase.auth().signOut(); } catch (e) { /* rien */ }
 }
 
-// Ouvre le groupe (appelé à chaque connexion d'un coach, sans risque si déjà ouvert) :
-// seul un coach peut le faire
-async function ouvrirGroupe() {
-  if (modeDemo()) return "";
-  if (!(await demarrerFirebase())) return "Pas de connexion.";
+// Coach ? En démo : bouton « Entrer (démo) ». En vrai : vérifié par verifierCoach.
+function coachConnecte() {
+  if (modeDemo()) return lireStockage("coachDemo", false) === true;
+  return !!utilisateurGoogle() && estCoachConfirme === true;
+}
+function entrerCoachDemo() { ecrireStockage("coachDemo", true); }
+
+// Essaie d'ouvrir le groupe (sans risque s'il l'est déjà) : réussi = ce compte est coach
+async function verifierCoach() {
+  if (modeDemo() || !utilisateurGoogle()) return;
   try {
-    await groupeCoach(CODE_GROUPE).set({ nom: "Altus Performance" }, { merge: true });
-    return "";
+    await groupe(CODE_GROUPE).set({ nom: "Altus Performance" }, { merge: true });
+    estCoachConfirme = true;
   } catch (e) {
-    return `Connecté, mais ce compte Google n'est pas dans la liste des coachs des règles Firestore (erreur : ${(e && e.code) || "inconnue"}).`;
+    estCoachConfirme = false;
   }
 }
 

@@ -21,6 +21,7 @@ let erreurGroupe = false;    // la base n'a pas répondu
 let exoClassement = null;    // exo choisi dans « Classements »
 let joueurCoach = null;      // uid du joueur choisi dans l'espace coach
 let messageCoach = "";       // erreur à afficher dans l'espace coach
+let messageConnexion = "";   // erreur de connexion Google (page de connexion)
 
 // Exos à jouer et scores classés : exos-altus.js (FICHES_ALTUS, ITEMS_ALTUS, ficheDe, itemDe)
 const FICHES = FICHES_ALTUS;
@@ -153,13 +154,25 @@ function ligneClassement(i, nom, valeur, estMoi) {
 
 /* ---------- 3. Vues ---------- */
 
-function vueAccueil() {
+// Page de connexion Google (joueurs et coachs)
+function vueConnexion() {
   return `<section class="bloc pr-bloc accueil-altus">
     <h2 class="bloc-titre">Bienvenue chez Altus 👋</h2>
-    <p>Entre ton prénom pour rejoindre le groupe.</p>
+    <p>Connecte-toi avec ton compte Google pour rejoindre le groupe. Ton adresse n'est montrée à personne : les autres voient seulement ton prénom.</p>
+    ${messageConnexion ? `<p class="erreur">${echapper(messageConnexion)}</p>` : ""}
+    <button type="button" class="bouton principal pleine-largeur" data-a="connexion">Se connecter avec Google</button>
+  </section>`;
+}
+
+function vueAccueil() {
+  const u = utilisateurGoogle();
+  const prenomGoogle = u && u.displayName ? u.displayName.split(" ")[0] : "";
+  return `<section class="bloc pr-bloc accueil-altus">
+    <h2 class="bloc-titre">Bienvenue chez Altus 👋</h2>
+    <p>Quel prénom veux-tu afficher dans les classements ?</p>
     <form id="form-rejoindre">
       <label for="prenom">Prénom</label>
-      <input id="prenom" name="prenom" autocomplete="given-name" maxlength="30" required>
+      <input id="prenom" name="prenom" autocomplete="given-name" maxlength="30" required value="${echapper(prenomGoogle)}">
       <p class="erreur" id="erreur-rejoindre" hidden></p>
       <button type="submit" class="bouton principal pleine-largeur">C'est parti</button>
     </form>
@@ -280,14 +293,16 @@ function vueExos() {
 
 function vueCoach() {
   if (!coachConnecte()) {
+    let texte;
+    if (modeDemo()) texte = `<button type="button" class="bouton principal pleine-largeur" data-a="coach-demo">Entrer (démo)</button>`;
+    else if (estCoachConfirme === null) texte = `<p class="petit">Vérification de ton compte…</p>`;
+    else texte = `<p class="erreur">Ce compte Google n'est pas dans la liste des coachs. Si c'est une erreur, ajoute son adresse dans les règles Firestore (console Firebase).</p>`;
     return `<section class="bloc pr-bloc"><h2 class="bloc-titre">🧑‍🏫 Espace coachs</h2>
-      <p>Réservé aux coachs d'Altus${modeDemo() ? "" : " (compte Google autorisé)"}.</p>
-      ${messageCoach ? `<p class="erreur">${echapper(messageCoach)}</p>` : ""}
-      <button type="button" class="bouton principal pleine-largeur" data-a="coach-connexion">${modeDemo() ? "Entrer (démo)" : "Se connecter avec Google"}</button></section>`;
+      <p>Réservé aux coachs d'Altus.</p>${texte}</section>`;
   }
   let html = `<section class="bloc pr-bloc"><h2 class="bloc-titre">🧑‍🏫 Espace coachs</h2>
     ${messageCoach ? `<p class="erreur">${echapper(messageCoach)}</p>` : ""}
-    <button type="button" class="lien-bouton" data-a="coach-deconnexion">Se déconnecter</button></section>`;
+    <p class="petit">Le groupe est ouvert : les joueurs entrent avec leur compte Google.</p></section>`;
   if (!groupeDonnees) return html + `<p class="petit">${erreurGroupe ? "Pas de connexion." : "Chargement…"}</p>`;
 
   // --- Défi de la semaine ---
@@ -345,14 +360,20 @@ function afficherVue() {
     : enCoach ? `<button type="button" class="onglet" data-a="vue" data-vue="seance">← Retour</button>` : "";
   document.getElementById("sous-titre").textContent = m ? `${m.prenom} · groupe Altus` : "Petit jeu et putting";
   const contenu = document.getElementById("contenu");
-  if (enCoach) contenu.innerHTML = vueCoach();
+  document.getElementById("lien-deconnexion").hidden = !utilisateurGoogle() || modeDemo();
+  if (!firebasePret()) contenu.innerHTML = `<p class="petit">Chargement…</p>`;
+  else if (!utilisateurGoogle()) contenu.innerHTML = vueConnexion();
+  else if (enCoach) contenu.innerHTML = vueCoach();
   else if (!m) contenu.innerHTML = vueAccueil();
   else contenu.innerHTML = { seance: vueSeance, classements: vueClassements, moi: vueMoi, exos: vueExos }[vue]();
 }
 
 function changerVue(nouvelle) {
   vue = nouvelle;
-  if (vue === "coach") suivreConnexionCoach(() => { if (vue === "coach") chargerGroupe(); });
+  // Espace coachs : on vérifie une fois si ce compte Google est coach (et ça ouvre le groupe)
+  if (vue === "coach" && estCoachConfirme === null && utilisateurGoogle() && !modeDemo()) {
+    verifierCoach().then(() => { afficherVue(); chargerGroupe(); });
+  }
   messageCoach = "";
   afficherVue();
   window.scrollTo(0, 0);
@@ -364,13 +385,7 @@ function changerVue(nouvelle) {
 
 async function actionCoach(a, bouton) {
   messageCoach = "";
-  if (a === "coach-connexion") {
-    messageCoach = await connecterCoach();
-    if (!messageCoach) messageCoach = await ouvrirGroupe();   // le groupe existe dès la 1re connexion d'un coach
-    afficherVue();          // (pas changerVue : elle effacerait le message d'erreur)
-    return chargerGroupe();
-  }
-  if (a === "coach-deconnexion") { await deconnecterCoach(); groupeDonnees = null; return changerVue("coach"); }
+  if (a === "coach-demo") { entrerCoachDemo(); return changerVue("coach"); }
   if (a === "coach-joueur") { joueurCoach = bouton.dataset.uid; return afficherVue(); }
   if (a === "coach-defi") {
     const fiche = document.getElementById("choix-defi").value;
@@ -393,7 +408,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const m = moi();
   if (!modeDemo() && m && m.uid.startsWith("moi-")) ecrireStockage("moi", null);
   afficherVue();
-  chargerGroupe().then(() => { if (moi()) publierBilan(calculerBilan()); });
+  // Firebase retrouve la connexion Google : on affiche la bonne page à chaque changement
+  suivreConnexion(() => {
+    afficherVue();
+    if (vue === "coach" && estCoachConfirme === null && utilisateurGoogle() && !modeDemo()) changerVue("coach");
+    chargerGroupe().then(() => { if (moi()) publierBilan(calculerBilan()); });
+  });
 
   document.addEventListener("click", (e) => {
     const bouton = e.target.closest("[data-a]");
@@ -401,10 +421,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const a = bouton.dataset.a;
     if (a === "vue") changerVue(bouton.dataset.vue);
     if (a === "ouvrir-coach") changerVue("coach");
-    if (a === "changer-joueur" && confirm("Changer de joueur ou de groupe sur ce téléphone ? Tes scores restent sur ce téléphone.")) {
-      ecrireStockage("moi", null);
-      groupeDonnees = null;
-      changerVue("seance");
+    if (a === "connexion") {
+      // Pas d'attente avant connecterGoogle : la fenêtre Google doit s'ouvrir tout de suite
+      connecterGoogle().then((erreur) => { messageConnexion = erreur; afficherVue(); });
+    }
+    if (a === "deconnexion" && confirm("Se déconnecter ? Tes scores restent sur ce téléphone.")) {
+      deconnecter().then(() => { groupeDonnees = null; changerVue("seance"); });
     }
     if (a.startsWith("coach-")) actionCoach(a, bouton);
   });

@@ -2,8 +2,8 @@ rules_version = '2';
 
 // Règles de sécurité Firestore du site Altus (à coller dans la console Firebase
 // du projet Altus : Firestore Database > Règles > remplacer tout > Publier).
-//  - Un groupe (son code) n'existe que si un COACH l'a créé.
-//  - Un joueur (connexion anonyme) qui connaît le code peut lire les bilans
+//  - Le groupe (ALTUS) n'existe que si un COACH l'a ouvert.
+//  - Un joueur connecté (compte Google) peut lire les bilans
 //    du groupe et écrire SEULEMENT son propre bilan.
 //  - Défi de la semaine et exos donnés : écrits par les coachs ; un joueur peut
 //    seulement noter la date où il a fait ses exos (champ « faits »).
