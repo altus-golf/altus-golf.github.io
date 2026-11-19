@@ -76,17 +76,21 @@ function lireClasseur(texte) {
   const lignes = String(texte || "").split(/\r?\n/).filter((l) => l.trim());
   const separateur = lignes.some((l) => l.includes("\t")) ? "\t" : lignes.some((l) => l.includes(";")) && !lignes.some((l) => l.includes(",")) ? ";" : ",";
   const res = { joueurs: {}, lignes: 0, ignorees: [], bizarres: [] };
+  const dejaVus = new Set();   // pour ne pas compter deux fois un score présent dans Saisie ET dans l'onglet du joueur
   for (const ligne of lignes) {
-    const [date, joueur, exercice, situation, score] = cellulesDe(ligne, separateur).map((c) => c.trim());
+    const [date, joueur, exercice, situation, score, origine] = cellulesDe(ligne, separateur).map((c) => c.trim());
     if (sansAccents(date) === "date") continue;   // ligne de titre
     const d = dateDuClasseur(date);
     const item = itemDuClasseur(exercice, situation);
     const v = Number(String(score).replace(",", "."));
     if (!d || !joueur || !item || score === "" || !Number.isFinite(v) || v < 0) {
-      if (joueur || exercice) res.ignorees.push(`${date} ${joueur} ${exercice} ${situation} ${score}`.trim());
+      if (joueur || exercice) res.ignorees.push(`${!d && item && score !== "" ? "⚠ sans date : " : ""}${date} ${joueur} ${exercice} ${situation} ${score}`.trim());
       continue;
     }
     const valeur = Math.round(v * 100) / 100;
+    const cle = `${slugPrenom(joueur)}|${item}|${d}|${valeur}`;
+    if (origine === "#onglet" && dejaVus.has(cle)) continue;   // déjà dans Saisie
+    dejaVus.add(cle);
     const maxi = (itemDe(item) || {}).max;
     if (valeur !== Math.round(valeur) || (maxi && valeur > maxi)) res.bizarres.push(`${joueur} · ${itemDe(item).titre} · ${dateLisible(d)} : ${String(valeur).replace(".", ",")}`);
     const prenom = joueur.slice(0, 30);
@@ -253,15 +257,30 @@ async function texteDuFichierExcel(fichier) {
   const nom = classeur.SheetNames.find((n) => sansAccents(n) === "saisie");
   if (!nom) throw new Error("Pas d'onglet « Saisie » dans ce fichier.");
   const lignes = XLSX.utils.sheet_to_json(classeur.Sheets[nom], { header: 1, raw: true, defval: "" });
-  return lignes.map((l) => {
-    let date = l[0];
-    // Date Excel = nombre de jours depuis le 30/12/1899
-    if (typeof date === "number") {
-      const j = new Date(Date.UTC(1899, 11, 30) + Math.round(date) * 86400000);
-      date = `${String(j.getUTCDate()).padStart(2, "0")}/${String(j.getUTCMonth() + 1).padStart(2, "0")}/${j.getUTCFullYear()}`;
-    }
-    return [date, ...l.slice(1, 5)].map((c) => String(c).replace(/[\t\r\n]+/g, " ")).join("\t");
-  }).join("\n");
+  const propre = (c) => String(c).replace(/[\t\r\n]+/g, " ");
+  const texte = lignes.map((l) => [dateExcel(l[0]), ...l.slice(1, 5)].map(propre).join("\t"));
+  // Onglets des joueurs (une ligne par séance à partir de la ligne 15, date en colonne A) :
+  // certains joueurs y ont tapé leurs scores sans passer par Saisie (20/11/2026).
+  // Ligne 3 = exercice, ligne 4 = situation / distance ; un score déjà dans Saisie n'est pas compté deux fois.
+  classeur.SheetNames.forEach((n) => {
+    const t = XLSX.utils.sheet_to_json(classeur.Sheets[n], { header: 1, raw: true, defval: "" });
+    if (!t[13] || sansAccents(t[13][0]) !== "date" || !t[2]) return;   // pas un onglet de joueur
+    const joueur = propre(t[0][0] || n).trim();
+    t.slice(14).forEach((l) => {
+      for (let c = 1; c < l.length; c++) {
+        if (l[c] === "" || l[c] === null || !t[2][c]) continue;
+        texte.push([dateExcel(l[0]), joueur, t[2][c], (t[3] || [])[c] || "", l[c], "#onglet"].map(propre).join("\t"));
+      }
+    });
+  });
+  return texte.join("\n");
+}
+
+// Date Excel (nombre de jours depuis le 30/12/1899) -> « JJ/MM/AAAA » ; un texte reste tel quel
+function dateExcel(date) {
+  if (typeof date !== "number") return date;
+  const j = new Date(Date.UTC(1899, 11, 30) + Math.round(date) * 86400000);
+  return `${String(j.getUTCDate()).padStart(2, "0")}/${String(j.getUTCMonth() + 1).padStart(2, "0")}/${j.getUTCFullYear()}`;
 }
 
 
