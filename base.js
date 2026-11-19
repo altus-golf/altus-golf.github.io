@@ -664,7 +664,26 @@ function normaliserSauvegarde(x) {
     techniques: (Array.isArray(d.techniques) ? d.techniques : []).filter((x) => x && idFicheValide(x.id) && jourValide(x.d)).map((x) => ({ id: x.id, d: x.d })).slice(-200),
     effaces: (Array.isArray(d.effaces) ? d.effaces : []).filter((t) => nombreOk(t, 1e13)).slice(-500),
     effacesCoach: (Array.isArray(d.effacesCoach) ? d.effacesCoach : []).filter((t) => nombreOk(t, 1e13)).slice(-300),
+    tours: normaliserToursSauvegarde(d.tours),
   };
+}
+
+// Tours des exos interactifs (détail par distance) : { exo: [{ t, d, mode, rentres, total, fini, rates, tentes }] }
+function normaliserToursSauvegarde(x) {
+  const res = {};
+  const parDistance = (o) => {
+    const r = {};
+    for (const [k, n] of Object.entries(o && typeof o === "object" ? o : {})) if (/^\d{1,3}(\.\d{1,2})?$/.test(k) && Number.isInteger(n) && n >= 0 && n <= 1000) r[k] = n;
+    return r;
+  };
+  for (const [exo, liste] of Object.entries(x && typeof x === "object" ? x : {})) {
+    if (!/^[a-z0-9-]{1,40}$/.test(exo) || !Array.isArray(liste)) continue;
+    res[exo] = liste.filter((t) => t && nombreOk(t.t, 1e13) && jourValide(t.d))
+      .map((t) => ({ t: t.t, d: t.d, mode: typeof t.mode === "string" ? t.mode.slice(0, 40) : "", rentres: nombreOk(t.rentres, 1000) ? t.rentres : 0,
+        total: nombreOk(t.total, 1000) ? t.total : 0, fini: t.fini === true, rates: parDistance(t.rates), tentes: parDistance(t.tentes) }))
+      .slice(-300);
+  }
+  return res;
 }
 
 function normaliserConsignes(c) {

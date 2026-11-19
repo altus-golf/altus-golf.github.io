@@ -140,6 +140,17 @@ async function restaurerDepuisEnLigne() {
     ecrireStockage("techniques", liste.slice(-200), PREFIXE_SCORES);
   }
   ecrireStockage("effaces", [...effaces].slice(-500), PREFIXE_SCORES);
+  // Tours des exos interactifs (détail par distance, 20/11/2026) : sinon un autre téléphone
+  // envoyait un bilan sans « dist » et le coach perdait le détail des putts rentrés
+  if (sauvegarde) {
+    for (const [exo, liste] of Object.entries(sauvegarde.tours)) {
+      if (!EXOS_POINTS[exo]) continue;
+      const locaux = toursDe(exo);   // exos-points.js
+      const connus = new Set(locaux.map((t) => t.t));
+      const nouveaux = liste.filter((t) => !connus.has(t.t));
+      if (nouveaux.length) ecrireStockage(EXOS_POINTS[exo].cleTours, [...locaux, ...nouveaux].sort((a, b) => a.t - b.t), PREFIXE_SCORES);
+    }
+  }
   // Effacements du coach déjà appliqués (sinon ils effaceraient un 2e score identique)
   if (sauvegarde && sauvegarde.effacesCoach.length) {
     const deja = new Set([...(lireStockage("effacesCoach", [], PREFIXE_SCORES) || []), ...sauvegarde.effacesCoach]);
@@ -159,6 +170,7 @@ async function publierMonBilan() {
     techniques: (Array.isArray(techniques) ? techniques : []).map((x) => ({ id: x.id, d: x.d })).slice(-200),
     effaces: (lireStockage("effaces", [], PREFIXE_SCORES) || []).slice(-500),
     effacesCoach: (lireStockage("effacesCoach", [], PREFIXE_SCORES) || []).slice(-300),
+    tours: Object.fromEntries(Object.keys(EXOS_POINTS).map((exo) => [exo, toursDe(exo).slice(-300)]).filter(([, l]) => l.length)),
     maj: Date.now(),
   });
 }
