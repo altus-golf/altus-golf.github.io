@@ -214,6 +214,19 @@ function calculerBilanDepuis(uid, prenom, hist, semaine, defi) {
 
 // Rejoindre le groupe avec son prénom. Le groupe doit avoir été ouvert par un coach.
 // Renvoie un message d'erreur ou "".
+// Prénoms déjà dans le groupe (page d'accueil : « choisis qui tu es »).
+// Renvoie [{ uid, prenom, source, repris }] ou null si la base ne répond pas.
+async function prenomsDuGroupe() {
+  if (modeDemo()) return Object.values(baseDemo().bilans).map(normaliserBilan).filter(Boolean);
+  if (!(await demarrerFirebase())) return null;
+  try {
+    const liste = await groupe(CODE_GROUPE).collection("bilans").get();
+    return liste.docs.map((d) => normaliserBilan({ ...d.data(), uid: d.id })).filter(Boolean);
+  } catch (e) {
+    return null;
+  }
+}
+
 async function rejoindreGroupe(prenom) {
   prenom = prenom.trim().slice(0, 30);
   if (!prenom) return "Écris ton prénom.";

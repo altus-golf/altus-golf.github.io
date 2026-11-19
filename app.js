@@ -161,11 +161,61 @@ function vueConnexion() {
   </section>`;
 }
 
+// Accueil (choix de l'utilisateur, 19/11/2026) : on ne demande plus le prénom,
+// on montre les prénoms du groupe et le joueur choisit qui il est.
+let prenomsAccueil = null;       // null = pas encore chargés ; [] = groupe vide ou pas de réponse
+let prenomsEnChargement = false;
+let accueilAutrePrenom = false;  // « Je ne suis pas dans la liste »
+let messageAccueil = "";
+
+function chargerPrenomsAccueil() {
+  if (prenomsEnChargement) return;
+  prenomsEnChargement = true;
+  prenomsDuGroupe().then((liste) => {
+    prenomsEnChargement = false;
+    const bilans = liste || [];
+    // Historiques importés déjà repris par un joueur : masqués (même règle que les classements)
+    const repris = new Set(bilans.map((b) => b.repris).filter(Boolean));
+    const vus = new Set();
+    prenomsAccueil = bilans.filter((b) => !repris.has(b.uid))
+      .sort((a, b) => a.prenom.localeCompare(b.prenom, "fr"))
+      .filter((b) => { const k = slugPrenom(b.prenom); if (vus.has(k)) return false; vus.add(k); return true; })
+      .map((b) => b.prenom);
+    if (!moi()) afficherVue();
+  });
+}
+
+// Entrer dans le groupe avec un prénom ; si le classeur a un historique à ce prénom, il est récupéré
+async function entrerAvecPrenom(prenom) {
+  const erreur = await rejoindreGroupe(prenom);
+  if (erreur) { messageAccueil = erreur; return afficherVue(); }
+  await chargerGroupe();
+  const importe = groupeDonnees && bilansImportesLibres(groupeDonnees.bilans).find((b) => slugPrenom(b.prenom) === slugPrenom(prenom));
+  if (importe) await reprendreHistorique(importe.uid);   // classeur.js (publie aussi le bilan)
+  else await publierBilan(calculerBilan());
+  changerVue("seance");
+}
+
 function vueAccueil() {
   const u = utilisateurGoogle();
   const prenomGoogle = u && u.displayName ? u.displayName.split(" ")[0] : "";
+  const erreur = messageAccueil ? `<p class="erreur">${echapper(messageAccueil)}</p>` : "";
+  if (prenomsAccueil === null) {
+    chargerPrenomsAccueil();
+    return `<section class="bloc pr-bloc accueil-altus"><h2 class="bloc-titre">Bienvenue chez Altus 👋</h2><p class="petit">Chargement des joueurs…</p></section>`;
+  }
+  if (prenomsAccueil.length && !accueilAutrePrenom) {
+    return `<section class="bloc pr-bloc accueil-altus">
+      <h2 class="bloc-titre">Bienvenue chez Altus 👋</h2>
+      <p>Qui es-tu ?</p>
+      ${erreur}
+      <div class="filtres choix-prenom">${prenomsAccueil.map((p) => `<button type="button" class="filtre" data-a="choisir-prenom" data-prenom="${echapper(p)}">${echapper(p)}</button>`).join("")}</div>
+      <button type="button" class="bouton pleine-largeur" data-a="autre-prenom">Je ne suis pas dans la liste</button>
+    </section>`;
+  }
   return `<section class="bloc pr-bloc accueil-altus">
     <h2 class="bloc-titre">Bienvenue chez Altus 👋</h2>
+    ${erreur}
     <p>Quel prénom veux-tu afficher dans les classements ?</p>
     <form id="form-rejoindre">
       <label for="prenom">Prénom</label>
@@ -173,6 +223,7 @@ function vueAccueil() {
       <p class="erreur" id="erreur-rejoindre" hidden></p>
       <button type="submit" class="bouton principal pleine-largeur">C'est parti</button>
     </form>
+    ${prenomsAccueil.length ? `<button type="button" class="bouton pleine-largeur" data-a="liste-prenoms">← Revenir à la liste des joueurs</button>` : ""}
   </section>`;
 }
 
@@ -471,9 +522,11 @@ document.addEventListener("DOMContentLoaded", () => {
       connecterGoogle().then((erreur) => { messageConnexion = erreur; afficherVue(); });
     }
     if (a === "deconnexion" && confirm("Se déconnecter ? Tes scores restent sur ce téléphone.")) {
-      deconnecter().then(() => { groupeDonnees = null; changerVue("seance"); });
+      deconnecter().then(() => { groupeDonnees = null; prenomsAccueil = null; accueilAutrePrenom = false; changerVue("seance"); });
     }
     if (a.startsWith("coach-")) actionCoach(a, bouton);
+    if (a === "choisir-prenom" && confirm(`Tu es ${bouton.dataset.prenom} ?`)) { messageAccueil = ""; entrerAvecPrenom(bouton.dataset.prenom); }
+    if (a === "autre-prenom" || a === "liste-prenoms") { accueilAutrePrenom = a === "autre-prenom"; messageAccueil = ""; afficherVue(); }
   });
   document.addEventListener("change", (e) => {
     if (e.target.id === "choix-exo-classement") { exoClassement = e.target.value; afficherVue(); }

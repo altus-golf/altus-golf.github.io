@@ -43,6 +43,7 @@
 - ✅ Défi de la semaine jouable même s'il reste des exos du coach (affiché après eux, avec un conseil).
 - ✅ Import du classeur : on peut choisir directement le fichier Excel (.xlsx) ; l'onglet Saisie est lu tout seul (testé : 16 joueurs, 381 scores).
 - ✅ Espace coachs : « 🗑 Retirer du groupe » (doublons de prénom) + fiche du joueur : compte du site / importé, « c'est toi », nombre de scores, dernière mise à jour.
+- ✅ Accueil : après la connexion Google, plus de prénom à taper : la liste des prénoms du groupe, on choisit qui on est (historique du classeur récupéré tout de suite) ; « Je ne suis pas dans la liste » pour taper son prénom.
 - ✅ Plusieurs défis par semaine (5 max) : le coach en ajoute / retire dans l'espace coachs ; un classement par défi, calculé depuis les scores de la semaine (hist).
 
 ## Décisions (avec l'utilisateur)
