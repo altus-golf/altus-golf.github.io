@@ -643,3 +643,4 @@ details[open] > summary::before { transform: rotate(90deg); }
 .mes-matchs { margin-top: 10px; }
 .match-resultat input[type=radio] { width: 22px; height: 22px; min-height: 0; flex: none; margin: 0; padding: 0; accent-color: var(--accent); }
 .match-resultat label { justify-content: flex-start; text-align: left; }
+@media (min-width: 600px) { .onglets.onglets-altus .onglet { font-size: 0.9rem; } }

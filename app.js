@@ -193,6 +193,15 @@ const CATEGORIES_PROGRES = [
   { nom: "📡 Test Center", classe: "cat-long-jeu", contient: (id) => id.startsWith("tc-") },
 ];
 
+// Moyenne des 30 derniers jours d'un exo (choix de l'utilisateur, 20/11/2026)
+function moyenne30(id, l) {
+  const depuis = dateEnTexte(ajouterJours(new Date(), -30));
+  const vals = l.filter(([d]) => d >= depuis).map(([, v]) => v);
+  if (!vals.length) return "Moyenne 30 j : —";
+  const moy = Math.round((vals.reduce((t, v) => t + v, 0) / vals.length) * 10) / 10;
+  return `Moyenne 30 j : <strong>${echapper(texteScore(id, moy))}</strong> (${vals.length} score${vals.length > 1 ? "s" : ""})`;
+}
+
 function blocRecords(hist, titre) {
   // Dans l'ordre du programme (Pelz complet, Pelz A à I ensemble…) : choix de l'utilisateur, 19/11/2026
   const avecScores = Object.entries(hist)
@@ -207,6 +216,7 @@ function blocRecords(hist, titre) {
         <p class="pr-exo-chiffres">
           <span>⭐ Record <strong>${echapper(texteScore(id, record))}</strong></span>
           <span>Dernier : ${echapper(texteScore(id, vals[vals.length - 1]))} (${echapper(dateLisible(l[l.length - 1][0]))})</span>
+          <span>${moyenne30(id, l)}</span>
           <span>${l.length} score${l.length > 1 ? "s" : ""}</span>
         </p>
       </article>`;
