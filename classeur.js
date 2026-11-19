@@ -127,7 +127,7 @@ function bilansDuClasseur(lecture) {
     .filter(([prenom, hist]) => Object.keys(hist).length || !inscrits.has(slugPrenom(prenom)))
     .map(([prenom, hist]) => {
     const n = Object.values(hist).flat().filter(([d]) => d >= lundi).length;
-    const b = calculerBilanDepuis("classeur-" + slugPrenom(prenom), prenom, hist, { lundi, n }, null);
+    const b = calculerBilanDepuis("classeur-" + slugPrenom(prenom), prenom, hist, { lundi, n }, null, LIMITE_HIST_CLASSEUR);
     b.source = "classeur";
     return b;
   }).filter((b) => b.uid !== "classeur-");
@@ -361,6 +361,9 @@ async function telechargerRapport() {
     const pris = new Set();
     const lundi = lundiDe();
     const annee = new Date().getFullYear();
+    // Tous les scores : sauvegarde complète des joueurs du site (lisible par les coachs) ;
+    // sinon (pas encore de sauvegarde) les 30 derniers par exo de leur bilan
+    const sauvegardes = await lireSauvegardesCoach(joueurs.filter((j) => j.source !== "classeur").map((j) => j.uid));   // base.js
 
     // Une feuille (page) par joueur, avec tous les exos (choix du coach, 20/11/2026)
     joueurs.forEach((j) => {
@@ -369,9 +372,12 @@ async function telechargerRapport() {
         [], [`Tous les exos : records et moyennes ${annee}`], TITRES_RECORDS, ...lignesRecords(j)];
       // Derniers scores rangés par catégorie puis par exo (pas par date), choix du coach 20/11/2026 ;
       // dans chaque exo, du plus récent au plus ancien
-      f.push([], ["Derniers scores (jusqu'à 30 par exo)"], ["Catégorie", "Exo", "Date", "Score", "Sur"]);
+      const sauvegarde = sauvegardes[j.uid];
+      const complet = j.source === "classeur" || !!sauvegarde;
+      f.push([], [complet ? "Tous les scores" : "Derniers scores (30 par exo : la sauvegarde complète arrivera quand le joueur ouvrira la nouvelle version du site)"], ["Catégorie", "Exo", "Date", "Score", "Sur"]);
       ordreRapport().forEach((it) => {
-        [...(j.hist[it.id] || [])].reverse().forEach(([d, v]) => f.push([categorieRapport(it.id), it.titre, dateRapport(d), v, it.unite]));
+        const liste = sauvegarde ? (sauvegarde.scores[it.id] || []).map((s) => [s.d, s.v]) : (j.hist[it.id] || []);
+        [...liste].sort((a, b) => a[0].localeCompare(b[0])).reverse().forEach(([d, v]) => f.push([categorieRapport(it.id), it.titre, dateRapport(d), v, it.unite]));
       });
       const dist = Object.entries(j.dist || {}).filter(([exo]) => EXOS_POINTS[exo]);
       if (dist.length) {

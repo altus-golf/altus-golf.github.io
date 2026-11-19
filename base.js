@@ -257,7 +257,10 @@ function baseDemo() {
 }
 
 // Bilan d'un joueur (le mien, ou un joueur fictif de la démo) à partir de { fiche: [[d, v]] }
-function calculerBilanDepuis(uid, prenom, hist, semaine, defi) {
+// limite = scores gardés par exo dans hist (30 pour un joueur du site, lu par tout le monde ;
+// 500 pour un historique importé du classeur, écrit par un coach : tout son historique)
+const LIMITE_HIST_CLASSEUR = 500;
+function calculerBilanDepuis(uid, prenom, hist, semaine, defi, limite = 30) {
   const annee = String(new Date().getFullYear());
   const exos = {};
   for (const [id, liste] of Object.entries(hist)) {
@@ -267,7 +270,7 @@ function calculerBilanDepuis(uid, prenom, hist, semaine, defi) {
     const record = Math.max(...vals);
     exos[id] = { n: vals.length, moy: Math.round(10 * vals.reduce((t, v) => t + v, 0) / vals.length) / 10, record, recordD: dans.find(([, v]) => v === record)[0] };
   }
-  return { uid, prenom, maj: dateEnTexte(new Date()), annee: Number(annee), exos, hist: mapObjet(hist, (l) => l.slice(-30)), semaine, defi };
+  return { uid, prenom, maj: dateEnTexte(new Date()), annee: Number(annee), exos, hist: mapObjet(hist, (l) => l.slice(-limite)), semaine, defi };
 }
 
 
@@ -343,6 +346,25 @@ async function lireSauvegarde() {
     return null;   // règles pas encore recollées : on fait sans
   }
 }
+// Coach (rapport Excel) : les sauvegardes complètes de plusieurs joueurs → { uid: sauvegarde }
+// (une sauvegarde illisible ou absente est simplement ignorée)
+async function lireSauvegardesCoach(uids) {
+  const res = {};
+  if (modeDemo()) {
+    const toutes = baseDemo().sauvegardes || {};
+    uids.forEach((uid) => { if (toutes[uid]) res[uid] = normaliserSauvegarde(toutes[uid]); });
+    return res;
+  }
+  if (!(await demarrerFirebase())) return res;
+  await Promise.all(uids.map(async (uid) => {
+    try {
+      const doc = await groupeCoach(codeCoach()).collection("sauvegardes").doc(uid).get();
+      if (doc.exists) res[uid] = normaliserSauvegarde(doc.data());
+    } catch (e) { /* règles pas encore recollées : on fait avec le bilan */ }
+  }));
+  return res;
+}
+
 async function ecrireSauvegarde(sauvegarde) {
   const m = moi();
   if (!m) return;
@@ -582,7 +604,7 @@ function normaliserBilan(b) {
     // En ligne : [{ d, v }] ; en démo : [[d, v]]
     if (idFicheValide(id) && Array.isArray(liste)) {
       hist[id] = liste.map((x) => (Array.isArray(x) ? x : x && typeof x === "object" ? [x.d, x.v] : null))
-        .filter((x) => x && jourValide(x[0]) && nombreOk(x[1])).slice(-30);
+        .filter((x) => x && jourValide(x[0]) && nombreOk(x[1])).slice(b.source === "classeur" ? -LIMITE_HIST_CLASSEUR : -30);
     }
   }
   const s = b.semaine && typeof b.semaine === "object" ? b.semaine : {};

@@ -59,9 +59,10 @@ service cloud.firestore {
         allow delete: if estCoach() || (connecte() && resource.data.auteur == request.auth.uid);
       }
 
-      // Sauvegarde complète des scores d'un joueur : lui seul la lit et l'écrit
+      // Sauvegarde complète des scores d'un joueur : lui seul l'écrit ; lui et les coachs la lisent (rapport Excel)
       match /sauvegardes/{uid} {
-        allow read, write: if connecte() && uid == request.auth.uid && groupeExiste(code);
+        allow read: if estCoach() || (connecte() && uid == request.auth.uid && groupeExiste(code));
+        allow write: if connecte() && uid == request.auth.uid && groupeExiste(code);
       }
 
       match /reglages/{id} {

@@ -755,7 +755,7 @@ async function actionCoach(a, bouton) {
       const i = l.map(([x, y]) => x + "|" + y).lastIndexOf(d + "|" + v);
       if (i >= 0) l.splice(i, 1);
       if (!l.length) delete hist[id];
-      const b = calculerBilanDepuis(j.uid, j.prenom, hist, j.semaine, null);
+      const b = calculerBilanDepuis(j.uid, j.prenom, hist, j.semaine, null, LIMITE_HIST_CLASSEUR);
       b.source = "classeur";
       messageCoach = await importerBilans([b]);   // base.js
       if (!messageCoach) messageCoach = "✅ Score effacé.";
