@@ -666,23 +666,35 @@ details[open] > summary::before { transform: rotate(90deg); }
 .corriger-score { margin-top: 6px; font-size: 0.95rem; }
 .corriger-score summary { cursor: pointer; color: var(--texte-doux); }
 
-/* ---------- Thème perso « rose fuchsia + renards » (Clara, 20/11/2026) ----------
+/* ---------- Thème perso « rose fuchsia + renards » (Clara, 20/11/2026, version flashy) ----------
    Ajouté au <body> seulement quand la joueuse connectée s'appelle Clara (THEMES_JOUEURS, app.js). */
 body.theme-rose-renard {
-  --accent: #d6248f;
+  --accent: #ff0f8f;          /* fuchsia flashy */
   --accent-texte: #ffffff;
-  --accent-doux: #fde3f2;
-  --rouge-altus: #ff7a1a;   /* orange renard sous l'onglet actif */
-  --fond: #fff5fb;
+  --accent-doux: #ffd1ec;
+  --rouge-altus: #ff8a00;     /* orange renard sous l'onglet actif */
+  --fond: #ffe3f3;
+  --bord: #ff7cc4;
   background-color: var(--fond);
-  /* petits renards discrets en fond */
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Ctext x='10' y='40' font-size='26' opacity='0.13'%3E🦊%3C/text%3E%3Ctext x='70' y='100' font-size='22' opacity='0.1'%3E🦊%3C/text%3E%3C/svg%3E");
+  /* renards en fond + dégradé rose */
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='110' height='110'%3E%3Ctext x='8' y='38' font-size='28' opacity='0.28'%3E🦊%3C/text%3E%3Ctext x='62' y='96' font-size='24' opacity='0.22'%3E🦊%3C/text%3E%3C/svg%3E"),
+    linear-gradient(160deg, #ffd6ee 0%, #ffb3dd 50%, #ffc9a8 100%);
   background-attachment: fixed;
 }
-body.theme-rose-renard .titre-altus::after { content: " 🦊"; }
-body.theme-rose-renard .bloc, body.theme-rose-renard .carte { border-color: #f6b6dc; }
+body.theme-rose-renard .titre-altus { color: #e6007e; text-shadow: 0 2px 0 #ffd1ec; }
+body.theme-rose-renard .titre-altus::after { content: " 🦊"; font-size: 0.8em; }
+body.theme-rose-renard .titre-altus { white-space: nowrap; font-size: clamp(1.4rem, 7vw, 2rem); }
+body.theme-rose-renard .bloc { background: rgba(255, 255, 255, 0.9); }
+body.theme-rose-renard .onglet { background: #ffffff; border-color: #ff0f8f; border-width: 2px; }
+body.theme-rose-renard .onglet.actif { background: linear-gradient(135deg, #ff0f8f, #ff5ab0); color: #fff; box-shadow: 0 4px 12px rgba(255, 15, 143, 0.45), inset 0 -4px 0 var(--rouge-altus); }
+body.theme-rose-renard .bloc, body.theme-rose-renard .carte { border: 2px solid #ff7cc4; box-shadow: 0 4px 14px rgba(255, 15, 143, 0.18); }
+body.theme-rose-renard .carte { --couleur-cat: #ff0f8f; }
+body.theme-rose-renard .pastille { background: linear-gradient(135deg, #ff0f8f, #ff8a00); color: #fff; }
+body.theme-rose-renard .bouton.principal { background: linear-gradient(135deg, #ff0f8f, #ff5ab0); border-color: #ff0f8f; box-shadow: 0 3px 10px rgba(255, 15, 143, 0.4); }
+body.theme-rose-renard .bloc-titre::after { content: " 🦊"; font-size: 0.8em; }
 @media (prefers-color-scheme: dark) {
-  body.theme-rose-renard { --accent: #ff6ec7; --accent-texte: #2a0018; --accent-doux: #4a1036; --fond: #1e0f19; }
+  body.theme-rose-renard { --accent: #ff4fb3; --accent-texte: #2a0018; --accent-doux: #5a1042; --fond: #2a0b20; --bord: #a3246f;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='110' height='110'%3E%3Ctext x='8' y='38' font-size='28' opacity='0.25'%3E🦊%3C/text%3E%3Ctext x='62' y='96' font-size='24' opacity='0.2'%3E🦊%3C/text%3E%3C/svg%3E"), linear-gradient(160deg, #3a0c2c, #2a0b20); }
+  body.theme-rose-renard .titre-altus { color: #ff6ec7; text-shadow: none; }
 }
-body.theme-rose-renard .pastille { background: var(--accent); color: var(--accent-texte); }
-body.theme-rose-renard .carte { --couleur-cat: #d6248f; }
