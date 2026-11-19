@@ -808,18 +808,21 @@ async function actionCoach(a, bouton) {
       // (le coach a le droit de les écrire), + demande d'effacement pour ses téléphones
       // (appliquerEffacementsCoach), qui gardent aussi une copie de ses scores.
       const cle = Date.now();
-      let t = 0, immediat = false;
+      let t = 0, immediat = false, raison = "";
       const s = (await lireSauvegardesCoach([j.uid]))[j.uid];   // base.js
+      if (!s) raison = `${j.prenom} n'a pas encore de sauvegarde en ligne (il doit ouvrir la nouvelle version du site une fois)`;
       if (s) {
         const liste = s.scores[id] || [];
         let i = -1;
         for (let k = liste.length - 1; k >= 0; k--) if (liste[k].d === d && liste[k].v === v) { i = k; break; }
+        if (i < 0) raison = "ce score n'est pas dans sa sauvegarde en ligne (son téléphone ne l'a pas encore envoyé)";
         if (i >= 0) {
           t = liste[i].t || 0;
           liste.splice(i, 1);
           s.scores[id] = liste;
           if (t) s.effaces = [...s.effaces, t].slice(-500);
           const erreurSauvegarde = await ecrireSauvegardeDe(j.uid, { ...s, maj: Date.now() });
+          if (erreurSauvegarde) raison = "Firebase a refusé de modifier sa sauvegarde (règles Firebase pas à jour ?)";
           if (!erreurSauvegarde) {
             // Bilan recalculé avec TOUS ses scores (moyennes et records de l'année justes)
             const hist = mapObjet(s.scores, (l) => l.map((x) => [x.d, x.v]));
@@ -827,14 +830,16 @@ async function actionCoach(a, bouton) {
             const b = calculerBilanDepuis(j.uid, j.prenom, hist, j.semaine, null);
             if (Object.keys(j.dist || {}).length) b.dist = j.dist;
             if (j.repris) b.repris = j.repris;
-            immediat = !(await importerBilans([b]));
+            const erreurBilan = await importerBilans([b]);
+            immediat = !erreurBilan;
+            if (erreurBilan) raison = "Firebase a refusé de modifier son bilan (règles Firebase pas à jour ?)";
           }
         }
       }
       const c = JSON.parse(JSON.stringify(groupeDonnees.consignes[j.uid] || normaliserConsignes(null)));
       c.aEffacer = [...c.aEffacer, { id, d, v, cle, t }].slice(-50);
       messageCoach = await ecrireConsignes(j.uid, normaliserConsignes(c));
-      if (!messageCoach) messageCoach = immediat ? "✅ Score effacé." : `✅ Ce score sera effacé dès que ${j.prenom} ouvrira le site.`;
+      if (!messageCoach) messageCoach = immediat ? "✅ Score effacé." : `✅ Ce score sera effacé dès que ${j.prenom} ouvrira le site. (Pas tout de suite car : ${raison}.)`;
     }
     if (messageCoach.startsWith("✅")) afficherMessage(messageCoach);
     return chargerGroupe();
