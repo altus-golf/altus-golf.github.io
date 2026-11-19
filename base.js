@@ -244,9 +244,36 @@ async function publierBilan(bilan) {
     return;
   }
   if (!(await demarrerFirebase())) return;
-  // Firestore n'accepte pas les tableaux de tableaux : hist part en [{ d, v }]
-  const enLigne = { ...bilan, hist: mapObjet(bilan.hist, (l) => l.map(([d, v]) => ({ d, v }))) };
-  try { await groupe(m.code).collection("bilans").doc(m.uid).set(enLigne); } catch (e) { /* plus tard */ }
+  try { await groupe(m.code).collection("bilans").doc(m.uid).set(bilanEnLigne(bilan)); } catch (e) { /* plus tard */ }
+}
+
+// Firestore n'accepte pas les tableaux de tableaux : hist part en [{ d, v }].
+// Les champs vides (null / undefined) ne sont pas envoyés.
+function bilanEnLigne(bilan) {
+  const b = { ...bilan, hist: mapObjet(bilan.hist, (l) => l.map(([d, v]) => ({ d, v }))) };
+  Object.keys(b).forEach((k) => { if (b[k] === undefined) delete b[k]; });
+  return b;
+}
+
+// Import de l'historique du classeur Google (espace coachs, classeur.js) :
+// un bilan « classeur-<prénom> » par joueur, écrit par un coach.
+// Renvoie un message d'erreur ou "".
+async function importerBilans(bilans) {
+  if (modeDemo()) {
+    const db = baseDemo();
+    bilans.forEach((b) => { db.bilans[b.uid] = b; });
+    ecrireStockage("demo", db);
+    return "";
+  }
+  if (!(await demarrerFirebase())) return "Pas de connexion.";
+  try {
+    const paquet = base.batch();
+    bilans.forEach((b) => paquet.set(groupe(CODE_GROUPE).collection("bilans").doc(b.uid), bilanEnLigne(b)));
+    await paquet.commit();
+    return "";
+  } catch (e) {
+    return `Import refusé par Firebase : recolle les dernières règles (outils/regles-firestore.txt) dans la console. (erreur : ${(e && e.code) || "inconnue"})`;
+  }
 }
 
 // Tout ce qu'il faut pour afficher le groupe : { bilans: [], defi, consignes (les miennes ou toutes pour un coach) }
@@ -407,6 +434,9 @@ function normaliserBilan(b) {
     hist,
     semaine: { lundi: jourValide(s.lundi) ? s.lundi : "", n: nombreOk(s.n, 10000) ? s.n : 0 },
     defi,
+    // Historique importé du classeur (« classeur ») ; historique repris par un joueur (id du bilan importé)
+    source: b.source === "classeur" ? "classeur" : "",
+    repris: typeof b.repris === "string" && /^classeur-[a-z0-9-]{1,40}$/.test(b.repris) ? b.repris : "",
   };
 }
 

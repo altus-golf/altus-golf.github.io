@@ -27,6 +27,11 @@
 - ✅ Messages d'erreur de connexion précis (ex. « auth/operation-not-allowed » = Google pas activé dans Firebase).
 - À faire (utilisateur) : activer Google dans Authentication > Méthode de connexion.
 
+## v6 (19/11/2026) : import du classeur
+- ✅ Espace coachs > « Importer l'historique du classeur » : coller les colonnes A-E de l'onglet Saisie (ou le CSV). Testé avec le vrai classeur (en local, données non publiées) : 16 joueurs, 380 scores, 2 scores à vérifier signalés (Start Line 20 ft = 0,8 ; Trèfle = 12,15).
+- ✅ Un joueur qui se connecte avec le même prénom se voit proposer de récupérer son historique (pas de doublon dans les classements).
+- ⚠ Règles Firestore modifiées (un coach peut écrire les bilans « classeur-… », champs source/repris) : à recoller dans la console avant l'import.
+
 ## Décisions (avec l'utilisateur)
 - Site séparé de l'appli perso, dans l'organisation GitHub `altus-golf` (pour que le nom du compte perso n'apparaisse pas).
 - Utilisateurs : joueurs (sur leur téléphone) + coachs (l'utilisateur et d'autres coachs d'Altus).

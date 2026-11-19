@@ -61,7 +61,9 @@ function calculerBilan() {
     const cetteSemaine = hist[defi.fiche].filter(([d]) => d >= lundi).map(([, v]) => v);
     if (cetteSemaine.length) monDefi = { lundi, fiche: defi.fiche, meilleur: meilleurScore(defi.fiche, cetteSemaine) };
   }
-  return calculerBilanDepuis(m.uid, m.prenom, hist, { lundi, n: exosDeLaSemaine() }, monDefi);
+  const bilan = calculerBilanDepuis(m.uid, m.prenom, hist, { lundi, n: exosDeLaSemaine() }, monDefi);
+  if (m.repris) bilan.repris = m.repris;   // historique du classeur repris (classeur.js)
+  return bilan;
 }
 
 // Après chaque exo terminé (scores.js) : exo du coach coché, bilan envoyé, page à jour
@@ -190,6 +192,7 @@ function vueSeance() {
   const ficheDefi = defi && ficheDeItem(defi.fiche);
 
   let html = `<p class="semaine-info">Salut <strong>${echapper(m.prenom)}</strong> · ${exosDeLaSemaine()} exo${exosDeLaSemaine() > 1 ? "s" : ""} joué${exosDeLaSemaine() > 1 ? "s" : ""} cette semaine</p>`;
+  html += blocReprendreHistorique();   // classeur.js
   if (duCoach.length) {
     html += `<section class="bloc bloc-coach">
       <h2 class="bloc-titre">⭐ Demandé par ton coach</h2>
@@ -224,7 +227,9 @@ function vueClassements() {
   if (!groupeDonnees) return `<p class="petit">${erreurGroupe ? "Pas de connexion : impossible de charger les classements." : "Chargement…"}</p>`;
   const m = moi();
   const lundi = lundiDe();
-  const bilans = groupeDonnees.bilans;
+  // Un historique importé du classeur et repris par un joueur n'apparaît plus (sinon il serait compté deux fois)
+  const reprisIds = new Set(groupeDonnees.bilans.map((b) => b.repris).filter(Boolean));
+  const bilans = groupeDonnees.bilans.filter((b) => !reprisIds.has(b.uid));
   let html = "";
 
   // --- Défi de la semaine ---
@@ -240,8 +245,9 @@ function vueClassements() {
   }
 
   // --- Flemmard de la semaine : le moins d'exos joués ---
-  if (bilans.length) {
-    const comptes = bilans.map((b) => ({ b, n: b.semaine.lundi === lundi ? b.semaine.n : 0 })).sort((a, b) => a.n - b.n || a.b.prenom.localeCompare(b.b.prenom, "fr"));
+  if (bilans.some((b) => b.source !== "classeur")) {
+    // Flemmard : seulement les joueurs qui utilisent le site (pas les historiques importés)
+    const comptes = bilans.filter((b) => b.source !== "classeur").map((b) => ({ b, n: b.semaine.lundi === lundi ? b.semaine.n : 0 })).sort((a, b) => a.n - b.n || a.b.prenom.localeCompare(b.b.prenom, "fr"));
     const mini = comptes[0].n;
     const flemmards = comptes.filter((x) => x.n === mini).map((x) => x.b.prenom);
     html += `<section class="bloc pr-bloc flemmard">
@@ -319,14 +325,18 @@ function vueCoach() {
     <button type="button" class="bouton principal" data-a="coach-defi">${defi ? "Changer le défi" : "Lancer le défi"}</button>
   </section>`;
 
-  // --- Joueurs ---
-  const joueurs = [...groupeDonnees.bilans].sort((a, b) => a.prenom.localeCompare(b.prenom, "fr"));
+  // --- Import de l'historique du classeur (classeur.js) ---
+  html += blocImportClasseur();
+
+  // --- Joueurs (sans les historiques importés déjà repris par un joueur) ---
+  const reprisIds = new Set(groupeDonnees.bilans.map((b) => b.repris).filter(Boolean));
+  const joueurs = groupeDonnees.bilans.filter((b) => !reprisIds.has(b.uid)).sort((a, b) => a.prenom.localeCompare(b.prenom, "fr"));
   if (!joueurs.length) return html + `<p class="petit">Aucun joueur n'a encore rejoint le groupe.</p>`;
   if (!joueurs.some((j) => j.uid === joueurCoach)) joueurCoach = joueurs[0].uid;
   const j = joueurs.find((x) => x.uid === joueurCoach);
   const c = groupeDonnees.consignes[j.uid] || { exos: [], message: "", faits: {} };
   const nSemaine = j.semaine.lundi === lundi ? j.semaine.n : 0;
-  html += `<div class="filtres">${joueurs.map((x) => `<button type="button" class="filtre ${x.uid === j.uid ? "actif" : ""}" data-a="coach-joueur" data-uid="${echapper(x.uid)}">${echapper(x.prenom)}</button>`).join("")}</div>
+  html += `<div class="filtres">${joueurs.map((x) => `<button type="button" class="filtre ${x.uid === j.uid ? "actif" : ""}" data-a="coach-joueur" data-uid="${echapper(x.uid)}">${echapper(x.prenom)}${x.source === "classeur" ? " 📄" : ""}</button>`).join("")}</div>
     <section class="bloc pr-bloc consignes-admin">
       <h2 class="bloc-titre">⭐ Exos pour ${echapper(j.prenom)}</h2>
       <p class="bloc-info">${nSemaine} exo${nSemaine > 1 ? "s" : ""} joué${nSemaine > 1 ? "s" : ""} cette semaine · les exos donnés remplacent son défi jusqu'à ce qu'il les fasse</p>
