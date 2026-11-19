@@ -108,6 +108,8 @@ async function chargerGroupe() {
   const donnees = await lireGroupe(vue === "coach" && coachConnecte());
   erreurGroupe = !donnees;
   if (donnees) groupeDonnees = donnees;
+  // Technique faite mais pas encore reçue par le coach : on la renvoie (exos-altus.js)
+  if (donnees && moi() && vue !== "coach" && lireStockage("consignesEnAttente", null, PREFIXE_SCORES)) await envoyerTechniquesEnAttente();
   afficherVue();
 }
 

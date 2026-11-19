@@ -105,11 +105,37 @@ async function finirTechnique(id) {
   if (texte) c.ressentis = [{ id, d: jour, texte }, ...c.ressentis].slice(0, 30);
   // Compté dans « exos joués cette semaine » (et pour le flemmard)
   const faites = lireStockage("techniques", [], PREFIXE_SCORES);
-  ecrireStockage("techniques", [...(Array.isArray(faites) ? faites : []), { id, d: jour }].slice(-200), PREFIXE_SCORES);
-  const erreur = await noterFaitConsigne(c.faits, c.ressentis);   // base.js
+  ecrireStockage("techniques", [...(Array.isArray(faites) ? faites : []), { id, d: jour, texte }].slice(-200), PREFIXE_SCORES);
+  // Gardé dans le téléphone jusqu'à ce que le coach l'ait bien reçu (renvoyé par envoyerTechniquesEnAttente)
+  const attente = lireStockage("consignesEnAttente", null, PREFIXE_SCORES) || { faits: {}, ressentis: [] };
+  attente.faits[id] = jour;
+  if (texte) attente.ressentis = [{ id, d: jour, texte }, ...(attente.ressentis || [])].slice(0, 30);
+  ecrireStockage("consignesEnAttente", attente, PREFIXE_SCORES);
   if (groupeDonnees && moi()) groupeDonnees.consignes[moi().uid] = c;
-  if (erreur) alert(erreur);
+  const erreur = await envoyerTechniquesEnAttente();
+  if (erreur) alert("⚠ Ton ressenti n'a pas pu être envoyé au coach pour l'instant : il est gardé dans ton téléphone et sera renvoyé tout seul à ta prochaine ouverture du site.");
   apresUnExo(null);   // app.js : bilan envoyé, page à jour
+}
+
+// Renvoie au coach les techniques faites / ressentis pas encore reçus (après un échec : réseau, règles…).
+// Appelée après chaque chargement du groupe (chargerGroupe, app.js). Renvoie un message d'erreur ou "".
+async function envoyerTechniquesEnAttente() {
+  const attente = lireStockage("consignesEnAttente", null, PREFIXE_SCORES);
+  const m = moi();
+  if (!attente || !m || !groupeDonnees) return "";
+  const c = normaliserConsignes(groupeDonnees.consignes[m.uid]);
+  if (!c.exos.length && !Object.keys(c.faits).length) return "";   // pas encore chargé
+  const faits = { ...c.faits };
+  for (const [id, j] of Object.entries(attente.faits || {})) if (c.exos.includes(id)) faits[id] = j;
+  const memes = (a, b) => a.id === b.id && a.d === b.d && a.texte === b.texte;
+  const nouveaux = (attente.ressentis || []).filter((r) => !c.ressentis.some((x) => memes(x, r)));
+  const ressentis = [...nouveaux, ...c.ressentis].sort((a, b) => b.d.localeCompare(a.d)).slice(0, 30);
+  const erreur = await noterFaitConsigne(faits, ressentis);   // base.js
+  if (!erreur) {
+    ecrireStockage("consignesEnAttente", null, PREFIXE_SCORES);
+    groupeDonnees.consignes[m.uid] = { ...c, faits, ressentis };
+  }
+  return erreur;
 }
 document.addEventListener("click", (e) => {
   const b = e.target.closest("[data-a='technique-fini']");
