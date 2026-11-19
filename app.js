@@ -204,18 +204,15 @@ function vueSeance() {
   if (ficheDefi) {
     const meilleur = (lireScores()[defi.fiche] || []).filter((s) => s.d >= lundiDe()).map((s) => s.v);
     const resume = meilleur.length ? `Ton meilleur score cette semaine : <strong>${echapper(texteScore(defi.fiche, meilleurScore(defi.fiche, meilleur)))}</strong>` : "Tu ne l'as pas encore joué cette semaine.";
-    if (aFaire.length) {
-      // Exos du coach d'abord : le défi est seulement rappelé
-      html += `<section class="bloc pr-bloc"><h2 class="bloc-titre">🎯 Défi de la semaine : ${echapper(itemDe(defi.fiche).titre)}</h2>
-        <p class="petit">À jouer après tes exos du coach (onglet Exos). ${resume}</p></section>`;
-    } else {
-      html += `<section class="bloc bloc-defi">
-        <h2 class="bloc-titre">🎯 Défi de la semaine : ${echapper(itemDe(defi.fiche).titre)}</h2>
-        ${defi.message ? `<p class="message-coach">💬 ${echapper(defi.message)}</p>` : ""}
-        <p class="bloc-info">${resume} · classement dans 🏆</p>
-        ${carteExo(ficheDefi, { etiquette: "🎯 Défi" })}
-      </section>`;
-    }
+    // Le défi se joue toujours d'ici (choix de l'utilisateur, 19/11/2026) ;
+    // s'il reste des exos du coach, il est affiché après eux avec un rappel.
+    html += `<section class="bloc bloc-defi">
+      <h2 class="bloc-titre">🎯 Défi de la semaine : ${echapper(itemDe(defi.fiche).titre)}</h2>
+      ${defi.message ? `<p class="message-coach">💬 ${echapper(defi.message)}</p>` : ""}
+      ${aFaire.length ? `<p class="petit">Conseil : fais d'abord les exos de ton coach (au-dessus).</p>` : ""}
+      <p class="bloc-info">${resume} · classement dans 🏆</p>
+      ${carteExo(ficheDefi, { etiquette: "🎯 Défi" })}
+    </section>`;
   } else if (!duCoach.length) {
     html += `<section class="bloc pr-bloc"><h2 class="bloc-titre">🎯 Défi de la semaine</h2>
       <p class="petit">Pas encore de défi cette semaine : ton coach va le choisir. En attendant, joue un exo de l'onglet 📚 Exos.</p></section>`;
