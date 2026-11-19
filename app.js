@@ -180,15 +180,22 @@ function blocDistances(j) {
   </section>`;
 }
 
+// Catégories des progrès (choix de l'utilisateur, 20/11/2026) : Putting, Chipping (Test de Pelz), Test Center
+const CATEGORIES_PROGRES = [
+  { nom: "⛳ Putting", classe: "cat-putting", contient: (id) => !id.startsWith("pelz") && !id.startsWith("tc-") },
+  { nom: "🏌️ Chipping", classe: "cat-chipping", contient: (id) => id.startsWith("pelz") },
+  { nom: "📡 Test Center", classe: "cat-long-jeu", contient: (id) => id.startsWith("tc-") },
+];
+
 function blocRecords(hist, titre) {
-  const lignes = Object.entries(hist)
+  // Dans l'ordre du programme (Pelz complet, Pelz A à I ensemble…) : choix de l'utilisateur, 19/11/2026
+  const avecScores = Object.entries(hist)
     .filter(([id, l]) => itemDe(id) && l.length)
-    // Dans l'ordre du programme (Pelz complet, Pelz A à I ensemble, puis les autres exos) : choix de l'utilisateur, 19/11/2026
-    .sort((a, b) => ITEMS_ALTUS.findIndex((it) => it.id === a[0]) - ITEMS_ALTUS.findIndex((it) => it.id === b[0]))
-    .map(([id, l]) => {
-      const vals = l.map(([, v]) => v);
-      const record = meilleurScore(id, vals);
-      return `<article class="pr-exo cat-putting">
+    .sort((a, b) => ITEMS_ALTUS.findIndex((it) => it.id === a[0]) - ITEMS_ALTUS.findIndex((it) => it.id === b[0]));
+  const carte = ([id, l], classe) => {
+    const vals = l.map(([, v]) => v);
+    const record = meilleurScore(id, vals);
+    return `<article class="pr-exo ${classe}">
         <div class="pr-exo-tete"><h3>${echapper(itemDe(id).titre)}</h3></div>
         ${courbe(vals.slice(-20))}
         <p class="pr-exo-chiffres">
@@ -197,10 +204,17 @@ function blocRecords(hist, titre) {
           <span>${l.length} score${l.length > 1 ? "s" : ""}</span>
         </p>
       </article>`;
-    });
+  };
+  const sections = CATEGORIES_PROGRES.map((cat) => {
+    const lignes = avecScores.filter(([id]) => cat.contient(id));
+    return `<details class="pr-categorie" open>
+      <summary><h3 class="pr-categorie-titre">${cat.nom} <small>(${lignes.length})</small></h3></summary>
+      ${lignes.length ? lignes.map((x) => carte(x, cat.classe)).join("") : `<p class="petit">Pas encore de score.</p>`}
+    </details>`;
+  }).join("");
   return `<section class="bloc pr-bloc">
     <h2 class="bloc-titre">${titre}</h2>
-    ${lignes.length ? lignes.join("") : `<p class="petit">Pas encore de score.</p>`}
+    ${sections}
   </section>`;
 }
 

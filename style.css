@@ -616,3 +616,10 @@ details[open] > summary::before { transform: rotate(90deg); }
 /* Long jeu (Test Center Trackman) */
 .cat-long-jeu { --couleur-cat: #EB574C; }
 .zone-saisie input { flex: 1; min-width: 0; font-size: 1.1rem; padding: 10px; border: 1px solid var(--bord); border-radius: 10px; background: var(--carte); color: var(--texte); }
+
+/* Progrès : catégories Putting / Chipping / Test Center */
+.cat-chipping { --couleur-cat: #2e7d4f; }
+.pr-categorie { margin-top: 12px; }
+.pr-categorie > summary { cursor: pointer; list-style: revert; }
+.pr-categorie-titre { display: inline; font-size: 1.15rem; margin: 0; }
+.pr-categorie-titre small { font-weight: normal; color: var(--texte-doux); }
