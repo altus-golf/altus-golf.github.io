@@ -41,6 +41,22 @@ const FICHES_ALTUS = [
     regles: "Avec une balle. Zone de 10 ft de long × 4 ft de large, qui commence à 10 ft de la balle.\nMettre un maximum de balles d'affilée dans la zone, chaque balle allant plus loin que la précédente.\nScore : ta meilleure série." },
 ];
 
+// Long jeu : Test Center au Trackman (demandés par l'utilisateur, 20/11/2026).
+// Pas de jeu interactif : on tape le score donné par Trackman à la fin du test
+// (« saisie: true » ; score sur 100, plus haut = mieux : à confirmer).
+const TESTS_CENTER = [
+  ["tc-fix-wedge-60-90", "Fix Wedge 60-90 m"],
+  ["tc-random-60-90", "Random 60-90 m"],
+  ["tc-fix-wedge-100-150", "Fix Wedge 100-150 m"],
+  ["tc-random-100-150", "Random 100-150 m"],
+  ["tc-random-150-180", "Random 150-180 m"],
+  ["tc-driver", "Driver"],
+];
+TESTS_CENTER.forEach(([id, nom]) => FICHES_ALTUS.push({
+  id, titre: `Test Center · ${nom}`, type: "Trackman", saisie: true, longJeu: true,
+  regles: `Test Center « ${nom} » sur Trackman.\nÀ la fin du test, entre le score donné par Trackman.`,
+}));
+
 const PELZ_SITUATIONS = [
   { id: "a", nom: "Approche levée (15 m)", detail: "Fairway, par-dessus le bunker ; drapeau à 4 m max. du bord." },
   { id: "b", nom: "Chip long (20 m)", detail: "Fairway ; au moins 15 m de green devant le drapeau." },
@@ -72,6 +88,7 @@ const ITEMS_ALTUS = [
   { id: "trefle", titre: "Trèfle (série)", fiche: "trefle", unite: "/ 16", max: 16 },
   { id: "snail-3-10-feet", titre: "Snail 3-10 ft", fiche: "snail-3-10-feet", unite: "/ 8", max: 8 },
   { id: "leap-frog", titre: "Leap Frog (série)", fiche: "leap-frog", unite: "d'affilée", max: 15 },
+  ...TESTS_CENTER.map(([id, nom]) => ({ id, titre: `Test Center ${nom}`, fiche: id, unite: "/ 100", max: 100 })),
 ];
 ITEMS_ALTUS.forEach((it) => { UNITES_SCORE[it.id] = it.unite; });
 
@@ -192,6 +209,32 @@ function pelzEnCours() {
 }
 
 // Zone sur la carte du Pelz : avancement de la semaine + une ligne par situation
+// Test Center (Trackman) : une case pour taper son score
+function zoneSaisie(fiche) {
+  const item = itemDe(fiche.id);
+  const r = resumeScores(lireScores()[fiche.id], fiche.id);
+  return `<div class="zone-saisie">
+    ${r ? `<p class="petit">⭐ Record <strong>${echapper(texteScore(fiche.id, r.record))}</strong> · dernier ${echapper(texteScore(fiche.id, r.dernier.v))} (${echapper(dateLisible(r.dernier.d))}) · ${r.nombre} score${r.nombre > 1 ? "s" : ""}</p>` : `<p class="petit">Pas encore de score.</p>`}
+    <div class="ajout-consigne">
+      <input type="text" inputmode="decimal" autocomplete="off" id="saisie-${echapper(fiche.id)}" placeholder="Score Trackman" aria-label="Mon score (${echapper(item.unite)})">
+      <button type="button" class="bouton principal" data-a="saisie-score" data-id="${echapper(fiche.id)}">Enregistrer</button>
+    </div>
+  </div>`;
+}
+function enregistrerSaisie(id) {
+  const champ = document.getElementById("saisie-" + id);
+  const item = itemDe(id);
+  const v = Math.round(Number(String(champ.value).replace(",", ".")) * 10) / 10;
+  if (!champ.value || !Number.isFinite(v) || v < 0 || v > item.max) { alert(`Entre un score entre 0 et ${item.max}.`); return; }
+  enregistrerScoreSansSuite(id, v);   // scores.js
+  alert(`✅ ${item.titre} : ${texteScore(id, v)} enregistré.`);
+  apresUnExo(id);                     // app.js
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-a='saisie-score']");
+  if (b) enregistrerSaisie(b.dataset.id);
+});
+
 function zonePelz() {
   const semaine = pelzDeLaSemaine();
   const faites = Object.keys(semaine).length;

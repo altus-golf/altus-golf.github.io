@@ -612,3 +612,7 @@ details[open] > summary::before { transform: rotate(90deg); }
 .table-distances td:last-child, .table-distances th:last-child { text-align: right; white-space: nowrap; }
 .barre-pc { display: inline-block; width: 70px; height: 10px; border-radius: 5px; background: var(--bord); vertical-align: middle; overflow: hidden; }
 .barre-pc span { display: block; height: 100%; background: var(--accent, #365571); }
+
+/* Long jeu (Test Center Trackman) */
+.cat-long-jeu { --couleur-cat: #EB574C; }
+.zone-saisie input { flex: 1; min-width: 0; font-size: 1.1rem; padding: 10px; border: 1px solid var(--bord); border-radius: 10px; background: var(--carte); color: var(--texte); }

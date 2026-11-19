@@ -36,6 +36,7 @@ function lireScores() {
 }
 
 function texteScore(idFiche, valeur) {
+  valeur = String(valeur).replace(".", ",");   // 72,5 (à la française)
   const unite = UNITES_SCORE[idFiche] || "";
   if (unite.startsWith("/")) return `${valeur} ${unite}`;
   if (unite === "%") return `${valeur} %`;

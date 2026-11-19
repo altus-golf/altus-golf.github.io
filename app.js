@@ -45,6 +45,7 @@ function exosDeLaSemaine() {
   }
   const scores = lireScores();
   PELZ_SITUATIONS.forEach((s) => { n += (scores["pelz-" + s.id] || []).filter((x) => x.d >= lundi).length; });
+  FICHES_ALTUS.filter((f) => f.saisie).forEach((f) => { n += (scores[f.id] || []).filter((x) => x.d >= lundi).length; });
   return n;
 }
 
@@ -117,14 +118,14 @@ function mesConsignes() {
 /* ---------- 2. Morceaux de page ---------- */
 
 function carteExo(fiche, options = {}) {
-  return `<article class="carte cat-putting ${options.fait ? "faite" : ""}">
+  return `<article class="carte ${fiche.longJeu ? "cat-long-jeu" : "cat-putting"} ${options.fait ? "faite" : ""}">
     <div class="carte-haut"><span class="pastille">${echapper(options.etiquette || fiche.type)}</span></div>
     <h3 class="carte-titre">${echapper(fiche.titre)}</h3>
     <details ${options.ouvert ? "open" : ""}>
       <summary>Mise en place et règles</summary>
       <p class="regles">${echapper(fiche.regles)}</p>
     </details>
-    ${fiche.id === "pelz" ? zonePelz() : zoneExoPoints(fiche.id)}
+    ${fiche.id === "pelz" ? zonePelz() : fiche.saisie ? zoneSaisie(fiche) : zoneExoPoints(fiche.id)}
   </article>`;
 }
 
@@ -417,9 +418,14 @@ function vueMoi() {
 }
 
 function vueExos() {
+  const court = FICHES.filter((f) => !f.longJeu);
+  const long = FICHES.filter((f) => f.longJeu);
   return `<h2 class="bloc-titre">📚 Tous les exos</h2>
-    <p class="bloc-info">${FICHES.length} exos de petit jeu et de putting, à jouer quand tu veux</p>
-    ${FICHES.map((f) => carteExo(f)).join("")}`;
+    <p class="bloc-info">${court.length} exos de petit jeu et de putting, à jouer quand tu veux</p>
+    ${court.map((f) => carteExo(f)).join("")}
+    <h2 class="bloc-titre">🏌️ Long jeu · Test Center Trackman</h2>
+    <p class="bloc-info">${long.length} tests : tu entres le score donné par Trackman</p>
+    ${long.map((f) => carteExo(f)).join("")}`;
 }
 
 function vueCoach() {
