@@ -50,7 +50,7 @@
 - ✅ Espace coachs : 📊 rapport Excel téléchargeable : une page par joueur avec tous les exos (records et moyennes de l'année, même vides), 30 derniers scores par exo rangés par catégorie puis par exo (pas par date), réussite par distance.
 - ✅ Progrès rangés en 3 catégories : Putting, Chipping (Pelz), Test Center (« 📈 Moi » et espace coachs).
 - ✅ Progrès dans l'ordre du programme (Pelz ensemble) ; scores à virgule affichés « 72,5 ».
-- ✅ Plusieurs défis par semaine (5 max) : le coach en ajoute / retire dans l'espace coachs ; un classement par défi, calculé depuis les scores de la semaine (hist).
+- ✅ Plusieurs défis par semaine (plus de limite à 5 depuis le 20/11/2026) : le coach en ajoute / retire dans l'espace coachs ; un classement par défi, calculé depuis les scores de la semaine (hist).
 
 ## Décisions (avec l'utilisateur)
 - Site séparé de l'appli perso, dans l'organisation GitHub `altus-golf` (pour que le nom du compte perso n'apparaisse pas).

@@ -472,11 +472,11 @@ function vueCoach() {
       <span><strong>${echapper(itemDe(id).titre)}</strong></span>
       <button type="button" class="bouton danger" data-a="coach-defi-retirer" data-id="${echapper(id)}" aria-label="Retirer ce défi">✕</button>
     </li>`).join("")}</ul>` : `<p class="petit">Pas encore de défi cette semaine.</p>`}
-    ${fichesDefi.length < MAX_DEFIS ? `<div class="ajout-consigne">
+    ${fichesDefi.length < MAX_DEFIS && ITEMS_ALTUS.some((f) => !fichesDefi.includes(f.id)) ? `<div class="ajout-consigne">
       <select id="choix-defi" class="choix" aria-label="Exo du défi">
         ${ITEMS_ALTUS.filter((f) => !fichesDefi.includes(f.id)).map((f) => `<option value="${echapper(f.id)}">${echapper(f.titre)}</option>`).join("")}
       </select>
-      <button type="button" class="bouton principal" data-a="coach-defi-ajouter">➕ Ajouter</button></div>` : `<p class="petit">${MAX_DEFIS} défis au maximum.</p>`}
+      <button type="button" class="bouton principal" data-a="coach-defi-ajouter">➕ Ajouter</button></div>` : `<p class="petit">Tous les exos sont déjà en défi.</p>`}
     <label for="message-defi">💬 Message pour tout le groupe (facultatif)</label>
     <input id="message-defi" maxlength="200" value="${echapper(defi ? defi.message : "")}">
     <button type="button" class="bouton" data-a="coach-defi-message">Enregistrer le message</button>

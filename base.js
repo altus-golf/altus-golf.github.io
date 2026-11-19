@@ -499,7 +499,7 @@ function normaliserDefi(d) {
   if (!fiches.length) return null;
   return { fiches, lundi: d.lundi, message: typeof d.message === "string" ? d.message.slice(0, 200) : "" };
 }
-const MAX_DEFIS = 5;
+const MAX_DEFIS = 40;   // pas de vraie limite : le coach peut mettre tous les exos (choix de l’utilisateur, 20/11/2026)
 
 function normaliserConsignes(c) {
   const d = c && typeof c === "object" ? c : {};
