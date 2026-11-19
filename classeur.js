@@ -296,12 +296,16 @@ function joueursDuRapport() {
   return groupeDonnees.bilans.filter((b) => !reprisIds.has(b.uid)).sort((a, b) => a.prenom.localeCompare(b.prenom, "fr"));
 }
 
+// Tous les exos, rangés comme les progrès : Putting, Chipping, Test Center (puis ordre du programme)
+function ordreRapport() {
+  const rang = (id) => CATEGORIES_PROGRES.findIndex((c) => c.contient(id));
+  return [...ITEMS_ALTUS].sort((a, b) => rang(a.id) - rang(b.id));
+}
+
 // Records et moyennes de l'année d'un joueur : une ligne par exo, dans l'ordre du programme
 function lignesRecords(j) {
   // Tous les exos possibles, même sans score (choix du coach, 20/11/2026)
-  // Rangés comme les progrès : Putting, Chipping, Test Center
-  const rang = (id) => CATEGORIES_PROGRES.findIndex((c) => c.contient(id));
-  return [...ITEMS_ALTUS].sort((a, b) => rang(a.id) - rang(b.id)).map((it) => {
+  return ordreRapport().map((it) => {
     const e = j.exos[it.id];
     const h = j.hist[it.id] || [];
     const dernier = h[h.length - 1];
@@ -336,10 +340,12 @@ async function telechargerRapport() {
       const f = [[`${j.prenom}${j.source === "classeur" ? " (historique du classeur)" : ""}`, "", `Rapport du ${dateRapport(dateEnTexte(new Date()))}`],
         ["Mis à jour", dateRapport(j.maj), "Exos cette semaine", j.source === "classeur" ? "" : (j.semaine.lundi === lundi ? j.semaine.n : 0)],
         [], [`Tous les exos : records et moyennes ${annee}`], TITRES_RECORDS, ...lignesRecords(j)];
-      f.push([], ["Derniers scores (jusqu'à 30 par exo)"], ["Date", "Catégorie", "Exo", "Score", "Sur"]);
-      const scores = [];
-      for (const [id, l] of Object.entries(j.hist)) if (itemDe(id)) l.forEach(([d, v]) => scores.push([d, id, v]));
-      scores.sort((a, b) => b[0].localeCompare(a[0])).forEach(([d, id, v]) => f.push([dateRapport(d), categorieRapport(id), itemDe(id).titre, v, itemDe(id).unite]));
+      // Derniers scores rangés par catégorie puis par exo (pas par date), choix du coach 20/11/2026 ;
+      // dans chaque exo, du plus récent au plus ancien
+      f.push([], ["Derniers scores (jusqu'à 30 par exo)"], ["Catégorie", "Exo", "Date", "Score", "Sur"]);
+      ordreRapport().forEach((it) => {
+        [...(j.hist[it.id] || [])].reverse().forEach(([d, v]) => f.push([categorieRapport(it.id), it.titre, dateRapport(d), v, it.unite]));
+      });
       const dist = Object.entries(j.dist || {}).filter(([exo]) => EXOS_POINTS[exo]);
       if (dist.length) {
         f.push([], [`Réussite par distance ${annee} (exos interactifs)`], ["Exo", "Distance", "Réussis", "Tentés", "%"]);
