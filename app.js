@@ -604,7 +604,8 @@ function vueMoi() {
   const hist = {};
   for (const [id, liste] of Object.entries(lireScores())) if (Array.isArray(liste) && liste.length) hist[id] = liste.map((s) => [s.d, s.v]);
   return `<p class="semaine-info">${exosDeLaSemaine()} exo${exosDeLaSemaine() > 1 ? "s" : ""} joué${exosDeLaSemaine() > 1 ? "s" : ""} cette semaine</p>
-    ${blocRecords(hist, "⭐ Mes records")}`;
+    ${blocRecords(hist, "⭐ Mes records")}
+    ${blocDetailExos()}`;   // exos-altus.js
 }
 
 function vueExos() {

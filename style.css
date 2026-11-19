@@ -728,3 +728,5 @@ body.theme-noir-orange .classement li.moi, body.theme-noir-orange .table-matchs 
 body.theme-noir-orange .petit, body.theme-noir-orange .bloc-info { color: #ffc48a; }
 body.theme-noir-orange input, body.theme-noir-orange select, body.theme-noir-orange textarea { background: #111; color: #f5f5f5; border-color: #ff7a00; }
 body.theme-noir-orange #trefle-jeu, body.theme-noir-orange .trefle-jeu { background: #0d0d0d; color: #f5f5f5; }
+.detail-exo { margin: 8px 0; padding: 8px 0; border-top: 1px solid var(--bord); }
+.detail-exo summary { cursor: pointer; }

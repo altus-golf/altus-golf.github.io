@@ -410,6 +410,27 @@ document.addEventListener("click", async (e) => {
   if (bouton.dataset.a === "pelz-commencer") afficherPelz();
 });
 
+// Onglet Exos : seulement les boutons pour jouer ; les moyennes et le tableau par distance
+// sont dans 📈 Moi (choix de l'utilisateur, 20/11/2026). On masque tableauStats le temps de
+// fabriquer la zone, sans toucher exos-points.js.
+const zoneExoPointsGolf = zoneExoPoints;
+const tableauStatsGolf = tableauStats;
+zoneExoPoints = function (idFiche) {
+  tableauStats = () => "";
+  try { return zoneExoPointsGolf(idFiche); } finally { tableauStats = tableauStatsGolf; }
+};
+// 📈 Moi : détail de chaque exo interactif joué sur ce téléphone (moyennes + tableau par distance)
+function blocDetailExos() {
+  const exos = Object.keys(EXOS_POINTS).filter((exo) => ficheDe(EXOS_POINTS[exo].idFiche) && toursDe(exo).length);
+  if (!exos.length) return "";
+  return `<section class="bloc pr-bloc">
+    <h2 class="bloc-titre">🎯 Détail de mes exos</h2>
+    <p class="bloc-info">Moyennes et réussite par distance de chaque exo interactif</p>
+    ${exos.map((exo) => `<details class="detail-exo"><summary><strong>${echapper(EXOS_POINTS[exo].emoji || "")} ${echapper(EXOS_POINTS[exo].nom)}</strong></summary>
+      ${tableauStatsGolf(exo, statsDe(exo, toursDe(exo)))}</details>`).join("")}
+  </section>`;
+}
+
 // « Abandonner » des jeux de exos-points.js : la question est posée dans la page
 // (son confirm() est bloqué dans certains navigateurs d'applis), puis on laisse faire le jeu.
 const abandonnerExoGolf = abandonnerExo;
