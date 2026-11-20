@@ -89,3 +89,4 @@
 - v61 : Test Center Fix Wedge ET Random 100-150 m → affichés « (filles 90-130 m) » (même exo, scores gardés).
 - v62 : « Putts rentrés par distance » : le détail des anciens Trèfle en série est effacé aussi (téléphones + espace coachs).
 - v63 : Maxime et Franck (coachs) toujours dans la liste des prénoms de l'accueil, jamais dans le flemmard de la semaine (`PRENOMS_COACHS`, app.js).
+- v64 : changer de prénom avec le même compte Google = repartir de zéro (avertissement) ; l'historique du classeur repris redevient libre (cas de Maxime sur le profil de Kelii).

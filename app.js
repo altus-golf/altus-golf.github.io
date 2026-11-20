@@ -477,12 +477,42 @@ let messageAccueil = "";
 const PRENOMS_COACHS = ["Maxime", "Franck"];
 const estPrenomCoach = (prenom) => PRENOMS_COACHS.some((p) => slugPrenom(p) === slugPrenom(prenom));
 
+// Prénom déjà utilisé par CE compte Google (ex. un coach qui s'était mis sur le profil d'un
+// joueur) : s'il choisit un autre prénom, il repart de zéro (repartirDeZero), sinon les
+// scores et l'historique du classeur de l'autre joueur le suivraient (20/11/2026).
+let ancienPrenomCompte = "";
+function monUidCompte() {
+  if (modeDemo()) return lireStockage("uidDemo", null);
+  const u = utilisateurGoogle();
+  return u ? u.uid : null;
+}
+const changeDePrenom = (prenom) => !!ancienPrenomCompte && slugPrenom(ancienPrenomCompte) !== slugPrenom(prenom);
+
+// Vide ce téléphone et repart de zéro sous le nouveau prénom (appelé après rejoindreGroupe) :
+// sauvegarde en ligne vidée et bilan réécrit vide, avant que chargerGroupe ne les remette ici.
+// L'historique du classeur repris sous l'ancien prénom redevient libre pour le vrai joueur.
+async function repartirDeZero() {
+  ecrireStockage("scores", {}, PREFIXE_SCORES);
+  ["effaces", "effacesCoach", "techniques", "consignesEnAttente"].forEach((k) => ecrireStockage(k, [], PREFIXE_SCORES));
+  ecrireStockage("pelzEnCours", null, PREFIXE_SCORES);
+  Object.values(EXOS_POINTS).forEach((c) => {
+    ecrireStockage(c.cleTours, [], PREFIXE_SCORES);
+    if (c.cleEnCours) ecrireStockage(c.cleEnCours, null, PREFIXE_SCORES);
+  });
+  await ecrireSauvegarde({ ...normaliserSauvegarde({}), maj: Date.now() });   // base.js
+  await publierBilan(calculerBilan());   // voulu ici : on remplace l'ancien profil par un profil vide
+  ancienPrenomCompte = "";
+}
+
 function chargerPrenomsAccueil() {
   if (prenomsEnChargement) return;
   prenomsEnChargement = true;
   prenomsDuGroupe().then((liste) => {
     prenomsEnChargement = false;
     const bilans = liste || [];
+    const uid = monUidCompte();
+    const mien = uid && bilans.find((b) => b.uid === uid && b.source !== "classeur");
+    ancienPrenomCompte = mien ? mien.prenom : "";
     // Historiques importés déjà repris par un joueur : masqués (même règle que les classements)
     const repris = new Set(bilans.map((b) => b.repris).filter(Boolean));
     const vus = new Set();
@@ -504,8 +534,10 @@ async function entrerAvecPrenom(prenom) {
   entreeEnCours = true;
   afficherVue();
   try {
+    const repartir = changeDePrenom(prenom);
     const erreur = await rejoindreGroupe(prenom);
     if (erreur) { messageAccueil = erreur; return; }
+    if (repartir) await repartirDeZero();
     prenomChoisi = null;
     vue = "seance";
     await chargerGroupe();
@@ -536,6 +568,7 @@ function vueAccueil() {
       <h2 class="bloc-titre">Bienvenue chez Altus 👋</h2>
       ${erreur}
       <p class="confirmer-prenom">Tu es <strong>${echapper(prenomChoisi)}</strong> ?</p>
+      ${changeDePrenom(prenomChoisi) ? `<p class="erreur">⚠ Ce compte Google était sur le profil de <strong>${echapper(ancienPrenomCompte)}</strong>. En devenant ${echapper(prenomChoisi)}, tu repars de zéro : les scores de ${echapper(ancienPrenomCompte)} ne te suivent pas.</p>` : ""}
       <button type="button" class="bouton principal pleine-largeur" data-a="confirmer-prenom">✅ Oui, c'est moi</button>
       <button type="button" class="bouton pleine-largeur" data-a="liste-prenoms">← Non, revenir à la liste</button>
     </section>`;
@@ -1040,6 +1073,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("submit", async (e) => {
     if (e.target.id !== "form-rejoindre") return;
     e.preventDefault();
+    const repartir = changeDePrenom(e.target.prenom.value);
     const erreur = await rejoindreGroupe(e.target.prenom.value);
     if (erreur) {
       const p = document.getElementById("erreur-rejoindre");
@@ -1047,6 +1081,7 @@ document.addEventListener("DOMContentLoaded", () => {
       p.hidden = false;
       return;
     }
+    if (repartir) await repartirDeZero();
     sauvegardeVerifiee = false;
     await chargerGroupe();   // récupère ce qui est en ligne, puis publie (publierMonBilan)
     changerVue("seance");
