@@ -107,7 +107,7 @@ function fusionnerScores(scores, autres, effaces) {
     const compte = {};
     l.forEach((s) => { const k = s.d + "|" + s.v; compte[k] = (compte[k] || 0) + 1; });
     liste.forEach((s) => {
-      if (s.t && effaces.has(s.t)) return;
+      if (estEfface(effaces, id, s.t || texteEnDate(s.d).getTime() + 12 * 3600000)) return;   // base.js
       const k = s.d + "|" + s.v;
       if (compte[k]) { compte[k]--; return; }
       l.push({ t: s.t || texteEnDate(s.d).getTime() + 12 * 3600000, d: s.d, v: s.v });
@@ -128,9 +128,14 @@ async function restaurerDepuisEnLigne() {
   let ajoutes = 0;   // nombre de choses récupérées (scores + tours) : renvoyé à chargerGroupe
   if (sauvegarde) ajoutes += fusionnerScores(scores, sauvegarde.scores, effaces);
   if (monBilan) ajoutes += fusionnerScores(scores, mapObjet(monBilan.hist, (l) => l.map(([d, v]) => ({ d, v }))), effaces);
+  // Historique du classeur repris : on le refusionne (répare les scores perdus le 20/11/2026 ;
+  // sans doublon grâce à fusionnerScores, sans ce qu'un coach a effacé grâce à effaces)
+  const reprisId = m.repris || (sauvegarde && sauvegarde.repris) || (monBilan && monBilan.repris) || "";
+  const importe = reprisId && groupeDonnees.bilans.find((b) => b.uid === reprisId && b.source === "classeur");
+  if (importe) ajoutes += fusionnerScores(scores, mapObjet(importe.hist, (l) => l.map(([d, v]) => ({ d, v }))), effaces);
   // Anciens Trèfle comptés en série (avant FIN_TREFLE_SERIE, exos-altus.js) : effacés
   const trefleAvant = (scores.trefle || []).length;
-  (scores.trefle || []).forEach((s) => { if ((s.t || 0) < FIN_TREFLE_SERIE) effaces.add(s.t || 0); });
+  (scores.trefle || []).forEach((s) => { if ((s.t || 0) < FIN_TREFLE_SERIE && s.t) effaces.add(cleEfface("trefle", s.t)); });
   scores.trefle = (scores.trefle || []).filter((s) => (s.t || 0) >= FIN_TREFLE_SERIE);
   const trefleEnleves = trefleAvant - scores.trefle.length;
   if (!scores.trefle.length) delete scores.trefle;
@@ -138,7 +143,7 @@ async function restaurerDepuisEnLigne() {
   let enleves = trefleEnleves;
   for (const id of Object.keys(scores)) {
     const avant = (scores[id] || []).length;
-    scores[id] = (scores[id] || []).filter((s) => !(s.t && effaces.has(s.t)));
+    scores[id] = (scores[id] || []).filter((s) => !estEfface(effaces, id, s.t));
     enleves += avant - scores[id].length;
   }
   if (ajoutes || enleves) ecrireStockage("scores", scores, PREFIXE_SCORES);
@@ -153,7 +158,7 @@ async function restaurerDepuisEnLigne() {
     sauvegarde.techniques.forEach((x) => { if (!liste.some((y) => y.id === x.id && y.d === x.d)) liste.push(x); });
     ecrireStockage("techniques", liste.slice(-200), PREFIXE_SCORES);
   }
-  ecrireStockage("effaces", [...effaces].slice(-500), PREFIXE_SCORES);
+  ecrireStockage("effaces", [...effaces].slice(-1000), PREFIXE_SCORES);
   // Tours des exos interactifs (détail par distance, 20/11/2026) : sinon un autre téléphone
   // envoyait un bilan sans « dist » et le coach perdait le détail des putts rentrés
   if (sauvegarde) {
@@ -186,7 +191,7 @@ async function publierMonBilan() {
     scores: lireScores(),
     repris: moi().repris || "",
     techniques: (Array.isArray(techniques) ? techniques : []).map((x) => ({ id: x.id, d: x.d })).slice(-200),
-    effaces: (lireStockage("effaces", [], PREFIXE_SCORES) || []).slice(-500),
+    effaces: (lireStockage("effaces", [], PREFIXE_SCORES) || []).slice(-1000),
     effacesCoach: (lireStockage("effacesCoach", [], PREFIXE_SCORES) || []).slice(-300),
     tours: Object.fromEntries(Object.keys(EXOS_POINTS).map((exo) => [exo, toursDe(exo).slice(-300)]).filter(([, l]) => l.length)),
     maj: Date.now(),
@@ -381,11 +386,11 @@ function appliquerEffacementsCoach() {
     appliques.add(e.cle);
     const liste = scores[e.id] || [];
     // Score repéré par son heure (t) si le coach la connaît ; déjà effacé (via la sauvegarde) → rien à faire
-    if (e.t && !liste.some((s) => s.t === e.t) && effaces.includes(e.t)) return;
+    if (e.t && !liste.some((s) => s.t === e.t) && (effaces.includes(cleEfface(e.id, e.t)) || effaces.includes(e.t))) return;
     const parHeure = e.t ? liste.findIndex((s) => s.t === e.t) : -1;
     if (parHeure >= 0) {
       const [efface] = liste.splice(parHeure, 1);
-      effaces.push(efface.t);
+      effaces.push(cleEfface(e.id, efface.t));
       change = true;
       scores[e.id] = liste;
       return;
@@ -394,7 +399,7 @@ function appliquerEffacementsCoach() {
     for (let i = liste.length - 1; i >= 0; i--) {
       if (liste[i].d === e.d && liste[i].v === e.v) {
         const [efface] = liste.splice(i, 1);
-        if (efface.t) effaces.push(efface.t);
+        if (efface.t) effaces.push(cleEfface(e.id, efface.t));
         change = true;
         break;
       }
@@ -404,7 +409,7 @@ function appliquerEffacementsCoach() {
   ecrireStockage("effacesCoach", [...appliques].slice(-300), PREFIXE_SCORES);
   if (change) {
     ecrireStockage("scores", scores, PREFIXE_SCORES);
-    ecrireStockage("effaces", effaces.slice(-500), PREFIXE_SCORES);
+    ecrireStockage("effaces", effaces.slice(-1000), PREFIXE_SCORES);
   }
   return change;
 }
@@ -828,7 +833,7 @@ async function actionCoach(a, bouton) {
           t = liste[i].t || 0;
           liste.splice(i, 1);
           s.scores[id] = liste;
-          if (t) s.effaces = [...s.effaces, t].slice(-500);
+          if (t) s.effaces = [...s.effaces, cleEfface(id, t)].slice(-1000);
           const erreurSauvegarde = await ecrireSauvegardeDe(j.uid, { ...s, maj: Date.now() });
           if (erreurSauvegarde) raison = "Firebase a refusé de modifier sa sauvegarde (règles Firebase pas à jour ?)";
           if (!erreurSauvegarde) {

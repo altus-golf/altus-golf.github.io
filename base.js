@@ -330,6 +330,16 @@ async function publierBilan(bilan) {
   }
 }
 
+// Scores effacés (20/11/2026, correctif) : chaque effacement est noté « exo|heure » (cleEfface).
+// Avant, seule l'heure (t) était notée : or les scores récupérés du classeur ont tous la même
+// heure (midi du jour) → effacer UN score effaçait tous ceux du même jour, tous exos confondus.
+// Les anciennes notes (nombre seul) ne comptent plus que pour une vraie heure (pas un midi « rond »).
+const cleEfface = (id, t) => `${id}|${t}`;
+function estEfface(effaces, id, t) {
+  if (!t) return false;
+  return effaces.has(cleEfface(id, t)) || (effaces.has(t) && t % 1000 !== 0);
+}
+
 // Sauvegarde en ligne de TOUS mes scores (20/11/2026) : groupes/ALTUS/sauvegardes/<uid>,
 // lisible et modifiable seulement par moi. Sert à tout retrouver sur un nouveau téléphone,
 // un autre navigateur, ou si Safari a effacé les données du site.
@@ -677,7 +687,7 @@ function normaliserSauvegarde(x) {
     scores,
     repris: typeof d.repris === "string" && /^classeur-[a-z0-9-]{1,40}$/.test(d.repris) ? d.repris : "",
     techniques: (Array.isArray(d.techniques) ? d.techniques : []).filter((x) => x && idFicheValide(x.id) && jourValide(x.d)).map((x) => ({ id: x.id, d: x.d })).slice(-200),
-    effaces: (Array.isArray(d.effaces) ? d.effaces : []).filter((t) => nombreOk(t, 1e13)).slice(-500),
+    effaces: (Array.isArray(d.effaces) ? d.effaces : []).filter((t) => nombreOk(t, 1e13) || (typeof t === "string" && /^[a-z0-9-]{1,40}\|\d{1,14}$/.test(t))).slice(-1000),
     effacesCoach: (Array.isArray(d.effacesCoach) ? d.effacesCoach : []).filter((t) => nombreOk(t, 1e13)).slice(-300),
     tours: normaliserToursSauvegarde(d.tours),
   };
