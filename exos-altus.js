@@ -9,6 +9,7 @@
    - Réglages des jeux de exos-points.js (copie de l'appli golf) pour
      compter comme le classeur, SANS modifier ce fichier :
        · Trèfle = putts rentrés sur 16 (avant le 20/11/2026 : meilleure série) ;
+       · Leap Frog = nombre de balles dans la zone (le jeu s'arrête au premier raté) ;
        · Snail = putts rentrés sur le premier tour de 8 putts (/8) ;
        · Start Line = un score par distance (départs réussis sur 10).
    - Test de Pelz interactif (10 balles par situation, barème 4/2/1/0).
@@ -38,7 +39,7 @@ const FICHES_ALTUS = [
   { id: "snail-3-10-feet", titre: "Snail 3-10 ft", type: "Jeu",
     regles: "8 putts entre 3 et 10 ft, en tournant autour du trou.\nObjectif : tout rentrer de suite, en montant puis en descendant.\nScore : le nombre de putts rentrés au premier tour (8 premiers putts)." },
   { id: "leap-frog", titre: "Leap Frog", type: "Jeu",
-    regles: "Avec une balle. Zone de 10 ft de long × 4 ft de large, qui commence à 10 ft de la balle.\nMettre un maximum de balles d'affilée dans la zone, chaque balle allant plus loin que la précédente.\nScore : ta meilleure série." },
+    regles: "Avec une balle. Zone de 10 ft de long × 4 ft de large, qui commence à 10 ft de la balle.\nMettre un maximum de balles d'affilée dans la zone, chaque balle allant plus loin que la précédente.\nScore : le nombre de balles dans la zone." },
 ];
 
 // Long jeu : Test Center au Trackman (demandés par l'utilisateur, 20/11/2026).
@@ -175,7 +176,7 @@ const ITEMS_ALTUS = [
   { id: "start-line-20", titre: "Start Line 20 ft", fiche: "start-line", unite: "/ 10", max: 10 },
   { id: "trefle", titre: "Trèfle", fiche: "trefle", unite: "/ 16", max: 16 },
   { id: "snail-3-10-feet", titre: "Snail 3-10 ft", fiche: "snail-3-10-feet", unite: "/ 8", max: 8 },
-  { id: "leap-frog", titre: "Leap Frog (série)", fiche: "leap-frog", unite: "d'affilée", max: 15 },
+  { id: "leap-frog", titre: "Leap Frog", fiche: "leap-frog", unite: "balles", max: 15 },
   ...TESTS_CENTER.map(([id, nom]) => ({ id, titre: `Test Center ${nom}`, fiche: id, unite: "/ 100", max: 100 })),
 ];
 ITEMS_ALTUS.forEach((it) => { UNITES_SCORE[it.id] = it.unite; });
@@ -234,6 +235,8 @@ function remplacerTextes(exo, remplacements) {
     config.points.forEach((pt) => { if (pt.aide) pt.aide = pt.aide.split(avant).join(apres); });
   }
 }
+// Plus de mot « série » (choix de l'utilisateur, 20/11/2026) : on parle du score
+remplacerTextes("leap-frog", [["▶ Commencer une série", "▶ Commencer"], ["La série s'arrête", "Le jeu s'arrête"]]);
 remplacerTextes("2-feet-circle", [["cercle de 60 cm", "cercle de 2 pieds"]]);
 remplacerTextes("demi-lune", [["demi-lune 1,2 m derrière", "demi-lune 4 pieds derrière"]]);
 remplacerTextes("9-putt-circle", [["cercle de 30 cm", "cercle de 1 pied"], ["Dans les 30 cm", "Dans le cercle de 1 pied"]]);
@@ -246,6 +249,8 @@ function scoreAltus(tour) {
   const exo = tour.exo;
   // Trèfle : nombre de putts rentrés sur 16 (choix de l'utilisateur, 20/11/2026 ; avant : meilleure série)
   if (exo === "trefle") return [["trefle", tour.resultats.filter((r) => r === true).length]];
+  // Leap Frog : le nombre de balles dans la zone (on ne parle plus de « série », 20/11/2026)
+  if (exo === "leap-frog") return [["leap-frog", tour.coups.filter((c) => c.rentre).length]];
   if (exo === "snail") return [["snail-3-10-feet", (tour.resultats || []).filter((r) => r === true).length]];
   if (exo === "start-line" && Array.isArray(tour.etapes)) {
     const points = EXOS_POINTS["start-line"].points;

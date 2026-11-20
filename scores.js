@@ -58,7 +58,7 @@ function enregistrerScoreSansSuite(id, valeur) {
 }
 
 // Appelé par exos-points.js à la fin d'un exo noté. Le score « façon Altus »
-// (Trèfle en série, Snail sur 8, Start Line par distance) remplace le sien.
+// (Trèfle sur 16, Leap Frog en balles, Snail sur 8, Start Line par distance) remplace le sien.
 function enregistrerScore(idFiche, valeur) {
   const scores = scoreAltusEnAttente || [[idFiche, valeur]];
   scores.forEach(([id, v]) => enregistrerScoreSansSuite(id, v));
