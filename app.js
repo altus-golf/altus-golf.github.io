@@ -897,8 +897,18 @@ async function actionCoach(a, bouton) {
       // Joueur du site : ajouté dans sa sauvegarde (ses téléphones le récupèrent à la
       // prochaine ouverture) et son bilan recalculé. t = maintenant : un score unique,
       // jamais pris pour un ancien Trèfle en série ni pour un score effacé.
-      const s = (await lireSauvegardesCoach([j.uid]))[j.uid];   // base.js
-      if (!s) messageCoach = `${j.prenom} n'a pas encore de sauvegarde en ligne : il doit ouvrir le site une fois, puis réessaie.`;
+      const erreurs = [];
+      let s = (await lireSauvegardesCoach([j.uid], erreurs))[j.uid];   // base.js
+      // Pas encore de sauvegarde (le joueur n'a pas rouvert le site depuis) : on la crée avec
+      // les scores de son bilan en ligne. Son téléphone y AJOUTERA les siens à la prochaine
+      // ouverture (restaurerDepuisEnLigne fusionne, sans doublon), rien n'est perdu.
+      // Si la lecture a ÉCHOUÉ, on ne crée rien (on risquerait d'écraser une vraie sauvegarde).
+      // (Trèfle : heure jamais avant FIN_TREFLE_SERIE, sinon le ménage des anciens Trèfle l'effacerait)
+      if (!s && !erreurs.length) s = normaliserSauvegarde({ scores: Object.fromEntries(Object.entries(j.hist).map(([k, l]) => [k, l.map(([d, v]) => {
+        const t = texteEnDate(d).getTime() + 12 * 3600000;
+        return { t: k === "trefle" ? Math.max(t, FIN_TREFLE_SERIE) : t, d, v };
+      })])), repris: j.repris || "" });
+      if (!s) messageCoach = `Impossible de lire la sauvegarde de ${j.prenom} (pas de connexion, ou règles Firebase pas à jour). Réessaie.`;
       else {
         s.scores[id] = [...(s.scores[id] || []), { t: Date.now(), d, v }].sort((x, y) => x.d.localeCompare(y.d) || x.t - y.t);
         const erreur = await ecrireSauvegardeDe(j.uid, { ...s, maj: Date.now() });
@@ -907,6 +917,17 @@ async function actionCoach(a, bouton) {
           const hist = mapObjet(s.scores, (l) => l.map((x) => [x.d, x.v]));
           Object.keys(hist).forEach((k) => { if (!hist[k].length) delete hist[k]; });
           const b = calculerBilanDepuis(j.uid, j.prenom, hist, j.semaine, null);
+          // Stats de l'année : on part de celles du bilan (justes, même si la sauvegarde ne
+          // contient que les 30 derniers scores) et on y ajoute juste ce score
+          b.exos = { ...j.exos };
+          if (d.startsWith(String(new Date().getFullYear()))) {
+            const e = j.exos[id];
+            if (!e || !e.n) b.exos[id] = { n: 1, moy: v, record: v, recordD: d };
+            else {
+              const record = meilleurScore(id, [e.record, v]);
+              b.exos[id] = { n: e.n + 1, moy: Math.round(10 * (e.moy * e.n + v) / (e.n + 1)) / 10, record, recordD: record === e.record ? e.recordD : d };
+            }
+          }
           if (Object.keys(j.dist || {}).length) b.dist = j.dist;
           if (j.repris) b.repris = j.repris;
           messageCoach = (await importerBilans([b])) || "✅ Score ajouté.";

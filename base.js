@@ -358,19 +358,21 @@ async function lireSauvegarde() {
 }
 // Coach (rapport Excel) : les sauvegardes complètes de plusieurs joueurs → { uid: sauvegarde }
 // (une sauvegarde illisible ou absente est simplement ignorée)
-async function lireSauvegardesCoach(uids) {
+// erreurs (facultatif) : tableau où l'on ajoute les uid dont la lecture a ÉCHOUÉ
+// (à distinguer d'un joueur qui n'a simplement pas encore de sauvegarde)
+async function lireSauvegardesCoach(uids, erreurs = []) {
   const res = {};
   if (modeDemo()) {
     const toutes = baseDemo().sauvegardes || {};
     uids.forEach((uid) => { if (toutes[uid]) res[uid] = normaliserSauvegarde(toutes[uid]); });
     return res;
   }
-  if (!(await demarrerFirebase())) return res;
+  if (!(await demarrerFirebase())) { erreurs.push(...uids); return res; }
   await Promise.all(uids.map(async (uid) => {
     try {
       const doc = await groupeCoach(codeCoach()).collection("sauvegardes").doc(uid).get();
       if (doc.exists) res[uid] = normaliserSauvegarde(doc.data());
-    } catch (e) { /* règles pas encore recollées : on fait avec le bilan */ }
+    } catch (e) { erreurs.push(uid); /* règles pas encore recollées : on fait avec le bilan */ }
   }));
   return res;
 }
