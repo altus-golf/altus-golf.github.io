@@ -48,6 +48,7 @@
 - ✅ Long jeu : 6 Test Center Trackman (score tapé à la main, /100). Score /100, plus haut = mieux (confirmé). Règles connues de tous : pas de détail sur les cartes (choix de l’utilisateur).
 - ✅ Rapport d'analyse (20/11/2026) puis lot 1 : sauvegarde en ligne de tous les scores + restauration au démarrage (plus de bilan écrasé par un téléphone vide / Safari qui efface après 7 jours), plus aucune fenêtre alert/confirm native, effacer un score tapé par erreur (finalement réservé aux coachs, dans l'espace coachs, pour éviter la triche). ⚠ Recoller les règles (bloc `sauvegardes`, limites exos/hist à 60).
 - ✅ Logo Altus comme icône quand on ajoute le site à l'écran d'accueil (iPhone + Android), nom court « Altus ».
+- ✅ Test de Pelz : situation D (Wedging 50 m) retirée → 8 situations, Pelz complet /320 (les anciens totaux /360 restent dans l'historique ; les lignes D du classeur sont ignorées à l'import).
 - ✅ Effacer un score (coach) : immédiat dans les classements et l'espace coachs (sauvegarde + bilan réécrits par le coach), les téléphones du joueur suivent. ⚠ Recoller les règles (coach peut écrire bilans et sauvegardes).
 - ✅ Correctif : le détail par distance (tours des exos interactifs) est aussi sauvegardé en ligne ; avant, jouer sur un autre téléphone effaçait le détail des putts rentrés chez le coach.
 - ✅ Onglet Exos allégé : seulement les boutons pour jouer ; moyennes et tableaux par distance déplacés dans 📈 Moi (« 🎯 Détail de mes exos »).

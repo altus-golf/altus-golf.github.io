@@ -4,8 +4,8 @@
 
    - FICHES_ALTUS : les exos à jouer (texte des règles du classeur).
    - ITEMS_ALTUS  : ce qui a un score et un classement. Un exo peut en
-     avoir plusieurs : Test de Pelz = 9 situations (/40) + total de la
-     semaine (/360) ; Start Line = 5, 10 et 20 ft (/10 chacun).
+     avoir plusieurs : Test de Pelz = 8 situations (/40, la D « 50 m » retirée le
+     20/11/2026) + total de la semaine (/320) ; Start Line = 5, 10 et 20 ft (/10 chacun).
    - Réglages des jeux de exos-points.js (copie de l'appli golf) pour
      compter comme le classeur, SANS modifier ce fichier :
        · Trèfle = meilleure série de putts rentrés d'affilée (/16) ;
@@ -18,7 +18,7 @@
 
 const FICHES_ALTUS = [
   { id: "pelz", titre: "Test de Pelz", type: "Test",
-    regles: "9 situations de petit jeu, 10 balles consécutives par situation.\nBarème par balle : balle rentrée = 4 pts ; moins de 3 pieds = 2 pts ; entre 3 et 6 pieds = 1 pt ; au-delà de 6 pieds = 0 pt (3 pieds ≈ une longueur de fer 5 ≈ un grand pas).\nUn Pelz par semaine : les 9 situations sont à faire entre le lundi et le dimanche, en une ou plusieurs fois." },
+    regles: "8 situations de petit jeu, 10 balles consécutives par situation.\nBarème par balle : balle rentrée = 4 pts ; moins de 3 pieds = 2 pts ; entre 3 et 6 pieds = 1 pt ; au-delà de 6 pieds = 0 pt (3 pieds ≈ une longueur de fer 5 ≈ un grand pas).\nUn Pelz par semaine : les 8 situations sont à faire entre le lundi et le dimanche, en une ou plusieurs fois." },
   { id: "9-putt-circle", titre: "9 Putt Circle", type: "Jeu",
     regles: "9 puces sur 3 lignes autour du trou, à 4, 5 et 6 m (14, 16 et 18 ft). 1 balle par puce.\nZone : cercle de 1 ft autour du trou." },
   { id: "demi-lune", titre: "Demi-lune", type: "Jeu",
@@ -146,7 +146,7 @@ const PELZ_SITUATIONS = [
   { id: "a", nom: "Approche levée (15 m)", detail: "Fairway, par-dessus le bunker ; drapeau à 4 m max. du bord." },
   { id: "b", nom: "Chip long (20 m)", detail: "Fairway ; au moins 15 m de green devant le drapeau." },
   { id: "c", nom: "Chip court (10 m)", detail: "Fairway ; au moins 7 m de green devant le drapeau." },
-  { id: "d", nom: "Wedging 50 m", detail: "Fairway ; au moins 15 m de green devant le drapeau." },
+  // D (Wedging 50 m) retirée à la demande de l'utilisateur (20/11/2026) : les lettres restent celles du classeur
   { id: "e", nom: "Bunker court (10 m)", detail: "Bunker ; drapeau à 3 m max. du bord." },
   { id: "f", nom: "Wedging 30 m", detail: "Fairway ; au moins 15 m de green devant le drapeau." },
   { id: "g", nom: "Bunker long (25 m)", detail: "Bunker ; drapeau à 10 m max. du bord du green." },
@@ -157,9 +157,12 @@ const PELZ_BAREME = [
   { pts: 4, nom: "🕳️ Rentrée" }, { pts: 2, nom: "< 3 pieds" }, { pts: 1, nom: "3 à 6 pieds" }, { pts: 0, nom: "> 6 pieds" },
 ];
 
+// Pelz complet = toutes les situations (40 pts chacune)
+const PELZ_MAX_TOTAL = PELZ_SITUATIONS.length * 40;
+
 // Scores classés : { id, titre, fiche (exo à jouer), max, unite }
 const ITEMS_ALTUS = [
-  { id: "pelz-total", titre: "Pelz complet (total de la semaine)", fiche: "pelz", unite: "/ 360", max: 360 },
+  { id: "pelz-total", titre: "Pelz complet (total de la semaine)", fiche: "pelz", unite: `/ ${PELZ_MAX_TOTAL}`, max: PELZ_MAX_TOTAL },
   ...PELZ_SITUATIONS.map((s) => ({ id: "pelz-" + s.id, titre: `Pelz ${s.id.toUpperCase()} - ${s.nom}`, fiche: "pelz", unite: "/ 40", max: 40 })),
   { id: "9-putt-circle", titre: "9 Putt Circle", fiche: "9-putt-circle", unite: "/ 9", max: 9 },
   { id: "demi-lune", titre: "Demi-lune", fiche: "demi-lune", unite: "/ 12", max: 12 },
@@ -326,7 +329,7 @@ function zonePelz() {
   const total = Object.values(semaine).reduce((t, v) => t + v, 0);
   const enCours = pelzEnCours();
   return `<div class="zone-pelz">
-    <p class="pelz-semaine"><strong>Pelz de la semaine : ${faites} / 9 situations</strong>${faites === 9 ? ` · total <strong>${total} / 360</strong>` : ""}</p>
+    <p class="pelz-semaine"><strong>Pelz de la semaine : ${faites} / ${PELZ_SITUATIONS.length} situations</strong>${faites === PELZ_SITUATIONS.length ? ` · total <strong>${total} / ${PELZ_MAX_TOTAL}</strong>` : ""}</p>
     ${enCours ? `<button type="button" class="bouton principal pleine-largeur" data-a="pelz-reprendre">⛳ Reprendre la situation ${enCours.s.toUpperCase()} (${enCours.balles.length}/10)</button>` : ""}
     <ul class="pelz-liste">${PELZ_SITUATIONS.map((s) => `<li>
       <span><strong>${s.id.toUpperCase()}</strong> ${echapper(s.nom)}<small>${echapper(s.detail)}</small></span>
@@ -379,7 +382,7 @@ async function actionPelz(a, bouton) {
   afficherPelz();
 }
 
-// 10 balles jouées : score de la situation, et total si les 9 sont faites cette semaine
+// 10 balles jouées : score de la situation, et total si toutes sont faites cette semaine
 function terminerPelz(t) {
   const score = t.balles.reduce((a, b) => a + b, 0);
   ecrireStockage("pelzEnCours", null, PREFIXE_SCORES);
@@ -388,14 +391,14 @@ function terminerPelz(t) {
   enregistrerScoreSansSuite("pelz-" + t.s, score);
   const semaine = pelzDeLaSemaine();
   let texteTotal = "";
-  if (Object.keys(semaine).length === 9) {
+  if (Object.keys(semaine).length === PELZ_SITUATIONS.length) {
     // Total de la semaine : un seul par semaine (remplacé si une situation est refaite)
     const total = Object.values(semaine).reduce((a, b) => a + b, 0);
     const scores = lireScores();
     scores["pelz-total"] = (scores["pelz-total"] || []).filter((x) => x.d < lundiDe());
     ecrireStockage("scores", scores, PREFIXE_SCORES);
     enregistrerScoreSansSuite("pelz-total", total);
-    texteTotal = `\n🏁 Pelz complet cette semaine : ${total} / 360.`;
+    texteTotal = `\n🏁 Pelz complet cette semaine : ${total} / ${PELZ_MAX_TOTAL}.`;
   }
   apresUnExo("pelz");
   const record = avant.length && score > Math.max(...avant) ? "\n🏆 Nouveau record sur cette situation !" : "";

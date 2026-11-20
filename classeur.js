@@ -37,7 +37,7 @@ function itemDuClasseur(exercice, situation) {
   const sit = sansAccents(situation);
   if (ex.startsWith("pelz")) {
     const lettre = sit.charAt(0);
-    return /^[a-i]$/.test(lettre) ? "pelz-" + lettre : null;
+    return PELZ_SITUATIONS.some((s) => s.id === lettre) ? "pelz-" + lettre : null;   // D (50 m) retirée : ignorée
   }
   if (ex === "start line") {
     const d = (sit.match(/\d+/) || [])[0];
@@ -100,7 +100,7 @@ function lireClasseur(texte) {
     (h[item] = h[item] || []).push([d, valeur]);
     res.lignes++;
   }
-  // Tri par date + Pelz complet : chaque semaine où les 9 situations sont faites
+  // Tri par date + Pelz complet : chaque semaine où toutes les situations (8 depuis le 20/11/2026) sont faites
   for (const h of Object.values(res.joueurs)) {
     Object.values(h).forEach((l) => l.sort((a, b) => a[0].localeCompare(b[0])));
     const semaines = {};
@@ -109,7 +109,7 @@ function lireClasseur(texte) {
       (semaines[lundi] = semaines[lundi] || {})[s.id] = [d, v];   // le dernier de la semaine
     }));
     for (const situations of Object.values(semaines)) {
-      if (Object.keys(situations).length < 9) continue;
+      if (Object.keys(situations).length < PELZ_SITUATIONS.length) continue;
       const fin = Object.values(situations).map(([d]) => d).sort().pop();
       (h["pelz-total"] = h["pelz-total"] || []).push([fin, Object.values(situations).reduce((t, [, v]) => t + v, 0)]);
     }

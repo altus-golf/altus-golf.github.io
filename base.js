@@ -248,7 +248,7 @@ function baseDemo() {
       hist[id] = liste.sort((a, b) => a[0].localeCompare(b[0]));
     });
     // Un Pelz complet il y a 2 semaines
-    hist["pelz-total"] = [[dateEnTexte(ajouterJours(new Date(), -14)), Math.round(360 * (niveau - 0.15))]];
+    hist["pelz-total"] = [[dateEnTexte(ajouterJours(new Date(), -14)), Math.round(PELZ_MAX_TOTAL * (niveau - 0.15))]];
     const defi = k % 3 === 2 ? null : { lundi, fiche: "trefle", meilleur: Math.min(15, 8 + k + (k % 2) * 2) };   // 2 joueurs n'ont pas joué le défi
     db.bilans[uid] = calculerBilanDepuis(uid, prenom, hist, { lundi, n: (k * 7) % 12 }, defi);
   });
