@@ -59,18 +59,23 @@ function distancesDeLAnnee() {
   for (const exo of Object.keys(EXOS_POINTS)) {
     const config = EXOS_POINTS[exo];
     if (!ficheDe(config.idFiche) || !config.points.length) continue;
-    const parD = {};
-    toursDe(exo).filter((t) => t.d.startsWith(annee)).forEach((t) => {
-      for (const [d, n] of Object.entries(t.tentes || {})) {
-        if (!n) continue;
-        const x = (parD[d] = parD[d] || [0, 0]);
-        x[0] += n - ((t.rates && t.rates[d]) || 0);
-        x[1] += n;
-      }
-    });
+    const parD = distDesTours(toursDe(exo), annee);
     if (Object.keys(parD).length) res[exo] = parD;
   }
   return res;
+}
+// Putts réussis / tentés par distance d'une liste de tours (de l'année donnée)
+function distDesTours(tours, annee) {
+  const parD = {};
+  tours.filter((t) => t.d.startsWith(annee)).forEach((t) => {
+    for (const [d, n] of Object.entries(t.tentes || {})) {
+      if (!n) continue;
+      const x = (parD[d] = parD[d] || [0, 0]);
+      x[0] += n - ((t.rates && t.rates[d]) || 0);
+      x[1] += n;
+    }
+  });
+  return parD;
 }
 
 function calculerBilan() {
@@ -171,6 +176,15 @@ async function restaurerDepuisEnLigne() {
         ecrireStockage(EXOS_POINTS[exo].cleTours, [...locaux, ...nouveaux].sort((a, b) => a.t - b.t), PREFIXE_SCORES);
         ajoutes += nouveaux.length;
       }
+    }
+  }
+  // Anciens Trèfle en série : leur détail par distance part aussi (20/11/2026)
+  if (EXOS_POINTS.trefle) {
+    const tours = toursDe("trefle");
+    const gardes = tours.filter((t) => (t.t || 0) >= FIN_TREFLE_SERIE);
+    if (gardes.length < tours.length) {
+      ecrireStockage(EXOS_POINTS.trefle.cleTours, gardes, PREFIXE_SCORES);
+      ajoutes += tours.length - gardes.length;
     }
   }
   // Effacements du coach déjà appliqués (sinon ils effaceraient un 2e score identique)

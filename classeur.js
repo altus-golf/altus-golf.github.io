@@ -195,15 +195,25 @@ async function nettoyerTrefleSerieClasseur() {
   //    Avec leur sauvegarde : on enlève les Trèfle notés avant FIN_TREFLE_SERIE (heure exacte connue).
   //    Sans sauvegarde : on enlève de leur bilan les Trèfle jusqu'au jour du changement ;
   //    leur téléphone renverra ceux joués après (nouveau calcul) à sa prochaine ouverture.
-  const joueurs = groupeDonnees.bilans.filter((b) => b.source !== "classeur" && (b.hist.trefle || b.exos.trefle));
+  const joueurs = groupeDonnees.bilans.filter((b) => b.source !== "classeur" && (b.hist.trefle || b.exos.trefle || (b.dist && b.dist.trefle)));
   const sauvegardes = joueurs.length ? await lireSauvegardesCoach(joueurs.map((j) => j.uid)) : {};   // base.js
   const jourChangement = dateEnTexte(new Date(FIN_TREFLE_SERIE));
-  for (const j of joueurs) {
+  for (let j of joueurs) {
     const s = sauvegardes[j.uid];
     let hist;
     if (s) {
       const vieux = (s.scores.trefle || []).filter((x) => (x.t || 0) < FIN_TREFLE_SERIE);
-      if (!vieux.length) continue;   // rien à enlever pour ce joueur
+      // Détail par distance (tours) des anciens Trèfle : enlevé aussi (« Putts rentrés par distance »)
+      const toursT = s.tours.trefle || [];
+      const toursGardes = toursT.filter((x) => (x.t || 0) >= FIN_TREFLE_SERIE);
+      const distT = distDesTours(toursGardes, String(new Date().getFullYear()));   // app.js
+      // (comparé clés triées : l'ordre des clés reçues de Firebase peut changer → sinon boucle sans fin)
+      const enTexte = (o) => JSON.stringify(Object.entries(o || {}).sort((a, b) => a[0].localeCompare(b[0])));
+      const distChange = enTexte(distT) !== enTexte((j.dist || {}).trefle);
+      if (!vieux.length && toursGardes.length === toursT.length && !distChange) continue;   // rien à enlever
+      if (toursGardes.length) s.tours.trefle = toursGardes; else delete s.tours.trefle;
+      j = { ...j, dist: { ...(j.dist || {}) } };
+      if (Object.keys(distT).length) j.dist.trefle = distT; else delete j.dist.trefle;
       s.scores.trefle = (s.scores.trefle || []).filter((x) => (x.t || 0) >= FIN_TREFLE_SERIE);
       s.effaces = [...s.effaces, ...vieux.filter((x) => x.t).map((x) => cleEfface("trefle", x.t))].slice(-1000);
       if (await ecrireSauvegardeDe(j.uid, { ...s, maj: Date.now() })) continue;   // refusé : on n'y touche pas
@@ -212,8 +222,12 @@ async function nettoyerTrefleSerieClasseur() {
     } else {
       hist = { ...j.hist, trefle: (j.hist.trefle || []).filter(([d]) => d > jourChangement) };
       if (!hist.trefle.length) delete hist.trefle;
+      // Sans sauvegarde : on ne sait pas quels tours sont anciens → détail du Trèfle enlevé
+      // (son téléphone renverra celui des nouveaux Trèfle à sa prochaine ouverture)
+      const avaitDist = !!(j.dist && j.dist.trefle);
+      if (avaitDist) { j = { ...j, dist: { ...j.dist } }; delete j.dist.trefle; }
+      if ((hist.trefle || []).length === (j.hist.trefle || []).length && !avaitDist) continue;   // rien à enlever
     }
-    if (!s && (hist.trefle || []).length === (j.hist.trefle || []).length) continue;   // rien à enlever
     const b = s ? calculerBilanDepuis(j.uid, j.prenom, hist, j.semaine, null) : { ...j, hist, exos: { ...j.exos } };
     if (!s) {
       // Sans sauvegarde : on ne recalcule que la ligne Trèfle (les autres exos gardent leurs stats de l'année)
