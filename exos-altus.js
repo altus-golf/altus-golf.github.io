@@ -8,7 +8,7 @@
      20/11/2026) + total de la semaine (/320) ; Start Line = 5, 10 et 20 ft (/10 chacun).
    - Réglages des jeux de exos-points.js (copie de l'appli golf) pour
      compter comme le classeur, SANS modifier ce fichier :
-       · Trèfle = meilleure série de putts rentrés d'affilée (/16) ;
+       · Trèfle = putts rentrés sur 16 (avant le 20/11/2026 : meilleure série) ;
        · Snail = putts rentrés sur le premier tour de 8 putts (/8) ;
        · Start Line = un score par distance (départs réussis sur 10).
    - Test de Pelz interactif (10 balles par situation, barème 4/2/1/0).
@@ -34,7 +34,7 @@ const FICHES_ALTUS = [
   { id: "start-line", titre: "Start Line", type: "Test",
     regles: "Faire sortir la balle sur la ligne visée, à 5, 10 et 20 ft. 10 balles par distance." },
   { id: "trefle", titre: "Trèfle", type: "Jeu",
-    regles: "16 putts autour du trou à 3, 4 et 5 ft, en forme de trèfle.\nObjectif : rentrer les 16 putts d'affilée en moins de 45 min.\nScore : ta meilleure série de putts rentrés d'affilée." },
+    regles: "16 putts autour du trou à 3, 4 et 5 ft, en forme de trèfle.\nObjectif : rentrer les 16 putts d'affilée en moins de 45 min.\nScore : le nombre de putts rentrés sur 16." },
   { id: "snail-3-10-feet", titre: "Snail 3-10 ft", type: "Jeu",
     regles: "8 putts entre 3 et 10 ft, en tournant autour du trou.\nObjectif : tout rentrer de suite, en montant puis en descendant.\nScore : le nombre de putts rentrés au premier tour (8 premiers putts)." },
   { id: "leap-frog", titre: "Leap Frog", type: "Jeu",
@@ -173,7 +173,7 @@ const ITEMS_ALTUS = [
   { id: "start-line-5", titre: "Start Line 5 ft", fiche: "start-line", unite: "/ 10", max: 10 },
   { id: "start-line-10", titre: "Start Line 10 ft", fiche: "start-line", unite: "/ 10", max: 10 },
   { id: "start-line-20", titre: "Start Line 20 ft", fiche: "start-line", unite: "/ 10", max: 10 },
-  { id: "trefle", titre: "Trèfle (série)", fiche: "trefle", unite: "/ 16", max: 16 },
+  { id: "trefle", titre: "Trèfle", fiche: "trefle", unite: "/ 16", max: 16 },
   { id: "snail-3-10-feet", titre: "Snail 3-10 ft", fiche: "snail-3-10-feet", unite: "/ 8", max: 8 },
   { id: "leap-frog", titre: "Leap Frog (série)", fiche: "leap-frog", unite: "d'affilée", max: 15 },
   ...TESTS_CENTER.map(([id, nom]) => ({ id, titre: `Test Center ${nom}`, fiche: id, unite: "/ 100", max: 100 })),
@@ -244,11 +244,8 @@ remplacerTextes("lowry-putt", [["30 cm de profondeur", "1 pied de profondeur"], 
 let scoreAltusEnAttente = null;
 function scoreAltus(tour) {
   const exo = tour.exo;
-  if (exo === "trefle") {
-    let serie = 0, meilleure = 0;
-    tour.resultats.forEach((r) => { serie = r ? serie + 1 : 0; meilleure = Math.max(meilleure, serie); });
-    return [["trefle", meilleure]];
-  }
+  // Trèfle : nombre de putts rentrés sur 16 (choix de l'utilisateur, 20/11/2026 ; avant : meilleure série)
+  if (exo === "trefle") return [["trefle", tour.resultats.filter((r) => r === true).length]];
   if (exo === "snail") return [["snail-3-10-feet", (tour.resultats || []).filter((r) => r === true).length]];
   if (exo === "start-line" && Array.isArray(tour.etapes)) {
     const points = EXOS_POINTS["start-line"].points;
