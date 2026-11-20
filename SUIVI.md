@@ -86,3 +86,4 @@
 ## 20/11/2026 — v59 : ➕ Ajouter un score (coachs)
 - Espace coachs > joueur > « ➕ Ajouter un score à … » (exo, date, score). Sert à remettre les 2 Trèfle du classeur de Clara (10/11 : 14, 12/11 : 13) effacés avec les anciens Trèfle en série.
 - v60 : « Ajouter un score » marche aussi pour un joueur sans sauvegarde en ligne (créée à partir de son bilan ; ses téléphones y ajoutent leurs scores à l'ouverture).
+- v61 : Test Center Fix Wedge 100-150 m → affiché « (filles 90-130 m) » (même exo, scores gardés).

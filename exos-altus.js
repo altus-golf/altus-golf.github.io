@@ -48,7 +48,8 @@ const FICHES_ALTUS = [
 const TESTS_CENTER = [
   ["tc-fix-wedge-60-90", "Fix Wedge 60-90 m"],
   ["tc-random-60-90", "Random 60-90 m"],
-  ["tc-fix-wedge-100-150", "Fix Wedge 100-150 m"],
+  // Filles : 90-130 m (demandé par l'utilisateur, 20/11/2026) ; même exo, même classement
+  ["tc-fix-wedge-100-150", "Fix Wedge 100-150 m (filles 90-130 m)"],
   ["tc-random-100-150", "Random 100-150 m"],
   ["tc-random-150-180", "Random 150-180 m"],
   ["tc-driver", "Driver"],
