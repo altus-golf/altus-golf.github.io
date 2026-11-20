@@ -128,8 +128,14 @@ async function restaurerDepuisEnLigne() {
   let ajoutes = 0;   // nombre de choses récupérées (scores + tours) : renvoyé à chargerGroupe
   if (sauvegarde) ajoutes += fusionnerScores(scores, sauvegarde.scores, effaces);
   if (monBilan) ajoutes += fusionnerScores(scores, mapObjet(monBilan.hist, (l) => l.map(([d, v]) => ({ d, v }))), effaces);
+  // Anciens Trèfle comptés en série (avant FIN_TREFLE_SERIE, exos-altus.js) : effacés
+  const trefleAvant = (scores.trefle || []).length;
+  (scores.trefle || []).forEach((s) => { if ((s.t || 0) < FIN_TREFLE_SERIE) effaces.add(s.t || 0); });
+  scores.trefle = (scores.trefle || []).filter((s) => (s.t || 0) >= FIN_TREFLE_SERIE);
+  const trefleEnleves = trefleAvant - scores.trefle.length;
+  if (!scores.trefle.length) delete scores.trefle;
   // Scores effacés ailleurs (par un coach ou un autre appareil) : on les enlève aussi d'ici
-  let enleves = 0;
+  let enleves = trefleEnleves;
   for (const id of Object.keys(scores)) {
     const avant = (scores[id] || []).length;
     scores[id] = (scores[id] || []).filter((s) => !(s.t && effaces.has(s.t)));
@@ -215,6 +221,8 @@ async function chargerGroupe() {
     const effaces = appliquerEffacementsCoach();
     if (premiereFois || recuperes || effaces) await publierMonBilan();
   }
+  // Coach : anciens Trèfle « en série » des historiques importés (classeur.js)
+  if (donnees && vue === "coach" && coachConnecte()) nettoyerTrefleSerieClasseur();
   // Technique faite mais pas encore reçue par le coach : on la renvoie (exos-altus.js)
   if (donnees && moi() && vue !== "coach" && lireStockage("consignesEnAttente", null, PREFIXE_SCORES)) await envoyerTechniquesEnAttente();
   afficherVue();

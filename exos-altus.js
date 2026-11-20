@@ -243,6 +243,11 @@ remplacerTextes("9-putt-circle", [["cercle de 30 cm", "cercle de 1 pied"], ["Dan
 remplacerTextes("speed-drill-cross", [["entre 30 et 60 cm derrière", "entre 1 et 2 pieds derrière"], ["30-60 cm derrière", "1 à 2 pieds derrière"]]);
 remplacerTextes("lowry-putt", [["30 cm de profondeur", "1 pied de profondeur"], ["60 cm de profondeur", "2 pieds de profondeur"], ["90 cm de profondeur", "3 pieds de profondeur"]]);
 
+// Jusqu'à cette heure-là, le Trèfle comptait la meilleure SÉRIE ; ces anciens scores sont
+// effacés partout (demande de l'utilisateur, 20/11/2026) : téléphones (restaurerDepuisEnLigne),
+// historiques importés du classeur (nettoyerTrefleSerieClasseur) et imports futurs.
+const FIN_TREFLE_SERIE = 1795174563065;   // 20/11/2026 vers 12 h 36 (heure de Paris)
+
 // Score « façon Altus » d'un tour qui se termine (lu avant que exos-points.js l'efface)
 let scoreAltusEnAttente = null;
 function scoreAltus(tour) {

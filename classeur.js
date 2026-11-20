@@ -22,7 +22,7 @@ const EXOS_DU_CLASSEUR = {
   "speed drill": "speed-drill",
   "speed drill cross": "speed-drill-cross",
   "lowry putt": "lowry-putt",
-  "trefle": "trefle",
+  // "trefle" : plus importé (le classeur note la meilleure SÉRIE, plus utilisée depuis le 20/11/2026)
   "snail 3-10 ft": "snail-3-10-feet",
   "leap frog": "leap-frog",
 };
@@ -176,6 +176,23 @@ async function actionImport(a) {
   }
 }
 
+
+// Coach (une fois par visite) : enlever le Trèfle « en série » des historiques importés 📄
+let trefleClasseurNettoye = false;
+async function nettoyerTrefleSerieClasseur() {
+  if (trefleClasseurNettoye || !groupeDonnees) return;
+  trefleClasseurNettoye = true;
+  const aCorriger = groupeDonnees.bilans.filter((b) => b.source === "classeur" && (b.hist.trefle || b.exos.trefle));
+  if (!aCorriger.length) return;
+  const bilans = aCorriger.map((j) => {
+    const hist = { ...j.hist };
+    delete hist.trefle;
+    const b = calculerBilanDepuis(j.uid, j.prenom, hist, j.semaine, null, LIMITE_HIST_CLASSEUR);
+    b.source = "classeur";
+    return b;
+  });
+  if (!(await importerBilans(bilans))) await chargerGroupe();
+}
 
 /* ---------- Joueur : récupérer son historique ---------- */
 
