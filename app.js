@@ -371,6 +371,24 @@ function blocCorriger(id, l) {
     </li>`).join("")}</ul></details>`;
 }
 
+// Espace coachs : ajouter un score à la main (ex. un score du classeur à remettre ;
+// seulement les coachs, comme l'effacement : choix de l'utilisateur, 20/11/2026).
+// Le Pelz complet se calcule tout seul, on ne l'ajoute pas.
+function blocAjouterScore(j) {
+  const items = ITEMS_ALTUS.filter((it) => it.id !== "pelz-total");
+  return `<section class="bloc pr-bloc">
+    <details class="corriger-score"><summary>➕ Ajouter un score à ${echapper(j.prenom)}</summary>
+      <label for="ajout-exo">Exo</label>
+      <select id="ajout-exo">${items.map((it) => `<option value="${echapper(it.id)}">${echapper(it.titre)} (${echapper(it.unite)})</option>`).join("")}</select>
+      <label for="ajout-date">Date</label>
+      <input type="date" id="ajout-date" value="${dateEnTexte(new Date())}" max="${dateEnTexte(new Date())}">
+      <label for="ajout-valeur">Score</label>
+      <input type="number" id="ajout-valeur" inputmode="decimal" min="0" step="0.1">
+      <button type="button" class="bouton principal" data-a="coach-ajouter-score">Ajouter ce score</button>
+    </details>
+  </section>`;
+}
+
 // Côté joueur : applique les effacements demandés par un coach (consignes.aEffacer).
 // Chaque demande n'est appliquée qu'une fois (sa « cle » est gardée dans effacesCoach).
 // Renvoie true si des scores ont été effacés.
@@ -741,6 +759,7 @@ function vueCoach() {
     </section>
     ${blocDistances(j)}
     ${blocRecords(j.hist, `📈 Progrès de ${echapper(j.prenom)}`, { coach: true })}
+    ${blocAjouterScore(j)}
     <section class="bloc pr-bloc">
       <button type="button" class="bouton danger pleine-largeur" data-a="coach-supprimer">🗑 Retirer ${echapper(j.prenom)}${j.source === "classeur" ? " 📄" : ""} du groupe</button>
       <p class="petit">Efface ses scores du groupe (pas ceux de son téléphone). S'il utilise encore le site, il réapparaîtra dès qu'il jouera un exo.</p>
@@ -855,6 +874,46 @@ async function actionCoach(a, bouton) {
       if (!messageCoach) messageCoach = immediat ? "✅ Score effacé." : `✅ Ce score sera effacé dès que ${j.prenom} ouvrira le site. (Pas tout de suite car : ${raison}.)`;
     }
     if (messageCoach.startsWith("✅")) afficherMessage(messageCoach);
+    return chargerGroupe();
+  }
+  if (a === "coach-ajouter-score") {
+    const j = groupeDonnees.bilans.find((b) => b.uid === joueurCoach);
+    const id = document.getElementById("ajout-exo").value;
+    const d = document.getElementById("ajout-date").value;
+    const v = Math.round(10 * parseFloat(String(document.getElementById("ajout-valeur").value).replace(",", "."))) / 10;
+    const it = itemDe(id);
+    if (!j || !it || id === "pelz-total") return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || d > dateEnTexte(new Date())) return afficherMessage("Choisis une date (pas dans le futur).");
+    if (!(v >= 0 && v <= it.max)) return afficherMessage(`Le score doit être entre 0 et ${it.max}.`);
+    if (j.source === "classeur" && id === "trefle") return afficherMessage("Le Trèfle ne peut pas être ajouté à un historique importé 📄 (il serait effacé avec les anciens Trèfle en série).");
+    if (!(await demanderConfirmation(`Ajouter à ${j.prenom} : ${it.titre} ${texteScore(id, v)} (${dateLisible(d)}) ?`, "Oui, ajouter"))) return;
+    if (j.source === "classeur") {
+      const hist = JSON.parse(JSON.stringify(j.hist));
+      hist[id] = [...(hist[id] || []), [d, v]].sort((x, y) => x[0].localeCompare(y[0]));
+      const b = calculerBilanDepuis(j.uid, j.prenom, hist, j.semaine, null, LIMITE_HIST_CLASSEUR);
+      b.source = "classeur";
+      messageCoach = (await importerBilans([b])) || "✅ Score ajouté.";
+    } else {
+      // Joueur du site : ajouté dans sa sauvegarde (ses téléphones le récupèrent à la
+      // prochaine ouverture) et son bilan recalculé. t = maintenant : un score unique,
+      // jamais pris pour un ancien Trèfle en série ni pour un score effacé.
+      const s = (await lireSauvegardesCoach([j.uid]))[j.uid];   // base.js
+      if (!s) messageCoach = `${j.prenom} n'a pas encore de sauvegarde en ligne : il doit ouvrir le site une fois, puis réessaie.`;
+      else {
+        s.scores[id] = [...(s.scores[id] || []), { t: Date.now(), d, v }].sort((x, y) => x.d.localeCompare(y.d) || x.t - y.t);
+        const erreur = await ecrireSauvegardeDe(j.uid, { ...s, maj: Date.now() });
+        if (erreur) messageCoach = "Firebase a refusé de modifier sa sauvegarde (règles Firebase pas à jour ?)";
+        else {
+          const hist = mapObjet(s.scores, (l) => l.map((x) => [x.d, x.v]));
+          Object.keys(hist).forEach((k) => { if (!hist[k].length) delete hist[k]; });
+          const b = calculerBilanDepuis(j.uid, j.prenom, hist, j.semaine, null);
+          if (Object.keys(j.dist || {}).length) b.dist = j.dist;
+          if (j.repris) b.repris = j.repris;
+          messageCoach = (await importerBilans([b])) || "✅ Score ajouté.";
+        }
+      }
+    }
+    afficherMessage(messageCoach);
     return chargerGroupe();
   }
   if (a === "coach-supprimer") {

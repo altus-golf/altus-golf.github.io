@@ -82,3 +82,6 @@
 - [ ] Activer GitHub Pages (Settings > Pages > branche main) si ce n'est pas automatique.
 - [ ] Choisir les autres exos à ajouter.
 - Limite connue : les scores d'un joueur sont dans son téléphone (changer de téléphone = repartir de zéro ; son bilan en ligne garde l'année et les 30 derniers scores par exo).
+
+## 20/11/2026 — v59 : ➕ Ajouter un score (coachs)
+- Espace coachs > joueur > « ➕ Ajouter un score à … » (exo, date, score). Sert à remettre les 2 Trèfle du classeur de Clara (10/11 : 14, 12/11 : 13) effacés avec les anciens Trèfle en série.
