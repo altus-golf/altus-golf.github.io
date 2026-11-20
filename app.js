@@ -472,6 +472,11 @@ let prenomsEnChargement = false;
 let accueilAutrePrenom = false;  // « Je ne suis pas dans la liste »
 let messageAccueil = "";
 
+// Coachs qui ont aussi un profil joueur (demandé par l'utilisateur, 20/11/2026) : toujours dans la
+// liste de l'accueil, mais jamais dans le 🦥 flemmard de la semaine (ils ne jouent pas toutes les semaines)
+const PRENOMS_COACHS = ["Maxime", "Franck"];
+const estPrenomCoach = (prenom) => PRENOMS_COACHS.some((p) => slugPrenom(p) === slugPrenom(prenom));
+
 function chargerPrenomsAccueil() {
   if (prenomsEnChargement) return;
   prenomsEnChargement = true;
@@ -481,7 +486,7 @@ function chargerPrenomsAccueil() {
     // Historiques importés déjà repris par un joueur : masqués (même règle que les classements)
     const repris = new Set(bilans.map((b) => b.repris).filter(Boolean));
     const vus = new Set();
-    prenomsAccueil = bilans.filter((b) => !repris.has(b.uid))
+    prenomsAccueil = [...bilans.filter((b) => !repris.has(b.uid)), ...PRENOMS_COACHS.map((prenom) => ({ prenom }))]
       .sort((a, b) => a.prenom.localeCompare(b.prenom, "fr"))
       .filter((b) => { const k = slugPrenom(b.prenom); if (vus.has(k)) return false; vus.add(k); return true; })
       .map((b) => b.prenom);
@@ -640,9 +645,9 @@ function vueClassements() {
   }
 
   // --- Flemmard de la semaine : le moins d'exos joués ---
-  if (bilans.some((b) => b.source !== "classeur")) {
-    // Flemmard : seulement les joueurs qui utilisent le site (pas les historiques importés)
-    const comptes = bilans.filter((b) => b.source !== "classeur").map((b) => ({ b, n: b.semaine.lundi === lundi ? b.semaine.n : 0 })).sort((a, b) => a.n - b.n || a.b.prenom.localeCompare(b.b.prenom, "fr"));
+  if (bilans.some((b) => b.source !== "classeur" && !estPrenomCoach(b.prenom))) {
+    // Flemmard : seulement les joueurs qui utilisent le site (pas les historiques importés, pas les coachs)
+    const comptes = bilans.filter((b) => b.source !== "classeur" && !estPrenomCoach(b.prenom)).map((b) => ({ b, n: b.semaine.lundi === lundi ? b.semaine.n : 0 })).sort((a, b) => a.n - b.n || a.b.prenom.localeCompare(b.b.prenom, "fr"));
     const mini = comptes[0].n;
     const flemmards = comptes.filter((x) => x.n === mini).map((x) => x.b.prenom);
     html += `<section class="bloc pr-bloc flemmard">
