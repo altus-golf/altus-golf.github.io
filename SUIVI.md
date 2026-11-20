@@ -49,7 +49,7 @@
 - ✅ Rapport d'analyse (20/11/2026) puis lot 1 : sauvegarde en ligne de tous les scores + restauration au démarrage (plus de bilan écrasé par un téléphone vide / Safari qui efface après 7 jours), plus aucune fenêtre alert/confirm native, effacer un score tapé par erreur (finalement réservé aux coachs, dans l'espace coachs, pour éviter la triche). ⚠ Recoller les règles (bloc `sauvegardes`, limites exos/hist à 60).
 - ✅ Logo Altus comme icône quand on ajoute le site à l'écran d'accueil (iPhone + Android), nom court « Altus ».
 - 🐞✅ Bug corrigé (20/11/2026) : effacer un score (ou les anciens Trèfle) effaçait aussi tous les scores du classeur du même jour (même heure « midi ») → effacements maintenant notés par exo + heure ; les scores perdus reviennent depuis l'historique du classeur repris à la prochaine ouverture du joueur.
-- ✅ Anciens Trèfle « en série » effacés pour tout le monde (à l'ouverture du site par chaque joueur ; historiques importés quand un coach ouvre l'espace coachs) ; le Trèfle du classeur n'est plus importé.
+- ✅ Anciens Trèfle « en série » effacés pour tout le monde DÈS qu'un coach ouvre l'espace coachs (joueurs du site et historiques importés), et sur les téléphones à leur ouverture ; le Trèfle du classeur n'est plus importé.
 - ✅ Plus de « série » nulle part : Leap Frog = nombre de balles dans la zone (titre, unité, message, bouton).
 - ✅ Trèfle : score = putts rentrés sur 16 (plus la meilleure série). Les anciens scores restent comme ils étaient.
 - ✅ Test de Pelz : situation D (Wedging 50 m) retirée → 8 situations, Pelz complet /320 (les anciens totaux /360 restent dans l'historique ; les lignes D du classeur sont ignorées à l'import).

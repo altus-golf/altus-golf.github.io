@@ -182,16 +182,53 @@ let trefleClasseurNettoye = false;
 async function nettoyerTrefleSerieClasseur() {
   if (trefleClasseurNettoye || !groupeDonnees) return;
   trefleClasseurNettoye = true;
-  const aCorriger = groupeDonnees.bilans.filter((b) => b.source === "classeur" && (b.hist.trefle || b.exos.trefle));
-  if (!aCorriger.length) return;
-  const bilans = aCorriger.map((j) => {
+  const bilans = [];
+  // 1. Historiques importés 📄 : plus de Trèfle du tout (le classeur notait la série)
+  groupeDonnees.bilans.filter((b) => b.source === "classeur" && (b.hist.trefle || b.exos.trefle)).forEach((j) => {
     const hist = { ...j.hist };
     delete hist.trefle;
     const b = calculerBilanDepuis(j.uid, j.prenom, hist, j.semaine, null, LIMITE_HIST_CLASSEUR);
     b.source = "classeur";
-    return b;
+    bilans.push(b);
   });
-  if (!(await importerBilans(bilans))) await chargerGroupe();
+  // 2. Joueurs du site (20/11/2026) : TOUT DE SUITE, sans attendre qu'ils rouvrent le site.
+  //    Avec leur sauvegarde : on enlève les Trèfle notés avant FIN_TREFLE_SERIE (heure exacte connue).
+  //    Sans sauvegarde : on enlève de leur bilan les Trèfle jusqu'au jour du changement ;
+  //    leur téléphone renverra ceux joués après (nouveau calcul) à sa prochaine ouverture.
+  const joueurs = groupeDonnees.bilans.filter((b) => b.source !== "classeur" && (b.hist.trefle || b.exos.trefle));
+  const sauvegardes = joueurs.length ? await lireSauvegardesCoach(joueurs.map((j) => j.uid)) : {};   // base.js
+  const jourChangement = dateEnTexte(new Date(FIN_TREFLE_SERIE));
+  for (const j of joueurs) {
+    const s = sauvegardes[j.uid];
+    let hist;
+    if (s) {
+      const vieux = (s.scores.trefle || []).filter((x) => (x.t || 0) < FIN_TREFLE_SERIE);
+      if (!vieux.length) continue;   // rien à enlever pour ce joueur
+      s.scores.trefle = (s.scores.trefle || []).filter((x) => (x.t || 0) >= FIN_TREFLE_SERIE);
+      s.effaces = [...s.effaces, ...vieux.filter((x) => x.t).map((x) => cleEfface("trefle", x.t))].slice(-1000);
+      if (await ecrireSauvegardeDe(j.uid, { ...s, maj: Date.now() })) continue;   // refusé : on n'y touche pas
+      hist = mapObjet(s.scores, (l) => l.map((x) => [x.d, x.v]));
+      Object.keys(hist).forEach((k) => { if (!hist[k].length) delete hist[k]; });
+    } else {
+      hist = { ...j.hist, trefle: (j.hist.trefle || []).filter(([d]) => d > jourChangement) };
+      if (!hist.trefle.length) delete hist.trefle;
+    }
+    if (!s && (hist.trefle || []).length === (j.hist.trefle || []).length) continue;   // rien à enlever
+    const b = s ? calculerBilanDepuis(j.uid, j.prenom, hist, j.semaine, null) : { ...j, hist, exos: { ...j.exos } };
+    if (!s) {
+      // Sans sauvegarde : on ne recalcule que la ligne Trèfle (les autres exos gardent leurs stats de l'année)
+      const vals = (hist.trefle || []).filter(([d]) => d.startsWith(String(new Date().getFullYear())));
+      if (vals.length) {
+        const v = vals.map(([, x]) => x), record = Math.max(...v);
+        b.exos.trefle = { n: v.length, moy: Math.round(10 * v.reduce((a, x) => a + x, 0) / v.length) / 10, record, recordD: vals.find(([, x]) => x === record)[0] };
+      } else delete b.exos.trefle;
+    }
+    if (Object.keys(j.dist || {}).length) b.dist = j.dist;
+    if (j.repris) b.repris = j.repris;
+    delete b.source;
+    bilans.push(b);
+  }
+  if (bilans.length && !(await importerBilans(bilans))) await chargerGroupe();
 }
 
 /* ---------- Joueur : récupérer son historique ---------- */
