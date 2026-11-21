@@ -100,3 +100,7 @@
 - 📊 Le rapport reprend le modèle « Rapport Altus lisible » du coach : Vue équipe et Fiche joueur avec sélecteurs (formules), Réussite distance, À vérifier (rempli par le site), Saisie, Paramètres ; on garde Semaine, Classements (30 j et année) et Pelz. Plus de page par joueur.
 - Testé en mode démo : 682 formules recalculées par LibreOffice = mêmes valeurs que celles pré-calculées par le site, 0 erreur.
 - ⚠ `DEBUT_SAISON` (classeur.js) à mettre à jour à chaque nouvelle saison.
+
+## 21/11/2026 — v67 : correctif Pelz des joueurs
+- 🐞 Le rapport Excel (v65) avait une fonction `pelzDeLaSemaine` du même nom que celle du Test de Pelz (exos-altus.js) et la remplaçait : le Pelz plantait dans l'onglet Exos des joueurs. Renommée `pelzSemaineRapport`.
+- 🐞 Même problème avec `dateExcel` : celle du rapport remplaçait celle de l'import du classeur (.xlsx), qui aurait planté. Renommée `versDateExcel`.
