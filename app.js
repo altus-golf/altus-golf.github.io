@@ -745,10 +745,20 @@ function vueCoach() {
     return `<section class="bloc pr-bloc"><h2 class="bloc-titre">🧑‍🏫 Espace coachs</h2>
       <p>Réservé aux coachs d'Altus.</p>${texte}</section>`;
   }
-  let html = `<section class="bloc pr-bloc"><h2 class="bloc-titre">🧑‍🏫 Espace coachs</h2>
-    ${messageCoach ? `<p class="${messageCoach.startsWith("✅") ? "petit" : "erreur"}">${echapper(messageCoach)}</p>` : ""}
-    <p class="petit">Le groupe est ouvert : les joueurs entrent avec leur compte Google.</p></section>`;
+  // Interface coach (21/11/2026) : un onglet à la fois (coach.js), avec le même visuel que les joueurs
+  let html = messageCoach ? `<p class="${messageCoach.startsWith("✅") ? "petit" : "erreur"}">${echapper(messageCoach)}</p>` : "";
   if (!groupeDonnees) return html + `<p class="petit">${erreurGroupe ? "Pas de connexion." : "Chargement…"}</p>`;
+  const vuesCoach = { "c-semaine": vueCoachSemaine, "c-equipe": vueCoachEquipe, "c-classements": vueCoachClassements,
+    "c-pelz": vueCoachPelz, "c-distances": vueCoachDistances, "c-verifier": vueCoachVerifier };
+  if (vuesCoach[ongletCoach]) return html + vuesCoach[ongletCoach]();
+  if (ongletCoach === "c-gestion") return html + vueCoachGestion();
+  return html + vueCoachJoueur();
+}
+
+// ⚙️ Gestion : défis de la semaine, rapport Excel, import du classeur
+function vueCoachGestion() {
+  let html = `<section class="bloc pr-bloc"><h2 class="bloc-titre">⚙️ Gestion du groupe</h2>
+    <p class="petit">Le groupe est ouvert : les joueurs entrent avec leur compte Google.</p></section>`;
 
   // --- Défi de la semaine ---
   const lundi = lundiDe();
@@ -773,7 +783,13 @@ function vueCoach() {
   // --- Import de l'historique du classeur (classeur.js) ---
   html += blocRapportExcel();   // classeur.js
   html += blocImportClasseur();
+  return html;
+}
 
+// 👤 Joueur : choix du joueur, tableau de bord, exos donnés, distances, progrès, corrections
+function vueCoachJoueur() {
+  let html = "";
+  const lundi = lundiDe();
   // --- Joueurs (sans les historiques importés déjà repris par un joueur) ---
   const reprisIds = new Set(groupeDonnees.bilans.map((b) => b.repris).filter(Boolean));
   const joueurs = groupeDonnees.bilans.filter((b) => !reprisIds.has(b.uid)).sort((a, b) => a.prenom.localeCompare(b.prenom, "fr"));
@@ -783,6 +799,7 @@ function vueCoach() {
   const c = groupeDonnees.consignes[j.uid] || normaliserConsignes(null);
   const nSemaine = j.semaine.lundi === lundi ? j.semaine.n : 0;
   html += `<div class="filtres">${joueurs.map((x) => `<button type="button" class="filtre ${x.uid === j.uid ? "actif" : ""}" data-a="coach-joueur" data-uid="${echapper(x.uid)}">${echapper(x.prenom)}${x.source === "classeur" ? " 📄" : ""}</button>`).join("")}</div>
+    ${blocTableauJoueur(j)}
     <section class="bloc pr-bloc consignes-admin">
       <h2 class="bloc-titre">⭐ Exos pour ${echapper(j.prenom)}</h2>
       <p class="petit">${j.source === "classeur" ? "📄 Historique importé du classeur" : `Compte du site${moi() && j.uid === moi().uid ? " (c'est toi)" : ""}`} · ${Object.values(j.exos).reduce((t, e) => t + e.n, 0)} scores cette année${j.maj ? ` · mis à jour le ${echapper(dateLisible(j.maj))}` : ""}</p>
@@ -837,7 +854,8 @@ function afficherVue() {
   document.getElementById("bandeau-stockage").hidden = !stockageBloque;
   document.getElementById("onglets").innerHTML = m && !enCoach
     ? ONGLETS.map(([id, nom]) => `<button type="button" class="onglet ${vue === id ? "actif" : ""}" data-a="vue" data-vue="${id}" aria-pressed="${vue === id}">${nom}</button>`).join("")
-    : enCoach ? `<button type="button" class="onglet" data-a="vue" data-vue="seance">← Retour</button>` : "";
+    : enCoach ? (coachConnecte() ? ongletsCoach() : `<button type="button" class="onglet" data-a="vue" data-vue="seance">← Retour</button>`) : "";   // coach.js
+  document.getElementById("onglets").classList.toggle("onglets-coach", enCoach && coachConnecte());
   // Thème perso (demandé par la joueuse) : seulement sur SON téléphone, d'après son prénom
   const theme = m ? THEMES_JOUEURS[slugPrenom(m.prenom)] : null;
   document.body.classList.toggle("theme-rose-renard", theme === "rose-renard");
@@ -869,6 +887,7 @@ function changerVue(nouvelle) {
 
 async function actionCoach(a, bouton) {
   messageCoach = "";
+  if (actionInterfaceCoach(a, bouton)) return;   // coach.js : onglets, filtres, semaine
   if (a === "coach-demo") { entrerCoachDemo(); return changerVue("coach"); }
   if (a === "coach-joueur") { joueurCoach = bouton.dataset.uid; return afficherVue(); }
   if (a === "coach-effacer-score") {

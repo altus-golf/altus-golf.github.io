@@ -666,6 +666,116 @@ details[open] > summary::before { transform: rotate(90deg); }
 .corriger-score { margin-top: 6px; font-size: 0.95rem; }
 .corriger-score summary { cursor: pointer; color: var(--texte-doux); }
 
+/* =========================================================
+   Visuel « maquette » (21/11/2026) : tout le site (joueurs ET coachs)
+   prend le style de la maquette « Interface coach » validée par le coach :
+   bandeau sombre avec les onglets, fond gris clair, cartes blanches,
+   tableaux à en-tête gris, filtres en pastilles, titres en Space Grotesk.
+   Placé AVANT les thèmes perso (Clara, Stan) pour qu'ils restent prioritaires.
+   ========================================================= */
+:root {
+  --fond: #f4f6f8;
+  --carte: #ffffff;
+  --texte: #15202b;
+  --texte-doux: #5b6672;
+  --bord: #dde3e9;
+  --accent: #2f4a6b;
+  --accent-texte: #ffffff;
+  --accent-doux: #d4e3f1;
+  --alerte-fond: #fbe0cc;
+  --alerte-texte: #7a2e0b;
+  --ombre: none;
+  --encre: #15202b;            /* bandeau du haut, pastilles actives */
+  --entete-tableau: #eef2f5;
+  --police-titres: "Space Grotesk", Inter, system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fond: #0f151b;
+    --carte: #18212a;
+    --texte: #eef2f5;
+    --texte-doux: #b3bec9;
+    --bord: #2c3946;
+    --accent: #8db3d6;
+    --accent-texte: #0b1520;
+    --accent-doux: #1f3347;
+    --alerte-fond: #4a2a14;
+    --alerte-texte: #ffd2b0;
+    --encre: #0a0f14;
+    --entete-tableau: #22303d;
+  }
+}
+body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overflow-x: clip; }
+h1, h2, h3, .bloc-titre, .carte-titre, .pr-categorie-titre, .kpi strong, .resume-total { font-family: var(--police-titres); letter-spacing: -0.01em; }
+
+/* Bandeau du haut : toute la largeur de l'écran, titre + onglets */
+.bandeau-haut {
+  margin: 0 calc(50% - 50vw) 20px; padding: 0 calc(50vw - 50%);
+  background: var(--encre); color: #ffffff;
+}
+.bandeau-haut header { padding-top: max(14px, env(safe-area-inset-top)); }
+.bandeau-haut .titre-altus { color: #ffffff; font-size: 1.55rem; font-weight: 700; }
+.bandeau-haut .logo-altus { background: #ffffff; border-radius: 10px; padding: 3px; }
+.bandeau-haut .date { color: #c9d3dd; }
+.bandeau-haut .bandeau-demo { color: var(--alerte-texte); }
+.bandeau-haut .onglets { margin-bottom: 0; padding-bottom: 14px; }
+.bandeau-haut .onglets:empty { padding-bottom: 6px; }
+.bandeau-haut .onglet {
+  min-height: 48px; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06); color: #c9d3dd; font-weight: 600;
+}
+.bandeau-haut .onglet.actif { background: var(--fond); color: var(--texte); border-color: var(--fond); font-weight: 800; }
+
+/* Cartes et blocs */
+.pr-bloc, .bloc.pr-bloc { border-radius: 12px; border: 1px solid var(--bord); box-shadow: none; }
+.carte { border-radius: 12px; box-shadow: none; }
+.resume { border-radius: 12px; box-shadow: none; }
+.bloc-titre { font-size: 1.25rem; font-weight: 700; }
+.bloc-info, .semaine-info { color: var(--texte-doux); font-weight: 500; }
+
+/* Boutons */
+.bouton { min-height: 48px; border-radius: 8px; border: 1px solid #c9d2db; background: var(--carte); color: var(--texte); font-weight: 700; }
+.bouton.principal { background: var(--accent); border-color: var(--accent); color: var(--accent-texte); }
+.bouton.danger { border-color: #e2a48a; color: #b4410c; }
+.bouton:disabled { opacity: 0.45; }
+@media (prefers-color-scheme: dark) { .bouton { border-color: var(--bord); } .bouton.danger { color: #ffb08a; } }
+
+/* Filtres : pastilles, l'active en encre foncée */
+.filtre { min-height: 40px; border: 1px solid #c9d2db; border-radius: 999px; background: var(--carte); color: var(--texte); font-weight: 600; font-size: 0.85rem; }
+.filtre.actif { background: var(--encre); border-color: var(--encre); color: #ffffff; font-weight: 700; }
+@media (prefers-color-scheme: dark) { .filtre { border-color: var(--bord); } .filtre.actif { background: var(--accent); border-color: var(--accent); color: var(--accent-texte); } }
+
+/* Tableaux : en-tête gris, petites majuscules */
+.tableau-defilant { border-radius: 12px; border-color: var(--bord); }
+.tableau-admin th, .table-distances th, .table-matchs th {
+  background: var(--entete-tableau); color: var(--texte-doux); font-size: 0.72rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.tableau-admin td, .table-distances td, .table-matchs td { border-bottom-color: #e6ebef; }
+@media (prefers-color-scheme: dark) { .tableau-admin td, .table-distances td, .table-matchs td { border-bottom-color: var(--bord); } }
+.tableau-coach tfoot th { background: var(--encre); color: #ffffff; text-transform: none; font-size: 0.85rem; }
+.tableau-equipe th { text-transform: none; letter-spacing: 0; }
+.barre-pc { background: var(--entete-tableau); border-radius: 99px; }
+.barre-pc span { background: var(--accent); border-radius: 99px; }
+
+/* Classements et chiffres */
+.classement li { border-bottom-color: #e6ebef; }
+.kpi { border-left: 1px solid var(--bord); border-radius: 12px; box-shadow: none; }
+.kpi strong { font-size: 1.9rem; }
+.statut-top { background: #1f4e79; color: #ffffff; }
+.statut-alerte { background: var(--alerte-fond); color: var(--alerte-texte); }
+.pastille-pelz.faite { background: var(--accent); border-color: var(--accent); }
+
+/* Champs de saisie */
+.champ, .accueil-altus input, .consignes-admin input, .pr-bloc input, .ajout-consigne select, .consignes-admin textarea { border-radius: 8px; }
+
+/* Thèmes perso : le bandeau sombre s'efface devant le thème de la joueuse / du joueur */
+body.theme-rose-renard .bandeau-haut { background: transparent; color: inherit; }
+body.theme-rose-renard .bandeau-haut .date { color: #d4007a; }
+body.theme-noir-orange .bandeau-haut { background: #000000; }
+body.theme-rose-renard .filtre.actif, body.theme-noir-orange .filtre.actif { background: var(--accent); border-color: var(--accent); color: var(--accent-texte); }
+body.theme-noir-orange { --entete-tableau: #222222; --encre: #000000; }
+
 /* ---------- Thème perso « rose fuchsia + renards » (Clara, 20/11/2026) ----------
    Fond BLANC avec des renards, tout le reste en rose fuchsia flashy (demande de Clara).
    Ajouté au <body> seulement quand la joueuse connectée s'appelle Clara (THEMES_JOUEURS, app.js). */
@@ -730,3 +840,52 @@ body.theme-noir-orange input, body.theme-noir-orange select, body.theme-noir-ora
 body.theme-noir-orange #trefle-jeu, body.theme-noir-orange .trefle-jeu { background: #0d0d0d; color: #f5f5f5; }
 .detail-exo { margin: 8px 0; padding: 8px 0; border-top: 1px solid var(--bord); }
 .detail-exo summary { cursor: pointer; }
+
+/* =========================================================
+   Interface coach (21/11/2026) : même visuel que les joueurs
+   ========================================================= */
+/* 8 onglets + Retour : 3 lignes de 3 (la page reste étroite, même sur ordinateur) */
+.onglets.onglets-altus.onglets-coach { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.onglets.onglets-altus.onglets-coach .onglet,
+.onglets.onglets-altus.onglets-coach .onglet:nth-child(4),
+.onglets.onglets-altus.onglets-coach .onglet:nth-child(5) { grid-column: auto; font-size: 0.8rem; }
+/* Chiffres clés de la semaine */
+.kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+@media (min-width: 700px) { .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.kpi { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; background: var(--carte); border: 1px solid var(--bord); border-left: 6px solid var(--accent); border-radius: 12px; box-shadow: var(--ombre); }
+.kpi span { font-size: 0.8rem; font-weight: 700; color: var(--texte-doux); }
+.kpi strong { font-size: 1.6rem; line-height: 1.1; }
+.kpi small { color: var(--texte-doux); }
+/* Semaine précédente / suivante */
+.nav-semaine { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.nav-semaine .bouton { min-width: 52px; }
+/* Tableaux du coach */
+.tableau-coach td, .tableau-coach th { vertical-align: middle; }
+.tableau-coach td.nombre, .tableau-coach th.nombre { text-align: center; }
+.tableau-coach td.vide { color: var(--texte-doux); }
+.tableau-coach td.case-faite { background: var(--accent-doux); }
+.tableau-coach tfoot th { background: var(--accent); color: var(--accent-texte); }
+.tableau-equipe th { white-space: normal; min-width: 64px; font-size: 0.78rem; text-align: center; }
+.tableau-equipe th:first-child { text-align: left; }
+.lien-joueur { font-weight: 800; text-align: left; white-space: nowrap; }
+/* Pastilles des situations du Pelz (A, B, C…) */
+.pastilles-pelz { display: inline-flex; gap: 3px; vertical-align: middle; }
+.pastille-pelz { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--bord); font-size: 0.7rem; font-weight: 800; color: var(--texte-doux); }
+.pastille-pelz.faite { background: var(--accent); border-color: var(--accent); color: var(--accent-texte); }
+/* Statuts */
+.statut { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; white-space: nowrap; }
+.statut-top { background: var(--accent); color: var(--accent-texte); }
+.statut-ok { background: var(--accent-doux); color: var(--texte); }
+.statut-alerte { background: var(--alerte-fond); color: var(--alerte-texte); }
+.statut-attente { background: var(--bord); color: var(--texte); }
+/* Classements : 30 jours et année côte à côte (l'un sous l'autre sur téléphone) */
+.deux-colonnes { display: grid; grid-template-columns: 1fr; gap: 4px 20px; }
+@media (min-width: 600px) { .deux-colonnes { grid-template-columns: 1fr 1fr; } }
+.deux-colonnes h3 { margin: 6px 0 0; font-size: 0.95rem; }
+.deux-colonnes h3 small { font-weight: normal; color: var(--texte-doux); }
+.classement-court li { padding: 6px 0; }
+.bloc-titre small { font-weight: normal; color: var(--texte-doux); font-size: 0.8em; }
+/* À vérifier */
+.liste-verifier { margin: 6px 0 10px; padding-left: 18px; }
+.liste-verifier li { margin: 4px 0; }
+.liste-verifier small { color: var(--alerte-texte); }
