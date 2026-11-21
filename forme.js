@@ -49,13 +49,18 @@ function normaliserReponseForme(r) {
     golfMin: nb(r.golfMin, 900), golfRpe: entierEntre(r.golfRpe, 0, 10) ? r.golfRpe : null,
     prepaMin: nb(r.prepaMin, 600), prepaRpe: entierEntre(r.prepaRpe, 0, 10) ? r.prepaRpe : null,
     com: typeof r.com === "string" ? r.com.slice(0, 300) : "",
+    ...(r.src === "form" ? { src: "form" } : {}),   // réponse reprise de l'ancien Google Form (import du coach)
   };
 }
 function normaliserForme(x) {
   const d = x && typeof x === "object" ? x : {};
   const parJour = {};
   (Array.isArray(d.reponses) ? d.reponses : []).map(normaliserReponseForme).filter(Boolean)
-    .forEach((r) => { if (!parJour[r.d] || r.t >= parJour[r.d].t) parJour[r.d] = r; });
+    .forEach((r) => {
+      // Un jour = une réponse : celle de l'appli passe avant celle importée du Google Form, sinon la plus récente
+      const p = parJour[r.d];
+      if (!p || (p.src && !r.src) || (!!p.src === !!r.src && r.t >= p.t)) parJour[r.d] = r;
+    });
   return {
     prenom: typeof d.prenom === "string" ? d.prenom.slice(0, 30) : "",
     reponses: Object.values(parJour).sort((a, b) => a.d.localeCompare(b.d)).slice(-MAX_REPONSES_FORME),
@@ -248,6 +253,7 @@ function actionForme(a, bouton) {
   if (a === "forme-annuler") { formeOuverte = false; formeBrouillon = null; messageForme = ""; return afficherVue(); }
   if (a === "forme-coach-joueur") { joueurFormeCoach = bouton.dataset.uid; return afficherVue(); }
   if (a === "forme-coach-actualiser") { formesCoach = null; return afficherVue(); }
+  if (a === "forme-import-envoyer") return envoyerImportForme();
 }
 // Les champs texte : on garde ce qui est tapé (l'écran est redessiné à chaque note choisie)
 document.addEventListener("input", (e) => {
@@ -299,8 +305,20 @@ function formesDemo(db) {
 }
 
 /* ---------- Coach : onglet 💪 Forme ---------- */
+// Tous les joueurs (sans les coachs) : inscrits sur le site + historiques importés du classeur
+// qui n'ont pas encore de compte (sinon le même prénom apparaîtrait deux fois)
 function joueursForme() {
-  return joueursDuRapport().filter((j) => j.source !== "classeur" && !PRENOMS_COACHS.includes(j.prenom));   // classeur.js / app.js
+  const tous = joueursDuRapport().filter((j) => !PRENOMS_COACHS.includes(j.prenom));   // classeur.js / app.js
+  const inscrits = new Set(tous.filter((j) => j.source !== "classeur").map((j) => slugPrenom(j.prenom)));
+  return tous.filter((j) => j.source !== "classeur" || !inscrits.has(slugPrenom(j.prenom)));
+}
+// Réponses d'un joueur pour le coach : son document + l'historique importé à son prénom
+// (forme/classeur-<prénom>, écrit par l'import du Google Form avant qu'il ait un compte)
+function formeDe(j) {
+  if (!formesCoach || formesCoach.erreur) return { reponses: [] };
+  const importe = j.source !== "classeur" ? formesCoach["classeur-" + slugPrenom(j.prenom)] : null;
+  if (!importe) return formesCoach[j.uid] || { reponses: [] };
+  return normaliserForme({ reponses: [...importe.reponses, ...((formesCoach[j.uid] || {}).reponses || [])] });
 }
 function vueCoachForme() {
   // Chargement lancé APRÈS l'affichage en cours (sinon l'écran « Chargement… » recouvrirait le résultat)
@@ -313,7 +331,7 @@ function vueCoachForme() {
   const joueurs = joueursForme();
   let repondu = 0, oranges = 0, rouges = 0;
   const lignes = joueurs.map((j) => {
-    const f = formesCoach[j.uid] || { reponses: [] };
+    const f = formeDe(j);
     const r = f.reponses.find((x) => x.d === aujourdhui);
     const derniere = f.reponses[f.reponses.length - 1];
     const st = r ? statutForme(f.reponses, r) : null;
@@ -325,7 +343,7 @@ function vueCoachForme() {
   const kpi = (titre, valeur, detail) => `<div class="kpi"><span>${titre}</span><strong>${valeur}</strong><small>${detail}</small></div>`;
   if (!joueurs.some((j) => j.uid === joueurFormeCoach)) joueurFormeCoach = (lignes[0] || {}).j?.uid || null;
   const jh = joueurs.find((j) => j.uid === joueurFormeCoach);
-  const fh = jh ? formesCoach[jh.uid] || { reponses: [] } : null;
+  const fh = jh ? formeDe(jh) : null;
   return `<div class="kpis">
       ${kpi("Réponses aujourd'hui", `${repondu} / ${joueurs.length}`, "forme du matin")}
       ${kpi("🟠 Orange", oranges, "au-dessus de sa norme")}
@@ -361,7 +379,7 @@ function vueCoachForme() {
       ${fh.reponses.length ? `<div class="tableau-defilant"><table class="tableau-admin tableau-coach">
         <thead><tr><th>Date</th><th>Statut</th><th>Hooper</th><th>S · F · St · C</th><th>Sommeil (h)</th><th>Golf hier</th><th>Prépa hier</th><th>Charge</th><th>Commentaire</th></tr></thead>
         <tbody>${fh.reponses.slice(-21).reverse().map((r) => { const st = statutForme(fh.reponses, r); return `<tr>
-          <td class="nombre">${echapper(dateLisible(r.d))}</td>
+          <td class="nombre">${echapper(dateLisible(r.d))}${r.src ? ` <small title="Réponse importée du Google Form">📄</small>` : ""}</td>
           <td><span class="statut statut-forme-${st.code}">${st.texte}</span></td>
           <td class="nombre"><strong>${indiceHooper(r)}</strong></td>
           <td class="nombre">${CHAMPS_HOOPER.map(([c]) => `<span class="note-hooper ${r[c] >= 6 ? "haute" : ""}">${r[c]}</span>`).join("")}</td>
@@ -371,7 +389,205 @@ function vueCoachForme() {
           <td class="nombre">${chargeJour(r)}</td>
           <td>${echapper(r.com || "")}</td></tr>`; }).join("")}</tbody>
       </table></div>
-      <p class="petit">${fh.reponses.length} questionnaire${fh.reponses.length > 1 ? "s" : ""} au total · 21 derniers affichés.</p>` : `<p class="petit">${echapper(jh.prenom)} n'a encore jamais répondu dans l'application.</p>`}
-    </section>` : ""}`;
+      <p class="petit">${fh.reponses.length} questionnaire${fh.reponses.length > 1 ? "s" : ""} au total · 21 derniers affichés. 📄 = réponse importée du Google Form.</p>` : `<p class="petit">${echapper(jh.prenom)} n'a encore jamais répondu dans l'application.</p>`}
+    </section>` : ""}
+    ${blocImportForme(joueurs)}`;
 }
 // Onglets 🏋️ Prépa (joueur et coach) : voir prepa.js
+
+/* ---------- Coach : import de l'historique du Google Form « Forme du matin » ----------
+   Demandé par le coach (21/11/2026). Fichier « ALTUS Forme » téléchargé en Excel (.xlsx)
+   ou onglet « Réponses au formulaire 1 » en CSV. Les joueurs y sont écrits par leur NOM :
+   le coach choisit à quel joueur du site correspond chaque nom (choix retenu sur SON ordinateur,
+   jamais dans le dépôt). Une réponse de l'appli passe toujours avant celle du Google Form le même jour. */
+let lectureForme = null;        // { reponses: { nom: [réponses] }, ignorees: [], du, au }
+let messageImportForme = "";
+let correspondanceForme = null; // { nom du fichier: uid du joueur ou "" }
+
+// Durée tapée dans le Google Form : minutes, ou heures si ≤ 12 (« 1.5 », « 1.50 » = 1 h 30 ; « 1.15 », « 2h » = 1 h 15, 2 h)
+function minutesDuForm(v) {
+  const t = String(v ?? "").trim().replace(",", ".").replace(/^\+/, "");
+  if (t === "") return null;
+  if (/h/i.test(t)) { const n = nombreForme(t); return Number.isNaN(n) || n === null ? null : Math.round(n * 60); }
+  const n = Number(t);
+  if (!Number.isFinite(n) || n < 0) return null;
+  if (n > 12) return Math.round(n);
+  const h = heuresDuForm(t);
+  return h === null ? Math.round(n * 60) : Math.round(h * 60);
+}
+// Heures tapées « 8.5 » = 8 h 30, mais « 8.30 », « 6.45 », « 9.3 » = 8 h 30, 6 h 45, 9 h 30 (heures.minutes)
+function heuresDuForm(v) {
+  const t = String(v ?? "").trim().replace(",", ".");
+  if (t === "") return null;
+  if (/h/i.test(t)) { const n = nombreForme(t); return Number.isNaN(n) ? null : n; }
+  const m = /^(\d{1,2})(?:\.(\d{1,2}))?$/.exec(t);
+  if (!m) return null;
+  const h = Number(m[1]), dec = m[2] || "";
+  if (!dec) return h;
+  if (dec.length === 1) return dec === "5" ? h + 0.5 : h + Number(dec) * 10 / 60;     // .5 = demi-heure, .3 = 30 min
+  if (["25", "50", "75"].includes(dec) || Number(dec) >= 60) return h + Number(dec) / 100;
+  return h + Number(dec) / 60;                                                         // .15, .30, .45 = minutes
+}
+// Horodateur : « 08/11/2026 17:30:42 » (CSV) ou nombre de jours Excel (.xlsx)
+function horodateurDuForm(v) {
+  let date = null;
+  if (typeof v === "number" && v > 30000) {
+    const u = new Date(Math.round((v - 25569) * 864e5));
+    date = new Date(u.getUTCFullYear(), u.getUTCMonth(), u.getUTCDate(), u.getUTCHours(), u.getUTCMinutes(), u.getUTCSeconds());
+  } else {
+    const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/.exec(String(v ?? "").trim());
+    if (m) date = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), Number(m[4] || 12), Number(m[5] || 0), Number(m[6] || 0));
+  }
+  return date && !Number.isNaN(date.getTime()) ? date : null;
+}
+// Lignes du tableau (1re ligne = titres des questions) -> réponses par nom de joueur
+function lireReponsesForm(lignes) {
+  const titres = (lignes[0] || []).map((c) => sansAccents(c));   // classeur.js
+  const col = (test) => titres.findIndex(test);
+  const c = {
+    t: col((x) => x.startsWith("horodateur")), nom: col((x) => x === "joueur" || x.startsWith("nom")),
+    sommeil: col((x) => x.startsWith("qualite du sommeil")), fatigue: col((x) => x.startsWith("fatigue")),
+    stress: col((x) => x.startsWith("stress")), courbatures: col((x) => x.startsWith("courbatures")),
+    heures: col((x) => x.startsWith("heures de sommeil")),
+    prepaMin: col((x) => x.includes("prepa") && !x.includes("rpe") && /minute|temps|combien|duree/.test(x)), prepaRpe: col((x) => x.includes("rpe") && x.includes("prepa")),
+    golfMin: col((x) => x.includes("golf") && !x.includes("rpe") && /minute|temps|combien|duree/.test(x)), golfRpe: col((x) => x.includes("rpe") && x.includes("golf")),
+    com: col((x) => x.includes("commentaire")),
+  };
+  if (c.t < 0 || c.nom < 0 || c.sommeil < 0) throw new Error("Ce n'est pas l'onglet des réponses du Google Form (colonnes Horodateur, Joueur, Qualité du sommeil… introuvables).");
+  const reponses = {}, ignorees = [];
+  let du = null, au = null;
+  lignes.slice(1).forEach((l, i) => {
+    const nom = String(l[c.nom] ?? "").trim();
+    if (!nom) return;
+    const date = horodateurDuForm(l[c.t]);
+    const note = (k) => { const n = Number(String(l[c[k]] ?? "").trim()); return Number.isInteger(n) && n >= 1 && n <= 7 ? n : null; };
+    const rpe = (k) => { const n = Number(String(c[k] >= 0 ? l[c[k]] : "").trim() || 0); return Number.isInteger(n) && n >= 0 && n <= 10 ? n : 0; };
+    const r = { sommeil: note("sommeil"), fatigue: note("fatigue"), stress: note("stress"), courbatures: note("courbatures") };
+    if (!date || CHAMPS_HOOPER.some(([k]) => r[k] === null)) { ignorees.push(`Ligne ${i + 2} (${nom}) : date ou note illisible`); return; }
+    const heures = c.heures >= 0 ? heuresDuForm(l[c.heures]) : null;
+    const golfMin = c.golfMin >= 0 ? minutesDuForm(l[c.golfMin]) : null, prepaMin = c.prepaMin >= 0 ? minutesDuForm(l[c.prepaMin]) : null;
+    const rep = normaliserReponseForme({
+      d: dateEnTexte(date), t: date.getTime(), ...r, src: "form",
+      heures: heures !== null && heures <= 24 ? Math.round(heures * 100) / 100 : null,
+      golfMin: golfMin !== null && golfMin <= 900 ? golfMin : 0, golfRpe: golfMin ? rpe("golfRpe") : 0,
+      prepaMin: prepaMin !== null && prepaMin <= 600 ? prepaMin : 0, prepaRpe: prepaMin ? rpe("prepaRpe") : 0,
+      com: c.com >= 0 ? String(l[c.com] ?? "").trim() : "",
+    });
+    if (!rep) { ignorees.push(`Ligne ${i + 2} (${nom}) : réponse incomplète`); return; }
+    (reponses[nom] = reponses[nom] || []).push(rep);
+    if (!du || rep.d < du) du = rep.d;
+    if (!au || rep.d > au) au = rep.d;
+  });
+  Object.keys(reponses).forEach((nom) => { reponses[nom] = normaliserForme({ reponses: reponses[nom] }).reponses; });
+  return { reponses, ignorees, du, au };
+}
+// Fichier .xlsx (onglet dont la 1re ligne contient « Horodateur ») ou CSV
+async function lignesDuFichierForme(fichier) {
+  if (/\.xlsx?$/i.test(fichier.name)) {
+    await chargerSheetJS();   // classeur.js
+    const classeur = XLSX.read(await fichier.arrayBuffer(), { type: "array" });
+    for (const n of classeur.SheetNames) {
+      const t = XLSX.utils.sheet_to_json(classeur.Sheets[n], { header: 1, raw: true, defval: "" });
+      if (t[0] && t[0].some((x) => sansAccents(x) === "horodateur")) return t;
+    }
+    throw new Error("Pas d'onglet de réponses (avec une colonne « Horodateur ») dans ce fichier.");
+  }
+  return lignesCSV(await fichier.text());
+}
+// CSV (virgules ou points-virgules) ou texte collé depuis Google Sheets (tabulations), guillemets gérés
+function lignesCSV(texte) {
+  const premiere = texte.split("\n")[0] || "";
+  const sep = premiere.includes("\t") ? "\t" : (premiere.split(";").length > premiere.split(",").length ? ";" : ",");
+  const lignes = [];
+  let ligne = [], champ = "", guillemets = false;
+  for (let i = 0; i < texte.length; i++) {
+    const ch = texte[i];
+    if (guillemets) {
+      if (ch === '"' && texte[i + 1] === '"') { champ += '"'; i++; }
+      else if (ch === '"') guillemets = false;
+      else champ += ch;
+    } else if (ch === '"') guillemets = true;
+    else if (ch === sep) { ligne.push(champ); champ = ""; }
+    else if (ch === "\n") { ligne.push(champ.replace(/\r$/, "")); lignes.push(ligne); ligne = []; champ = ""; }
+    else champ += ch;
+  }
+  if (champ || ligne.length) { ligne.push(champ.replace(/\r$/, "")); lignes.push(ligne); }
+  return lignes;
+}
+
+function blocImportForme(joueurs) {
+  if (!correspondanceForme) correspondanceForme = lireStockage("correspondanceForme", {}) || {};
+  const options = (nom) => {
+    const choisi = correspondanceForme[nom] || "";
+    return `<option value="">— ne pas importer —</option>` + joueurs.map((j) =>
+      `<option value="${echapper(j.uid)}" ${j.uid === choisi ? "selected" : ""}>${echapper(j.prenom)}${j.source === "classeur" ? " (pas encore de compte)" : ""}</option>`).join("");
+  };
+  const noms = lectureForme ? Object.keys(lectureForme.reponses).sort((a, b) => a.localeCompare(b, "fr")) : [];
+  const total = noms.reduce((t, n) => t + lectureForme.reponses[n].length, 0);
+  return `<section class="bloc pr-bloc">
+    <details ${lectureForme || messageImportForme ? "open" : ""}><summary><strong>📥 Importer l'historique du Google Form « Forme du matin »</strong></summary>
+      <p class="petit">Dans le fichier Google « ALTUS Forme » : <strong>Fichier > Télécharger > Microsoft Excel (.xlsx)</strong>, puis choisis ce fichier ici (l'onglet des réponses est trouvé tout seul). Un CSV de l'onglet « Réponses au formulaire 1 » marche aussi.</p>
+      <input type="file" id="fichier-forme" accept=".xlsx,.csv,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+      ${messageImportForme ? `<p class="${messageImportForme.startsWith("✅") ? "bloc-info" : "erreur"}">${echapper(messageImportForme)}</p>` : ""}
+      ${lectureForme ? `<p><strong>${total} réponses · ${noms.length} joueurs</strong>${lectureForme.du ? ` · du ${echapper(dateLisible(lectureForme.du))} au ${echapper(dateLisible(lectureForme.au))}` : ""}</p>
+        <p class="petit">Dans le Google Form, les joueurs sont écrits par leur <strong>nom</strong> : choisis le joueur correspondant (retenu sur cet ordinateur pour la prochaine fois).</p>
+        <div class="tableau-defilant"><table class="tableau-admin tableau-coach">
+          <thead><tr><th>Nom dans le fichier</th><th>Réponses</th><th>Joueur du site</th></tr></thead>
+          <tbody>${noms.map((nom, i) => `<tr><td><strong>${echapper(nom)}</strong></td><td class="nombre">${lectureForme.reponses[nom].length}</td>
+            <td><select class="choix-forme-joueur" data-nom="${echapper(nom)}" id="forme-corresp-${i}" aria-label="Joueur pour ${echapper(nom)}">${options(nom)}</select></td></tr>`).join("")}</tbody>
+        </table></div>
+        ${lectureForme.ignorees.length ? `<details><summary>⚠ ${lectureForme.ignorees.length} ligne(s) ignorée(s)</summary><ul class="petit">${lectureForme.ignorees.slice(0, 40).map((t) => `<li>${echapper(t)}</li>`).join("")}</ul></details>` : ""}
+        <p class="petit">Durées : un nombre jusqu'à 12 est lu comme des heures (1,5 = 1 h 30 ; 1.15 = 1 h 15), au-delà comme des minutes. Le même jour, une réponse donnée dans l'appli passe avant celle du Google Form. Réimporter met à jour les réponses déjà importées (pas de doublon).</p>
+        <button type="button" class="bouton principal pleine-largeur" data-a="forme-import-envoyer">📥 Importer dans l'appli</button>` : ""}
+    </details>
+  </section>`;
+}
+document.addEventListener("change", async (e) => {
+  if (e.target.classList && e.target.classList.contains("choix-forme-joueur")) {
+    correspondanceForme[e.target.dataset.nom] = e.target.value;
+    ecrireStockage("correspondanceForme", correspondanceForme);
+    return;
+  }
+  if (e.target.id !== "fichier-forme" || !e.target.files[0]) return;
+  try {
+    lectureForme = lireReponsesForm(await lignesDuFichierForme(e.target.files[0]));
+    messageImportForme = Object.keys(lectureForme.reponses).length ? "" : "Aucune réponse lisible dans ce fichier.";
+    if (!Object.keys(lectureForme.reponses).length) lectureForme = null;
+  } catch (err) {
+    lectureForme = null;
+    messageImportForme = String(err && err.message ? err.message : err);
+  }
+  afficherVue();
+});
+// Écrit l'historique importé dans forme/<uid> (joueur inscrit) ou forme/classeur-<prénom> (pas encore de compte)
+async function envoyerImportForme() {
+  if (!lectureForme || !formesCoach || formesCoach.erreur) return;
+  const joueurs = joueursForme();
+  const parJoueur = {};
+  Object.entries(lectureForme.reponses).forEach(([nom, reps]) => {
+    const j = joueurs.find((x) => x.uid === correspondanceForme[nom]);
+    if (!j) return;
+    (parJoueur[j.uid] = parJoueur[j.uid] || { j, reps: [] }).reps.push(...reps);
+  });
+  const liste = Object.values(parJoueur);
+  if (!liste.length) { messageImportForme = "Choisis au moins un joueur en face d'un nom."; return afficherVue(); }
+  messageImportForme = "⏳ Import en cours…";
+  afficherVue();
+  let ok = 0, nbReponses = 0;
+  const erreurs = [];
+  for (const { j, reps } of liste) {
+    const uid = j.source === "classeur" ? "classeur-" + slugPrenom(j.prenom) : j.uid;
+    // On garde les réponses de l'appli ; les anciennes réponses importées sont remplacées par celles du fichier
+    const avant = ((formesCoach[uid] || {}).reponses || []).filter((r) => !r.src);
+    const reponses = normaliserForme({ reponses: [...reps, ...avant] }).reponses;
+    const doc = { uid, prenom: j.prenom, maj: dateEnTexte(new Date()), reponses };
+    if (modeDemo()) { const db = baseDemo(); db.forme = db.forme || {}; db.forme[uid] = doc; ecrireStockage("demo", db); ok++; nbReponses += reps.length; continue; }
+    try { await groupeCoach(codeCoach()).collection("forme").doc(uid).set(doc); ok++; nbReponses += reps.length; }
+    catch (err) { erreurs.push(j.prenom); }
+  }
+  messageImportForme = erreurs.length ? `Import refusé pour : ${erreurs.join(", ")} (règles Firestore « forme » collées ?).`
+    : `✅ ${nbReponses} réponses importées pour ${ok} joueur${ok > 1 ? "s" : ""}.`;
+  lectureForme = erreurs.length ? lectureForme : null;
+  formesCoach = null;   // relecture
+  afficherVue();
+}

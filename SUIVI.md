@@ -135,3 +135,10 @@
 ## 21/11/2026 — v72 : version ordinateur
 - 💻 Sur un écran d'ordinateur (≥ 1100 px), le site change de mise en page : barre de navigation sombre à gauche, contenu sur toute la largeur en 2 colonnes (Forme à gauche et défis à droite ; séance de prépa à gauche, 1RM et séances à droite ; Exos 3 par ligne ; classements 2 ou 3 par ligne ; grands tableaux du coach en pleine largeur). Le téléphone ne change pas.
 - Testé (Playwright) : 1440 px pour toutes les vues joueurs et coachs, 390 px pour vérifier que le téléphone n'a pas bougé.
+
+## 21/11/2026 — v73 : import de l'ancien Google Form « Forme du matin »
+- 📥 Espace coachs > 💪 Forme > « Importer l'historique du Google Form » : on choisit le fichier « ALTUS Forme » téléchargé en Excel ; le site lit les réponses, le coach associe chaque NOM du fichier à un joueur du site (retenu sur son ordinateur), puis importe.
+- Les durées tapées en heures (1,5 ; 1.15 ; 2) ou en minutes sont comprises ; les heures de sommeil « 8.30 », « 6.45 » aussi.
+- Le même jour, la réponse donnée dans l'appli passe avant celle du Google Form ; réimporter met à jour sans doublon. 📄 = réponse importée dans l'historique.
+- Les joueurs sans compte apparaissent aussi dans l'onglet Forme (historique du classeur) : leur forme importée les suivra quand ils se connecteront avec le même prénom.
+- Testé en mode démo avec le vrai fichier (126 réponses, 17 noms, aucune ligne ignorée). Les données ne sont pas dans le dépôt.

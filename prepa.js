@@ -504,7 +504,7 @@ function vueCoachPrepa() {
 function blocPrepaDeclaree(joueurs) {
   const depuis7 = dateEnTexte(ajouterJours(new Date(), -7));
   const lignes = joueurs.map((j) => {
-    const l = (formesCoach[j.uid] || { reponses: [] }).reponses.filter((r) => r.d > depuis7 && r.prepaMin);
+    const l = formeDe(j).reponses.filter((r) => r.d > depuis7 && r.prepaMin);
     return { j, n: l.length, min: l.reduce((t, r) => t + r.prepaMin, 0), rpe: l.length ? l.reduce((t, r) => t + r.prepaRpe, 0) / l.length : null, charge: l.reduce((t, r) => t + chargePrepa(r), 0) };
   }).sort((a, b) => b.n - a.n || a.j.prenom.localeCompare(b.j.prenom, "fr"));
   return `<section class="bloc pr-bloc">
