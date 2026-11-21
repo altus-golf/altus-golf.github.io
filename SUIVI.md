@@ -110,3 +110,10 @@
 - Toucher un prénom (Semaine, Équipe, Pelz, À vérifier) ouvre sa fiche (onglet Joueur), où l'on peut corriger un score.
 - Testé en mode démo (Playwright) sur téléphone (390 px) et ordinateur : les 8 onglets, les filtres et le changement de semaine.
 - 🎨 Tout le site (joueurs ET coachs) prend le visuel de la maquette : bandeau sombre avec les onglets, cartes blanches, tableaux à en-tête gris, filtres en pastilles, polices Inter et Space Grotesk (demande du coach). Thèmes de Clara et Stan conservés. Testé : téléphone, ordinateur, mode sombre, thèmes perso.
+
+## 21/11/2026 — v69 : ☀️ Forme du matin + onglet Prépa
+- Joueur : carte « Forme du jour » en premier à l'ouverture (questionnaire de Hooper, sommeil, golf et prépa de la veille avec RPE, commentaire), comme le Google Form du fichier « ALTUS Forme ». Gardée sur le téléphone sans réseau, envoyée ensuite.
+- Coach : onglet 💪 Forme (qui a répondu, statut vert / orange / rouge par rapport à la norme du joueur, charge en UA, commentaires, historique) et 🏋️ Prépa (prépa déclarée sur 7 jours ; programme à venir).
+- Joueur : 6e onglet 🏋️ Prépa (séances à venir + sa prépa de la semaine).
+- 🔒 Règles Firestore : nouveau bloc `forme` (seuls le joueur et les coachs lisent). ⚠ À coller dans la console Firebase AVANT la mise en ligne.
+- À faire : programme de prépa (fichiers « Fiches_hebdo_muscu_ALTUS_26-27 » et « Suivi_charges_muscu_ALTUS_26-27 » du coach) ; import de l'historique du fichier « ALTUS Forme ».

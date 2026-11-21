@@ -5,6 +5,7 @@ rules_version = '2';
 //  - Le groupe (ALTUS) n'existe que si un COACH l'a ouvert.
 //  - Un joueur connecté (compte Google) peut lire les bilans
 //    du groupe et écrire SEULEMENT son propre bilan.
+//  - Forme du matin : CONFIDENTIELLE, lisible seulement par le joueur et les coachs.
 //  - Défi de la semaine et exos donnés : écrits par les coachs ; un joueur peut
 //    seulement noter la date où il a fait ses exos (champ « faits »).
 // ⚠ Ce fichier est public : avant de coller, remplacer ADRESSE_COACH_1, 2…
@@ -63,6 +64,22 @@ service cloud.firestore {
       match /sauvegardes/{uid} {
         allow read: if estCoach() || (connecte() && uid == request.auth.uid && groupeExiste(code));
         allow write: if estCoach() || (connecte() && uid == request.auth.uid && groupeExiste(code));
+      }
+
+      // ☀️ Forme du matin (21/11/2026) : CONFIDENTIEL (données de santé, joueurs mineurs).
+      // Lue SEULEMENT par le joueur lui-même et les coachs ; écrite par le joueur (ou un coach : import).
+      match /forme/{uid} {
+        function formeValide() {
+          let d = request.resource.data;
+          return d.keys().hasOnly(['uid', 'prenom', 'maj', 'reponses'])
+            && d.uid == uid
+            && d.prenom is string && d.prenom.size() <= 30
+            && d.reponses is list && d.reponses.size() <= 400;
+        }
+        allow read: if estCoach() || (connecte() && uid == request.auth.uid && groupeExiste(code));
+        allow create, update: if groupeExiste(code) && formeValide()
+          && ((connecte() && uid == request.auth.uid) || estCoach());
+        allow delete: if estCoach() || (connecte() && uid == request.auth.uid);
       }
 
       match /reglages/{id} {
