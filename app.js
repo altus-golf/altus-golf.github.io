@@ -244,6 +244,8 @@ async function chargerGroupe() {
   if (donnees && vue === "coach" && coachConnecte()) nettoyerTrefleSerieClasseur();
   // ☀️ Forme du matin : récupère les réponses en ligne / renvoie celle restée sur le téléphone (forme.js)
   if (donnees && moi() && vue !== "coach") await synchroFormeAuChargement();
+  // 🏋️ Prépa : séances et 1RM en ligne ⇄ téléphone (prepa.js)
+  if (donnees && moi() && vue !== "coach") await synchroPrepaAuChargement();
   // Technique faite mais pas encore reçue par le coach : on la renvoie (exos-altus.js)
   if (donnees && moi() && vue !== "coach" && lireStockage("consignesEnAttente", null, PREFIXE_SCORES)) await envoyerTechniquesEnAttente();
   afficherVue();
@@ -753,7 +755,7 @@ function vueCoach() {
   if (!groupeDonnees) return html + `<p class="petit">${erreurGroupe ? "Pas de connexion." : "Chargement…"}</p>`;
   const vuesCoach = { "c-semaine": vueCoachSemaine, "c-equipe": vueCoachEquipe, "c-classements": vueCoachClassements,
     "c-pelz": vueCoachPelz, "c-distances": vueCoachDistances, "c-verifier": vueCoachVerifier,
-    "c-forme": vueCoachForme, "c-prepa": vueCoachPrepa };   // forme.js
+    "c-forme": vueCoachForme, "c-prepa": vueCoachPrepa };   // forme.js / prepa.js
   if (vuesCoach[ongletCoach]) return html + vuesCoach[ongletCoach]();
   if (ongletCoach === "c-gestion") return html + vueCoachGestion();
   return html + vueCoachJoueur();
@@ -1081,6 +1083,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (a.startsWith("coach-")) actionCoach(a, bouton);
     if (a.startsWith("forme-")) actionForme(a, bouton);   // forme.js
+    if (a.startsWith("prepa-")) actionPrepa(a, bouton);   // prepa.js
     if (a === "choisir-prenom") { prenomChoisi = bouton.dataset.prenom; messageAccueil = ""; afficherVue(); window.scrollTo(0, 0); }
     if (a === "confirmer-prenom" && prenomChoisi && !entreeEnCours) { messageAccueil = ""; entrerAvecPrenom(prenomChoisi); }
     if (a === "autre-prenom" || a === "liste-prenoms") { accueilAutrePrenom = a === "autre-prenom"; prenomChoisi = null; messageAccueil = ""; afficherVue(); }

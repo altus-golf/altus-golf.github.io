@@ -801,6 +801,24 @@ body.theme-noir-orange { --entete-tableau: #222222; --encre: #000000; }
 .note-hooper.haute { background: var(--alerte-fond); color: var(--alerte-texte); }
 .ligne-attente td { color: var(--texte-doux); }
 
+/* ---------- 🏋️ Prépa physique (prepa.js, 21/11/2026) ---------- */
+.prepa-champ { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--texte-doux); margin: 8px 0; }
+.prepa-champ input, .prepa-menu, .prepa-select { font: inherit; font-size: 1rem; padding: 9px 10px; border: 1px solid var(--bord); border-radius: 8px; background: var(--carte); color: var(--texte); min-width: 0; }
+.prepa-champ input { width: 100%; box-sizing: border-box; }
+.prepa-champ-large { width: 100%; }
+.prepa-menu, .prepa-select { width: 100%; box-sizing: border-box; }
+.prepa-saisie { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 0 10px; align-items: end; max-width: 440px; }
+.prepa-saisie .prepa-champ { margin: 4px 0; }
+.prepa-presc { margin: 12px 0; padding: 12px; border: 1px solid var(--bord); border-radius: 10px; background: var(--fond); }
+.prepa-presc-tete { display: flex; align-items: center; gap: 8px; }
+.prepa-texte-presc { font-family: "Space Grotesk", system-ui, sans-serif; font-weight: 700; font-size: 1.05rem; margin: 6px 0 0; }
+.prepa-exo { padding: 10px 0; border-top: 1px solid var(--bord); }
+.prepa-exo-tete { display: flex; align-items: center; gap: 8px; }
+.prepa-num { flex: 0 0 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--accent-texte, #fff); font-weight: 700; font-size: 0.85rem; }
+.prepa-prevu { margin: 6px 0 0 34px; font-size: 0.9rem; }
+.prepa-exo .prepa-saisie { margin-left: 34px; }
+.prepa-rm { width: 80px; font: inherit; padding: 6px 8px; border: 1px solid var(--bord); border-radius: 6px; background: var(--carte); color: var(--texte); }
+
 /* ---------- Thème perso « rose fuchsia + renards » (Clara, 20/11/2026) ----------
    Fond BLANC avec des renards, tout le reste en rose fuchsia flashy (demande de Clara).
    Ajouté au <body> seulement quand la joueuse connectée s'appelle Clara (THEMES_JOUEURS, app.js). */

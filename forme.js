@@ -136,6 +136,12 @@ function boutonsNote(champ, valeur, min, max, colonnes) {
   }
   return html + `</div>`;
 }
+// Nouvelle forme : la prépa d'hier est pré-remplie si le joueur a noté sa séance dans 🏋️ Prépa (prepa.js)
+function formeVierge() {
+  const p = typeof prepaDeLaVeille === "function" ? prepaDeLaVeille() : null;
+  return { sommeil: null, fatigue: null, stress: null, courbatures: null, heures: "", golfMin: "", golfRpe: null,
+    prepaMin: p && p.minutes !== null ? p.minutes : "", prepaRpe: p ? p.rpe : null, com: "" };
+}
 function blocFormeDuMatin() {
   const m = moi();
   if (!m || PRENOMS_COACHS.includes(m.prenom)) return "";
@@ -152,7 +158,7 @@ function blocFormeDuMatin() {
     </section>`;
   }
   const b = formeBrouillon || (formeBrouillon = r ? { ...r, heures: r.heures ?? "", golfMin: r.golfMin ?? "", prepaMin: r.prepaMin ?? "" }
-    : { sommeil: null, fatigue: null, stress: null, courbatures: null, heures: "", golfMin: "", golfRpe: null, prepaMin: "", prepaRpe: null, com: "" });
+    : formeVierge());
   const champTexte = (id, valeur, etiquette, attributs) => `<label class="forme-champ"><span>${etiquette}</span>
     <input id="forme-${id}" value="${echapper(String(valeur ?? ""))}" ${attributs}></label>`;
   return `<section class="bloc pr-bloc bloc-forme">
@@ -242,26 +248,6 @@ function actionForme(a, bouton) {
 document.addEventListener("input", (e) => {
   if (formeBrouillon && e.target.id && e.target.id.startsWith("forme-")) formeBrouillon[e.target.id.slice(6)] = e.target.value;
 });
-
-/* ---------- Joueur : onglet 🏋️ Prépa ---------- */
-function vuePrepa() {
-  const locale = maFormeLocale();
-  const depuis = dateEnTexte(ajouterJours(new Date(), -7));
-  const semaine = locale.reponses.filter((r) => r.d > depuis && r.prepaMin);
-  return `<section class="bloc pr-bloc">
-      <h2 class="bloc-titre">🏋️ Préparation physique</h2>
-      <p class="bloc-info">Programme ALTUS 2026-2027 · 13 semaines · 3 séances par semaine</p>
-      <p>Tes séances arrivent bientôt ici : pour chaque séance, les exercices, les séries, les répétitions et les charges à noter. En attendant, continue à remplir ta fiche papier.</p>
-    </section>
-    <section class="bloc pr-bloc">
-      <h2 class="bloc-titre">📋 Ma prépa des 7 derniers jours</h2>
-      ${semaine.length ? `<div class="tableau-defilant"><table class="tableau-admin tableau-coach">
-        <thead><tr><th>Séance du</th><th>Minutes</th><th>RPE</th><th>Charge</th></tr></thead>
-        <tbody>${semaine.map((r) => `<tr><td>${echapper(dateLisible(dateEnTexte(ajouterJours(texteEnDate(r.d), -1))))}</td><td class="nombre">${r.prepaMin}</td><td class="nombre">${r.prepaRpe}</td><td class="nombre">${chargePrepa(r)} UA</td></tr>`).join("")}</tbody>
-      </table></div>` : `<p class="petit">Rien cette semaine : ta prépa de la veille se note dans ☀️ Forme du jour (onglet Séance).</p>`}
-      <p class="petit">Charge = minutes × RPE (unités arbitraires, UA).</p>
-    </section>`;
-}
 
 /* ---------- Coach : lecture des réponses ---------- */
 async function chargerFormesCoach() {
@@ -383,26 +369,4 @@ function vueCoachForme() {
       <p class="petit">${fh.reponses.length} questionnaire${fh.reponses.length > 1 ? "s" : ""} au total · 21 derniers affichés.</p>` : `<p class="petit">${echapper(jh.prenom)} n'a encore jamais répondu dans l'application.</p>`}
     </section>` : ""}`;
 }
-
-/* ---------- Coach : onglet 🏋️ Prépa ---------- */
-function vueCoachPrepa() {
-  if (!formesCoach) { Promise.resolve().then(chargerFormesCoach); return `<p class="petit">Chargement…</p>`; }
-  const depuis7 = dateEnTexte(ajouterJours(new Date(), -7));
-  const lignes = joueursForme().map((j) => {
-    const l = ((formesCoach.erreur ? null : formesCoach[j.uid]) || { reponses: [] }).reponses.filter((r) => r.d > depuis7 && r.prepaMin);
-    return { j, n: l.length, min: l.reduce((t, r) => t + r.prepaMin, 0), rpe: l.length ? l.reduce((t, r) => t + r.prepaRpe, 0) / l.length : null, charge: l.reduce((t, r) => t + chargePrepa(r), 0) };
-  }).sort((a, b) => b.n - a.n || a.j.prenom.localeCompare(b.j.prenom, "fr"));
-  return `<section class="bloc pr-bloc">
-      <h2 class="bloc-titre">🏋️ Préparation physique</h2>
-      <p class="bloc-info">Programme ALTUS 2026-2027 · 13 semaines · 3 séances par semaine</p>
-      <p>Les séances du programme (exercices, séries, répétitions, charges) arriveront ici : chaque joueur verra sa séance du jour et notera ses charges, et tu suivras la progression.</p>
-    </section>
-    <section class="bloc pr-bloc">
-      <h2 class="bloc-titre">📋 Prépa déclarée sur 7 jours</h2>
-      <div class="tableau-defilant"><table class="tableau-admin tableau-coach">
-        <thead><tr><th>Joueur</th><th>Séances</th><th>Minutes</th><th>RPE moyen</th><th>Charge (UA)</th></tr></thead>
-        <tbody>${lignes.map((l) => `<tr><td><strong>${echapper(l.j.prenom)}</strong></td><td class="nombre">${l.n ? `<strong>${l.n}</strong> / 3` : `<span class="statut statut-alerte">0 / 3</span>`}</td><td class="nombre">${l.min || "—"}</td><td class="nombre">${l.rpe === null ? "—" : texte1(l.rpe)}</td><td class="nombre">${l.charge || "—"}</td></tr>`).join("")}</tbody>
-      </table></div>
-      <p class="petit">D'après la forme du matin (prépa physique de la veille). Objectif du programme : 3 séances par semaine.</p>
-    </section>`;
-}
+// Onglets 🏋️ Prépa (joueur et coach) : voir prepa.js
