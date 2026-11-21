@@ -730,3 +730,52 @@ body.theme-noir-orange input, body.theme-noir-orange select, body.theme-noir-ora
 body.theme-noir-orange #trefle-jeu, body.theme-noir-orange .trefle-jeu { background: #0d0d0d; color: #f5f5f5; }
 .detail-exo { margin: 8px 0; padding: 8px 0; border-top: 1px solid var(--bord); }
 .detail-exo summary { cursor: pointer; }
+
+/* =========================================================
+   Interface coach (21/11/2026) : même visuel que les joueurs
+   ========================================================= */
+/* 8 onglets + Retour : 3 lignes de 3 (la page reste étroite, même sur ordinateur) */
+.onglets.onglets-altus.onglets-coach { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.onglets.onglets-altus.onglets-coach .onglet,
+.onglets.onglets-altus.onglets-coach .onglet:nth-child(4),
+.onglets.onglets-altus.onglets-coach .onglet:nth-child(5) { grid-column: auto; font-size: 0.8rem; }
+/* Chiffres clés de la semaine */
+.kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+@media (min-width: 700px) { .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.kpi { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; background: var(--carte); border: 1px solid var(--bord); border-left: 6px solid var(--accent); border-radius: 12px; box-shadow: var(--ombre); }
+.kpi span { font-size: 0.8rem; font-weight: 700; color: var(--texte-doux); }
+.kpi strong { font-size: 1.6rem; line-height: 1.1; }
+.kpi small { color: var(--texte-doux); }
+/* Semaine précédente / suivante */
+.nav-semaine { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.nav-semaine .bouton { min-width: 52px; }
+/* Tableaux du coach */
+.tableau-coach td, .tableau-coach th { vertical-align: middle; }
+.tableau-coach td.nombre, .tableau-coach th.nombre { text-align: center; }
+.tableau-coach td.vide { color: var(--texte-doux); }
+.tableau-coach td.case-faite { background: var(--accent-doux); }
+.tableau-coach tfoot th { background: var(--accent); color: var(--accent-texte); }
+.tableau-equipe th { white-space: normal; min-width: 64px; font-size: 0.78rem; text-align: center; }
+.tableau-equipe th:first-child { text-align: left; }
+.lien-joueur { font-weight: 800; text-align: left; white-space: nowrap; }
+/* Pastilles des situations du Pelz (A, B, C…) */
+.pastilles-pelz { display: inline-flex; gap: 3px; vertical-align: middle; }
+.pastille-pelz { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--bord); font-size: 0.7rem; font-weight: 800; color: var(--texte-doux); }
+.pastille-pelz.faite { background: var(--accent); border-color: var(--accent); color: var(--accent-texte); }
+/* Statuts */
+.statut { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; white-space: nowrap; }
+.statut-top { background: var(--accent); color: var(--accent-texte); }
+.statut-ok { background: var(--accent-doux); color: var(--texte); }
+.statut-alerte { background: var(--alerte-fond); color: var(--alerte-texte); }
+.statut-attente { background: var(--bord); color: var(--texte); }
+/* Classements : 30 jours et année côte à côte (l'un sous l'autre sur téléphone) */
+.deux-colonnes { display: grid; grid-template-columns: 1fr; gap: 4px 20px; }
+@media (min-width: 600px) { .deux-colonnes { grid-template-columns: 1fr 1fr; } }
+.deux-colonnes h3 { margin: 6px 0 0; font-size: 0.95rem; }
+.deux-colonnes h3 small { font-weight: normal; color: var(--texte-doux); }
+.classement-court li { padding: 6px 0; }
+.bloc-titre small { font-weight: normal; color: var(--texte-doux); font-size: 0.8em; }
+/* À vérifier */
+.liste-verifier { margin: 6px 0 10px; padding-left: 18px; }
+.liste-verifier li { margin: 4px 0; }
+.liste-verifier small { color: var(--alerte-texte); }
