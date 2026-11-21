@@ -360,19 +360,23 @@ function dateExcel(date) {
 }
 
 
-/* ---------- Espace coachs : rapport Excel de chaque joueur ----------
-   Demandé par le coach (20/11/2026). Le fichier est fabriqué dans le
-   téléphone / l'ordinateur du coach (SheetJS) : rien ne passe par le dépôt.
-   Une feuille (page) par joueur, avec TOUS les exos du programme, même
-   sans score (choix du coach, 20/11/2026) : records et moyennes de
-   l'année, derniers scores, réussite par distance. */
+/* ---------- Espace coachs : rapport Excel du groupe ----------
+   Demandé par le coach (20/11/2026), mis en forme le 21/11/2026 pour être
+   lisible tel quel (l'appli remplace le classeur du coach).
+   Le fichier est fabriqué dans le téléphone / l'ordinateur du coach avec
+   ExcelJS (la version gratuite de SheetJS ne sait pas écrire les couleurs) :
+   rien ne passe par le dépôt.
+   Onglets : Semaine, Équipe, Classements, Pelz, une page par joueur, Données.
+   Classements : moyenne des 30 derniers jours (2 scores min.) ET moyenne de
+   l'année (3 scores min., comme l'onglet Classements du site) — choix du
+   coach, 21/11/2026. */
 
 let messageRapport = "";
 
 function blocRapportExcel() {
   return `<section class="bloc pr-bloc">
     <h2 class="bloc-titre">📊 Rapport Excel</h2>
-    <p class="petit">Un fichier Excel avec une page par joueur : tous les exos (records, moyennes de l'année, derniers scores), et la réussite par distance.</p>
+    <p class="petit">Un fichier Excel prêt à lire : la semaine (qui a fait quoi, Pelz), la vue équipe, les classements (30 derniers jours et année), l'historique du Pelz, une page par joueur et toutes les données.</p>
     <button type="button" class="bouton principal pleine-largeur" data-a="rapport-excel">⬇️ Télécharger le rapport</button>
     ${messageRapport ? `<p class="${messageRapport.startsWith("✅") ? "petit" : "erreur"}">${echapper(messageRapport)}</p>` : ""}
   </section>`;
@@ -397,19 +401,6 @@ function ordreRapport() {
   return [...ITEMS_ALTUS].sort((a, b) => rang(a.id) - rang(b.id));
 }
 
-// Records et moyennes de l'année d'un joueur : une ligne par exo, dans l'ordre du programme
-function lignesRecords(j) {
-  // Tous les exos possibles, même sans score (choix du coach, 20/11/2026)
-  return ordreRapport().map((it) => {
-    const e = j.exos[it.id];
-    const h = j.hist[it.id] || [];
-    const dernier = h[h.length - 1];
-    return [categorieRapport(it.id), it.titre, e ? e.n : "", e ? arrondi1(e.moy) : "", e ? e.record : "", e ? dateRapport(e.recordD) : "",
-      dernier ? dernier[1] : "", dernier ? dateRapport(dernier[0]) : "", it.unite];
-  });
-}
-const TITRES_RECORDS = ["Catégorie", "Exo", "Scores (année)", "Moyenne (année)", "Record", "Date du record", "Dernier score", "Date", "Sur"];
-
 // Nom de feuille Excel : 31 caractères max, sans : \ / ? * [ ], unique
 function nomDeFeuille(nom, pris) {
   let base = nom.replace(/[:\\/?*\[\]]/g, " ").trim().slice(0, 28) || "Joueur";
@@ -419,55 +410,349 @@ function nomDeFeuille(nom, pris) {
   return n;
 }
 
+// Bibliothèque ExcelJS (écriture du rapport avec couleurs), chargée seulement quand on en a besoin
+const ADRESSE_EXCELJS = "https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js";
+function chargerExcelJS() {
+  if (window.ExcelJS) return Promise.resolve();
+  return new Promise((ok, pasOk) => {
+    const script = document.createElement("script");
+    script.src = ADRESSE_EXCELJS;
+    script.onload = ok;
+    script.onerror = () => pasOk(new Error("Impossible de charger l'outil Excel (pas de connexion ?)."));
+    document.head.appendChild(script);
+  });
+}
+
+/* --- Petits outils de calcul --- */
+const moyenneDe = (l) => (l.length ? l.reduce((t, [, v]) => t + v, 0) / l.length : null);
+// « 2026-11-20 » -> vraie date Excel (sinon Excel ne sait ni trier ni filtrer)
+function dateExcel(d) {
+  const [a, m, j] = d.split("-").map(Number);
+  return new Date(Date.UTC(a, m - 1, j));
+}
+// Titre court pour les en-têtes de colonnes
+function titreCourt(it) {
+  return it.titre.replace(/^Test Center /, "TC ").replace(/ \(filles [^)]*\)/, "").replace(/^Pelz ([A-I]) - /, "Pelz $1\n").replace(/^Pelz complet \(total de la semaine\)$/, "Pelz complet");
+}
+const texteNote = (v) => (v === null || v === undefined ? "" : String(arrondi1(v)).replace(".", ","));
+
+// Scores de chaque joueur : sauvegarde complète si elle existe, sinon les 30 derniers du bilan
+function scoresDuRapport(joueurs, sauvegardes) {
+  return joueurs.map((j) => {
+    const sv = sauvegardes[j.uid];
+    const scores = {};
+    ITEMS_ALTUS.forEach((it) => {
+      const l = sv ? (sv.scores[it.id] || []).map((s) => [s.d, s.v]) : (j.hist[it.id] || []).map(([d, v]) => [d, v]);
+      scores[it.id] = l.sort((a, b) => a[0].localeCompare(b[0]));
+    });
+    const origine = j.source === "classeur" ? "Historique du classeur" : sv ? "Site" : "Site (30 derniers scores)";
+    return { j, scores, origine, complet: j.source === "classeur" || !!sv };
+  });
+}
+
+// Pelz d'un joueur pour la semaine du lundi donné : dernier score de chaque situation
+function pelzDeLaSemaine(scores, lundi) {
+  const fin = dateEnTexte(ajouterJours(texteEnDate(lundi), 6));
+  const pts = {};
+  PELZ_SITUATIONS.forEach((s) => {
+    const l = scores["pelz-" + s.id].filter(([d]) => d >= lundi && d <= fin);
+    if (l.length) pts[s.id] = l[l.length - 1][1];
+  });
+  const n = Object.keys(pts).length;
+  return { pts, n, total: n === PELZ_SITUATIONS.length ? Object.values(pts).reduce((t, v) => t + v, 0) : null };
+}
+
+// Classement : moyenne par joueur sur la période, avec un minimum de scores
+function podium(lignes, minimum) {
+  return lignes.filter((x) => x.l.length >= minimum).map((x) => ({ prenom: x.prenom, moy: moyenneDe(x.l), n: x.l.length }))
+    .sort((a, b) => b.moy - a.moy || b.n - a.n || a.prenom.localeCompare(b.prenom, "fr")).slice(0, 3)
+    .map((p) => `${p.prenom} – ${texteNote(p.moy)}`);
+}
+
+/* --- Mise en forme --- */
+const XL = {
+  marine: "FF365571", rouge: "FFEB574C", blanc: "FFFFFFFF", texte: "FF15202B", grisTexte: "FF5B6672",
+  grisFond: "FFF2F4F6", bleuClair: "FFD4E3F1", bleuFonce: "FF1F4E79", orangeClair: "FFFBE0CC", orangeTexte: "FF7A2E0B", bordure: "FFD0D7DE",
+};
+const fondXL = (c) => ({ type: "pattern", pattern: "solid", fgColor: { argb: c } });
+const bordXL = { top: { style: "thin", color: { argb: XL.bordure } }, left: { style: "thin", color: { argb: XL.bordure } },
+  bottom: { style: "thin", color: { argb: XL.bordure } }, right: { style: "thin", color: { argb: XL.bordure } } };
+
+function titreFeuille(f, titre, sousTitre) {
+  f.getCell("A1").value = titre;
+  f.getCell("A1").font = { name: "Arial", size: 16, bold: true, color: { argb: XL.marine } };
+  if (sousTitre) {
+    f.getCell("A2").value = sousTitre;
+    f.getCell("A2").font = { name: "Arial", size: 9, italic: true, color: { argb: XL.grisTexte } };
+  }
+}
+function sousTitreBloc(f, ligne, texte) {
+  const c = f.getCell(ligne, 1);
+  c.value = texte;
+  c.font = { name: "Arial", size: 12, bold: true, color: { argb: XL.rouge } };
+}
+function ligneEnTete(f, ligne, valeurs, col = 1) {
+  valeurs.forEach((v, i) => {
+    const c = f.getCell(ligne, col + i);
+    c.value = v;
+    c.font = { name: "Arial", size: 10, bold: true, color: { argb: XL.blanc } };
+    c.fill = fondXL(XL.marine);
+    c.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+    c.border = bordXL;
+  });
+}
+function ligneValeurs(f, ligne, valeurs, col = 1) {
+  valeurs.forEach((v, i) => {
+    const c = f.getCell(ligne, col + i);
+    c.value = v === null || v === undefined ? "" : v;
+    c.font = { name: "Arial", size: 10, color: { argb: XL.texte } };
+    c.border = bordXL;
+    c.alignment = { vertical: "middle", horizontal: i === 0 ? "left" : "center", wrapText: i === 0 };
+    if (v instanceof Date) c.numFmt = "dd/mm/yyyy";
+    else if (typeof v === "number" && !Number.isInteger(v)) c.numFmt = "0.0";
+  });
+}
+// Dégradé de couleur colonne par colonne (blanc -> bleu : plus foncé = meilleur du groupe)
+function degradeColonne(f, colonne, l1, l2) {
+  if (l2 < l1) return;
+  f.addConditionalFormatting({
+    ref: `${colonne}${l1}:${colonne}${l2}`,
+    rules: [{ type: "colorScale", priority: 1, cfvo: [{ type: "min" }, { type: "max" }], color: [{ argb: "FFF4F7FA" }, { argb: "FF8DB3D6" }] }],
+  });
+}
+const lettreCol = (n) => { let s = ""; while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; };
+function figer(f, colonnes, lignes) {
+  f.views = [{ state: "frozen", xSplit: colonnes, ySplit: lignes, showGridLines: false }];
+  f.pageSetup = { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0 };   // impression : toute la largeur sur une page
+}
+
+/* --- Le rapport --- */
 async function telechargerRapport() {
   messageRapport = "";
   if (!groupeDonnees) { messageRapport = "Groupe pas encore chargé."; return afficherVue(); }
   try {
-    await chargerSheetJS();
+    await chargerExcelJS();
     const joueurs = joueursDuRapport();
-    const classeur = XLSX.utils.book_new();
-    const pris = new Set();
-    const lundi = lundiDe();
-    const annee = new Date().getFullYear();
     // Tous les scores : sauvegarde complète des joueurs du site (lisible par les coachs) ;
     // sinon (pas encore de sauvegarde) les 30 derniers par exo de leur bilan
     const sauvegardes = await lireSauvegardesCoach(joueurs.filter((j) => j.source !== "classeur").map((j) => j.uid));   // base.js
+    const donnees = scoresDuRapport(joueurs, sauvegardes);
+    const items = ordreRapport();
+    const aujourdhui = dateEnTexte(new Date());
+    const lundi = lundiDe();
+    const dimanche = dateEnTexte(ajouterJours(texteEnDate(lundi), 6));
+    const depuis30 = dateEnTexte(ajouterJours(new Date(), -30));
+    const annee = String(new Date().getFullYear());
+    const sur30 = (l) => l.filter(([d]) => d >= depuis30);
+    const surAnnee = (l) => l.filter(([d]) => d.startsWith(annee));
 
-    // Une feuille (page) par joueur, avec tous les exos (choix du coach, 20/11/2026)
-    joueurs.forEach((j) => {
-      const f = [[`${j.prenom}${j.source === "classeur" ? " (historique du classeur)" : ""}`, "", `Rapport du ${dateRapport(dateEnTexte(new Date()))}`],
-        ["Mis à jour", dateRapport(j.maj), "Exos cette semaine", j.source === "classeur" ? "" : (j.semaine.lundi === lundi ? j.semaine.n : 0)],
-        [], [`Tous les exos : records et moyennes ${annee}`], TITRES_RECORDS, ...lignesRecords(j)];
-      // Derniers scores rangés par catégorie puis par exo (pas par date), choix du coach 20/11/2026 ;
-      // dans chaque exo, du plus récent au plus ancien
-      const sauvegarde = sauvegardes[j.uid];
-      const complet = j.source === "classeur" || !!sauvegarde;
-      f.push([], [complet ? "Tous les scores" : "Derniers scores (30 par exo : la sauvegarde complète arrivera quand le joueur ouvrira la nouvelle version du site)"], ["Catégorie", "Exo", "Date", "Score", "Sur"]);
-      ordreRapport().forEach((it) => {
-        const liste = sauvegarde ? (sauvegarde.scores[it.id] || []).map((s) => [s.d, s.v]) : (j.hist[it.id] || []);
-        [...liste].sort((a, b) => a[0].localeCompare(b[0])).reverse().forEach(([d, v]) => f.push([categorieRapport(it.id), it.titre, dateRapport(d), v, it.unite]));
+    const classeur = new ExcelJS.Workbook();
+    classeur.creator = "Altus Performance";
+    const pris = new Set(["semaine", "équipe", "classements", "pelz", "données"]);
+
+    // ---------- 1. Semaine : qui a fait quoi ----------
+    const fs = classeur.addWorksheet("Semaine");
+    titreFeuille(fs, `Semaine du ${dateRapport(lundi)} au ${dateRapport(dimanche)}`, `Rapport du ${dateRapport(aujourdhui)} · Pelz sur ${PELZ_SITUATIONS.length} situations (points sur 40)`);
+    const entSem = ["Joueur", "Scores cette semaine", "Exercices différents", ...PELZ_SITUATIONS.map((s) => "Pelz " + s.id.toUpperCase()), "Pelz faites", `Total /${PELZ_MAX_TOTAL}`, "Dernière saisie", "Statut"];
+    ligneEnTete(fs, 4, entSem);
+    const lignesSem = donnees.map((x) => {
+      const semaine = [];
+      items.forEach((it) => x.scores[it.id].forEach(([d, v]) => { if (d >= lundi && d <= dimanche) semaine.push(it); }));
+      const fiches = new Set(semaine.filter((it) => it.id !== "pelz-total").map((it) => it.fiche));
+      const pz = pelzDeLaSemaine(x.scores, lundi);
+      let derniere = "";
+      items.forEach((it) => { const l = x.scores[it.id]; if (l.length && l[l.length - 1][0] > derniere) derniere = l[l.length - 1][0]; });
+      const statut = x.j.source === "classeur" ? "Pas encore inscrit sur le site" : !semaine.length ? "Rien cette semaine" : pz.total !== null ? "Pelz complet" : "Actif";
+      return { x, n: semaine.filter((it) => it.id !== "pelz-total").length, fiches: fiches.size, pz, derniere, statut };
+    }).sort((a, b) => b.n - a.n || a.x.j.prenom.localeCompare(b.x.j.prenom, "fr"));
+    lignesSem.forEach((s, i) => {
+      const r = 5 + i;
+      ligneValeurs(fs, r, [s.x.j.prenom, s.n, s.fiches, ...PELZ_SITUATIONS.map((p) => (s.pz.pts[p.id] !== undefined ? s.pz.pts[p.id] : "")),
+        `${s.pz.n}/${PELZ_SITUATIONS.length}`, s.pz.total, s.derniere ? dateExcel(s.derniere) : "", s.statut]);
+      fs.getCell(r, 1).font = { name: "Arial", size: 10, bold: true };
+      PELZ_SITUATIONS.forEach((p, k) => { if (s.pz.pts[p.id] !== undefined) fs.getCell(r, 4 + k).fill = fondXL(XL.bleuClair); });
+      const cs = fs.getCell(r, entSem.length);
+      if (s.statut === "Pelz complet") { cs.fill = fondXL(XL.bleuFonce); cs.font = { name: "Arial", size: 10, bold: true, color: { argb: XL.blanc } }; }
+      else if (s.statut === "Actif") cs.fill = fondXL(XL.bleuClair);
+      else { cs.fill = fondXL(XL.orangeClair); cs.font = { name: "Arial", size: 10, color: { argb: XL.orangeTexte } }; }
+    });
+    entSem.forEach((t, i) => { fs.getColumn(i + 1).width = i === 0 ? 16 : i < 3 ? 12 : i < 3 + PELZ_SITUATIONS.length ? 8 : i === entSem.length - 1 ? 28 : 12; });
+    fs.getRow(4).height = 32;
+    figer(fs, 1, 4);
+
+    // ---------- 2. Équipe : moyennes de chacun sur chaque exo ----------
+    const fe = classeur.addWorksheet("Équipe");
+    titreFeuille(fe, "Vue équipe", "Plus la case est foncée, meilleur est le joueur dans sa colonne. Case vide = exo pas fait sur la période.");
+    let ligne = 4;
+    [["Moyenne des 30 derniers jours", sur30], [`Moyenne de l'année ${annee}`, surAnnee]].forEach(([titre, filtre]) => {
+      sousTitreBloc(fe, ligne, titre);
+      ligneEnTete(fe, ligne + 1, ["Joueur", ...items.map(titreCourt)]);
+      ligneValeurs(fe, ligne + 2, ["Sur", ...items.map((it) => it.unite.replace("/ ", ""))]);
+      fe.getRow(ligne + 2).eachCell((c) => { c.font = { name: "Arial", size: 9, italic: true, color: { argb: XL.grisTexte } }; c.fill = fondXL(XL.grisFond); });
+      fe.getRow(ligne + 1).height = 58;
+      const l1 = ligne + 3;
+      donnees.forEach((x, i) => {
+        ligneValeurs(fe, l1 + i, [x.j.prenom, ...items.map((it) => { const l = filtre(x.scores[it.id]); return l.length ? arrondi1(moyenneDe(l)) : ""; })]);
+        fe.getCell(l1 + i, 1).font = { name: "Arial", size: 10, bold: true };
       });
+      const l2 = l1 + donnees.length - 1;
+      items.forEach((it, k) => degradeColonne(fe, lettreCol(2 + k), l1, l2));
+      const lg = l2 + 1;
+      ligneValeurs(fe, lg, ["Groupe", ...items.map((it) => { const l = [].concat(...donnees.map((x) => filtre(x.scores[it.id]))); return l.length ? arrondi1(moyenneDe(l)) : ""; })]);
+      fe.getRow(lg).eachCell((c) => { c.font = { name: "Arial", size: 10, bold: true, color: { argb: XL.blanc } }; c.fill = fondXL(XL.marine); });
+      ligne = lg + 3;
+    });
+    fe.getColumn(1).width = 16;
+    items.forEach((it, k) => { fe.getColumn(2 + k).width = 11; });
+    figer(fe, 1, 0);
+
+    // ---------- 3. Classements : 30 derniers jours ET année ----------
+    const fc = classeur.addWorksheet("Classements");
+    titreFeuille(fc, "Classements", `30 derniers jours : 2 scores minimum. Année ${annee} : 3 scores minimum (comme sur le site). Pelz complet : 1 suffit. Record = meilleur score isolé de l'année.`);
+    ligneEnTete(fc, 4, ["Catégorie", "Exo", "Sur", "Moy. groupe 30 j", "🥇 30 jours", "🥈 30 jours", "🥉 30 jours", "Moy. groupe année", "🥇 année", "🥈 année", "🥉 année", "⭐ Record de l'année"]);
+    items.forEach((it, i) => {
+      const parJ30 = donnees.map((x) => ({ prenom: x.j.prenom, l: sur30(x.scores[it.id]) }));
+      const parJA = donnees.map((x) => ({ prenom: x.j.prenom, l: surAnnee(x.scores[it.id]) }));
+      const tout30 = [].concat(...parJ30.map((p) => p.l)), toutA = [].concat(...parJA.map((p) => p.l));
+      const min30 = it.id === "pelz-total" ? 1 : 2, minA = it.id === "pelz-total" ? 1 : 3;
+      const p30 = podium(parJ30, min30), pA = podium(parJA, minA);
+      let rec = null;
+      parJA.forEach((p) => p.l.forEach(([d, v]) => { if (!rec || v > rec.v || (v === rec.v && d < rec.d)) rec = { prenom: p.prenom, d, v }; }));
+      const r = 5 + i;
+      ligneValeurs(fc, r, [categorieRapport(it.id), it.titre, it.unite, tout30.length ? arrondi1(moyenneDe(tout30)) : "", p30[0] || "", p30[1] || "", p30[2] || "",
+        toutA.length ? arrondi1(moyenneDe(toutA)) : "", pA[0] || "", pA[1] || "", pA[2] || "", rec ? `${texteNote(rec.v)} – ${rec.prenom} (${dateRapport(rec.d)})` : ""]);
+      fc.getCell(r, 2).font = { name: "Arial", size: 10, bold: true };
+      [5, 9].forEach((c) => { fc.getCell(r, c).fill = fondXL(XL.bleuClair); fc.getCell(r, c).font = { name: "Arial", size: 10, bold: true }; });
+    });
+    [12, 30, 8, 11, 17, 17, 17, 11, 17, 17, 17, 26].forEach((w, k) => { fc.getColumn(k + 1).width = w; });
+    fc.getRow(4).height = 32;
+    figer(fc, 2, 4);
+
+    // ---------- 4. Pelz : total de chaque semaine ----------
+    const fp = classeur.addWorksheet("Pelz");
+    titreFeuille(fp, `Pelz semaine par semaine (total /${PELZ_MAX_TOTAL})`, `Total affiché quand les ${PELZ_SITUATIONS.length} situations sont faites dans la même semaine (dernier score de chaque situation) ; sinon, nombre de situations faites.`);
+    let premier = lundi;
+    donnees.forEach((x) => PELZ_SITUATIONS.forEach((s) => { const l = x.scores["pelz-" + s.id]; if (l.length && l[0][0] < premier) premier = l[0][0]; }));
+    const semaines = [];
+    for (let s = lundiDe(texteEnDate(premier)); s <= lundi; s = dateEnTexte(ajouterJours(texteEnDate(s), 7))) semaines.push(s);
+    ligneEnTete(fp, 4, ["Joueur", ...semaines.map((s) => "Sem. du " + dateRapport(s).slice(0, 5)), "Meilleur total"]);
+    donnees.forEach((x, i) => {
+      const r = 5 + i;
+      const pzs = semaines.map((s) => pelzDeLaSemaine(x.scores, s));
+      const totaux = pzs.map((p) => p.total).filter((t) => t !== null);
+      ligneValeurs(fp, r, [x.j.prenom, ...pzs.map((p) => (p.total !== null ? p.total : p.n ? `${p.n}/${PELZ_SITUATIONS.length}` : "")), totaux.length ? Math.max(...totaux) : ""]);
+      fp.getCell(r, 1).font = { name: "Arial", size: 10, bold: true };
+      pzs.forEach((p, k) => {
+        const c = fp.getCell(r, 2 + k);
+        if (p.total !== null) { c.fill = fondXL(XL.bleuClair); c.font = { name: "Arial", size: 10, bold: true }; }
+        else if (p.n) c.font = { name: "Arial", size: 9, italic: true, color: { argb: XL.grisTexte } };
+      });
+    });
+    fp.getColumn(1).width = 16;
+    semaines.forEach((s, k) => { fp.getColumn(2 + k).width = 12; });
+    fp.getColumn(2 + semaines.length).width = 14;
+    fp.getRow(4).height = 30;
+    figer(fp, 1, 4);
+
+    // ---------- 5. Une page par joueur ----------
+    const moyGroupe30 = {};
+    items.forEach((it) => { const l = [].concat(...donnees.map((x) => sur30(x.scores[it.id]))); moyGroupe30[it.id] = l.length ? moyenneDe(l) : null; });
+    donnees.forEach((x) => {
+      const j = x.j;
+      const fj = classeur.addWorksheet(nomDeFeuille(j.prenom, pris));
+      const nbScores = items.reduce((t, it) => t + x.scores[it.id].length, 0);
+      titreFeuille(fj, `${j.prenom}${j.source === "classeur" ? " (historique du classeur)" : ""}`,
+        `Rapport du ${dateRapport(aujourdhui)} · mis à jour le ${dateRapport(j.maj)} · ${nbScores} scores${x.complet ? "" : " · seulement les 30 derniers scores par exo (la sauvegarde complète arrivera quand le joueur ouvrira le site)"}`);
+      ligneEnTete(fj, 4, ["Catégorie", "Exo", "Sur", `Scores ${annee}`, "Moy. 30 j", `Moy. ${annee}`, "Moy. groupe 30 j", "Écart au groupe", "Record", "Date du record", "Dernier score", "Date"]);
+      items.forEach((it, i) => {
+        const l = x.scores[it.id], lA = surAnnee(l), l30 = sur30(l);
+        const m30 = l30.length ? moyenneDe(l30) : null, g = moyGroupe30[it.id];
+        let rec = null;
+        lA.forEach(([d, v]) => { if (!rec || v > rec.v) rec = { d, v }; });
+        const dernier = l[l.length - 1];
+        const ecart = m30 !== null && g !== null ? arrondi1(m30 - g) : "";
+        const r = 5 + i;
+        ligneValeurs(fj, r, [categorieRapport(it.id), it.titre, it.unite, lA.length || "", m30 !== null ? arrondi1(m30) : "", lA.length ? arrondi1(moyenneDe(lA)) : "",
+          g !== null ? arrondi1(g) : "", ecart, rec ? rec.v : "", rec ? dateExcel(rec.d) : "", dernier ? dernier[1] : "", dernier ? dateExcel(dernier[0]) : ""]);
+        if (!l.length) fj.getRow(r).eachCell((c) => { c.font = { name: "Arial", size: 10, color: { argb: "FFA6AEB6" } }; });
+        else fj.getCell(r, 2).font = { name: "Arial", size: 10, bold: true };
+        if (ecart !== "") {
+          const c = fj.getCell(r, 8);
+          c.numFmt = '+0.0;-0.0;0.0';
+          c.font = { name: "Arial", size: 10, bold: true, color: { argb: ecart >= 0 ? XL.bleuFonce : "FFB4410C" } };
+          c.fill = fondXL(ecart >= 0 ? XL.bleuClair : XL.orangeClair);
+        }
+      });
+      fj.getRow(4).height = 30;
+      let r = 5 + items.length + 2;
+      // Pelz semaine par semaine
+      const sems = semaines.filter((s) => pelzDeLaSemaine(x.scores, s).n);
+      if (sems.length) {
+        sousTitreBloc(fj, r, "Test de Pelz semaine par semaine");
+        ligneEnTete(fj, r + 1, ["Semaine du", ...PELZ_SITUATIONS.map((s) => s.id.toUpperCase()), "Faites", `Total /${PELZ_MAX_TOTAL}`]);
+        sems.forEach((s, k) => {
+          const p = pelzDeLaSemaine(x.scores, s);
+          ligneValeurs(fj, r + 2 + k, [dateExcel(s), ...PELZ_SITUATIONS.map((q) => (p.pts[q.id] !== undefined ? p.pts[q.id] : "")), `${p.n}/${PELZ_SITUATIONS.length}`, p.total]);
+          if (p.total !== null) { const c = fj.getCell(r + 2 + k, 3 + PELZ_SITUATIONS.length); c.fill = fondXL(XL.bleuClair); c.font = { name: "Arial", size: 10, bold: true }; }
+        });
+        r += sems.length + 4;
+      }
+      // Réussite par distance (exos interactifs, année en cours)
       const dist = Object.entries(j.dist || {}).filter(([exo]) => EXOS_POINTS[exo]);
       if (dist.length) {
-        f.push([], [`Réussite par distance ${annee} (exos interactifs)`], ["Exo", "Distance", "Réussis", "Tentés", "%"]);
+        sousTitreBloc(fj, r, `Réussite par distance ${annee} (exos interactifs)`);
+        ligneEnTete(fj, r + 1, ["Exo", "Distance", "Réussis", "Tentés", "%"]);
+        r += 2;
         dist.forEach(([exo, parD]) => {
           const config = EXOS_POINTS[exo];
-          Object.entries(parD).sort((a, b) => Number(a[0]) - Number(b[0])).forEach(([d, [r, t]]) =>
-            f.push([config.nom, config.libelle ? config.libelle(Number(d)) : d, r, t, Math.round((100 * r) / t)]));
+          Object.entries(parD).sort((a, b) => Number(a[0]) - Number(b[0])).forEach(([d, [ok, tentes]]) => {
+            ligneValeurs(fj, r, [config.nom, config.libelle ? config.libelle(Number(d)) : d, ok, tentes, tentes ? ok / tentes : ""]);
+            fj.getCell(r, 5).numFmt = "0%";
+            r++;
+          });
         });
+        r += 2;
       }
       // Technique : ressentis écrits par le joueur (consignes du coach)
       const consignes = groupeDonnees.consignes[j.uid];
       if (consignes && consignes.ressentis.length) {
-        f.push([], ["Technique : ressentis"], ["Date", "Exo", "Ressenti"]);
-        consignes.ressentis.forEach((r) => f.push([dateRapport(r.d), (ficheDe(r.id) || { titre: r.id }).titre, r.texte]));
+        sousTitreBloc(fj, r, "Technique : ressentis");
+        ligneEnTete(fj, r + 1, ["Date", "Exo", "Ressenti"]);
+        consignes.ressentis.forEach((x2, k) => {
+          ligneValeurs(fj, r + 2 + k, [dateExcel(x2.d), (ficheDe(x2.id) || { titre: x2.id }).titre, x2.texte]);
+          fj.getCell(r + 2 + k, 3).alignment = { wrapText: true, vertical: "top" };
+        });
       }
-      const feuille = XLSX.utils.aoa_to_sheet(f);
-      feuille["!cols"] = [{ wch: 14 }, { wch: 34 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 8 }];
-      XLSX.utils.book_append_sheet(classeur, feuille, nomDeFeuille(j.prenom, pris));
+      [12, 34, 8, 10, 10, 10, 12, 11, 9, 12, 10, 12].forEach((w, k) => { fj.getColumn(k + 1).width = w; });
+      figer(fj, 2, 4);
     });
 
-    XLSX.writeFile(classeur, `Rapport Altus ${dateEnTexte(new Date())}.xlsx`);
+    // ---------- 6. Données : tous les scores, une ligne par score ----------
+    const fd = classeur.addWorksheet("Données");
+    titreFeuille(fd, "Toutes les données", "Une ligne par score. Filtres sur la ligne de titres.");
+    ligneEnTete(fd, 4, ["Date", "Joueur", "Catégorie", "Exercice", "Score", "Sur", "Origine"]);
+    const toutes = [];
+    donnees.forEach((x) => items.forEach((it) => x.scores[it.id].forEach(([d, v]) => toutes.push([d, x.j.prenom, categorieRapport(it.id), it.titre, v, it.unite, x.origine]))));
+    toutes.sort((a, b) => b[0].localeCompare(a[0]) || a[1].localeCompare(b[1], "fr"));
+    toutes.forEach((t, i) => {
+      const ligneD = fd.getRow(5 + i);
+      ligneD.values = [dateExcel(t[0]), ...t.slice(1)];
+      ligneD.getCell(1).numFmt = "dd/mm/yyyy";
+      ligneD.font = { name: "Arial", size: 10 };
+    });
+    [12, 16, 12, 34, 8, 8, 24].forEach((w, k) => { fd.getColumn(k + 1).width = w; });
+    fd.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4 + toutes.length, column: 7 } };
+    figer(fd, 0, 4);
+
+    // Téléchargement (sans fenêtre native)
+    const buffer = await classeur.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const lien = document.createElement("a");
+    lien.href = URL.createObjectURL(blob);
+    lien.download = `Rapport Altus ${aujourdhui}.xlsx`;
+    document.body.appendChild(lien);
+    lien.click();
+    setTimeout(() => { URL.revokeObjectURL(lien.href); lien.remove(); }, 2000);
     messageRapport = `✅ Rapport téléchargé (${joueurs.length} joueurs).`;
   } catch (e) {
     messageRapport = String(e && e.message ? e.message : e);
