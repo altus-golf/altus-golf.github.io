@@ -11,9 +11,15 @@
   <link rel="apple-touch-icon" sizes="180x180" href="images/apple-touch-icon.png?v=68">
   <link rel="manifest" href="manifest.webmanifest?v=68">
   <meta name="apple-mobile-web-app-title" content="Altus">
+  <!-- Polices du visuel « maquette » (21/11/2026) : Inter pour le texte, Space Grotesk pour les titres -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap">
   <link rel="stylesheet" href="style.css?v=68">
 </head>
 <body>
+  <!-- Bandeau sombre en haut (visuel de la maquette, 21/11/2026) : titre + onglets -->
+  <div class="bandeau-haut">
   <header>
     <h1 class="titre-altus"><img src="images/logo.svg?v=68" alt="" class="logo-altus" width="44" height="44"> Altus Performance</h1>
     <p class="date" id="sous-titre"></p>
@@ -22,6 +28,7 @@
   </header>
 
   <nav class="onglets onglets-altus" id="onglets" aria-label="Vues"></nav>
+  </div>
 
   <main id="contenu"></main>
 

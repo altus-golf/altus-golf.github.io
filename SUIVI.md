@@ -109,3 +109,4 @@
 - 🧑‍🏫 Espace coachs réorganisé en 8 onglets : Semaine, Équipe, Classements (30 j et année), Pelz, Joueur, Distances, À vérifier, Gestion. Sur le modèle de la maquette « Interface coach ».
 - Toucher un prénom (Semaine, Équipe, Pelz, À vérifier) ouvre sa fiche (onglet Joueur), où l'on peut corriger un score.
 - Testé en mode démo (Playwright) sur téléphone (390 px) et ordinateur : les 8 onglets, les filtres et le changement de semaine.
+- 🎨 Tout le site (joueurs ET coachs) prend le visuel de la maquette : bandeau sombre avec les onglets, cartes blanches, tableaux à en-tête gris, filtres en pastilles, polices Inter et Space Grotesk (demande du coach). Thèmes de Clara et Stan conservés. Testé : téléphone, ordinateur, mode sombre, thèmes perso.
