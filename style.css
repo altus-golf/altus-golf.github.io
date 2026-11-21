@@ -4,38 +4,87 @@
    et toute la page suit. Le mode sombre est automatique.
    ========================================================= */
 
+/* Couleurs ALTUS (21/11/2026, maquette validée par le coach).
+   Mode sombre : data-theme="sombre" sur <html> (bouton 🌙), ou réglage du téléphone
+   tant que le joueur n'a rien choisi (data-theme absent ; data-theme="clair" = forcé en clair). */
 :root {
-  /* Mode clair : contraste fort, lisible en plein soleil */
-  --fond: #f4f7f3;
-  --carte: #ffffff;
-  --texte: #0b1a10;
-  --texte-doux: #3a4a3f;
-  --bord: #c9d4cc;
-  --accent: #365571;        /* bleu marine du logo Altus */
-  --accent-texte: #ffffff;
-  --accent-doux: #e3eaf5;
-  --alerte-fond: #fff3cd;
-  --alerte-texte: #5c4300;
-  --erreur-fond: #fde2e1;
-  --erreur-texte: #7a1410;
-  --ombre: 0 1px 3px rgba(0, 0, 0, 0.12);
+  --fond: #F5F6F8;
+  --carte: #FFFFFF;
+  --bord: #E3E6EC;
+  --separateur: #ECEEF2;
+  --champ: #F8F9FB;            /* champs et boutons non choisis */
+  --texte: #1A1F2B;
+  --texte-doux: #5A6275;
+  --accent: #313F5B;           /* marine : boutons, sélection */
+  --accent-texte: #FFFFFF;
+  --accent-doux: #E9ECF3;
+  --lien: #313F5B;             /* liens et textes « accent » */
+  --corail: #E85040;           /* corail du logo : SEULEMENT le décor (onglet actif, puces) */
+  --corail-action: #D2412F;    /* bouton d'action principale (texte blanc lisible) */
+  --corail-texte: #A8321F;     /* étiquettes corail : texte… */
+  --corail-fond: #FCE9E6;      /* … sur ce fond */
+  --note-choisie: #313F5B;     /* note Hooper / RPE choisie */
+  --rang-fond: #EEF0F5;
+  --barre: #1E2638;            /* barre de gauche (ordinateur), dans les deux modes */
+  --vert-fond: #E4EFE8; --vert-texte: #1E5B3A;
+  --orange-fond: #FBEBD6; --orange-texte: #84470D;
+  --rouge-fond: #F7DEDB; --rouge-texte: #8E2A22;
+  --alerte-fond: #FBEBD6;
+  --alerte-texte: #84470D;
+  --erreur-fond: #F7DEDB;
+  --erreur-texte: #8E2A22;
+  --ombre: 0 1px 2px rgba(26, 31, 43, 0.04);
+  --encre: #1E2638;
+  --entete-tableau: #F3F4F7;
+  --rouge-altus: #E85040;
+  --police-titres: Montserrat, Inter, system-ui, sans-serif;
 }
-
+:root[data-theme="sombre"] {
+  --fond: #161D2B;
+  --carte: #1F2738;
+  --bord: #2C3549;
+  --separateur: #2C3549;
+  --champ: #252E41;
+  --texte: #F2F3F6;
+  --texte-doux: #A3ABBC;
+  --accent: #3E4E72;
+  --accent-texte: #FFFFFF;
+  --accent-doux: #2A3550;
+  --lien: #DDE2EC;
+  --corail-texte: #F2836F;
+  --corail-fond: #3A2A30;
+  --note-choisie: #D2412F;
+  --rang-fond: #2C3549;
+  --alerte-fond: #4A3418;
+  --alerte-texte: #FBD9AE;
+  --erreur-fond: #4A2427;
+  --erreur-texte: #F7C3BC;
+  --ombre: none;
+  --entete-tableau: #252E41;
+}
 @media (prefers-color-scheme: dark) {
-  :root {
-    --fond: #0d130f;
-    --carte: #172019;
-    --texte: #eef4f0;
-    --texte-doux: #b6c4ba;
-    --bord: #2d3b32;
-    --accent: #8fb3d9;
-    --accent-texte: #05210f;
-    --accent-doux: #1b2a40;
-    --alerte-fond: #3a2f0b;
-    --alerte-texte: #ffe08a;
-    --erreur-fond: #3d1514;
-    --erreur-texte: #ffb4ae;
+  :root:not([data-theme="clair"]) {
+    --fond: #161D2B;
+    --carte: #1F2738;
+    --bord: #2C3549;
+    --separateur: #2C3549;
+    --champ: #252E41;
+    --texte: #F2F3F6;
+    --texte-doux: #A3ABBC;
+    --accent: #3E4E72;
+    --accent-texte: #FFFFFF;
+    --accent-doux: #2A3550;
+    --lien: #DDE2EC;
+    --corail-texte: #F2836F;
+    --corail-fond: #3A2A30;
+    --note-choisie: #D2412F;
+    --rang-fond: #2C3549;
+    --alerte-fond: #4A3418;
+    --alerte-texte: #FBD9AE;
+    --erreur-fond: #4A2427;
+    --erreur-texte: #F7C3BC;
     --ombre: none;
+    --entete-tableau: #252E41;
   }
 }
 
@@ -73,8 +122,10 @@ header, nav, main, footer { max-width: 680px; margin: 0 auto; }
 /* Série de jours d'affilée : orange quand elle est en cours */
 #serie { margin-top: -6px; }
 .badge.serie.active { background: #ffe1c2; color: #6b2e00; border-color: #f0a868; }
+/* sombre (bouton ou réglage du téléphone) */
+:root[data-theme="sombre"] .badge.serie.active { background: #4a2a10; color: #ffd2a8; border-color: #8a5226; }
 @media (prefers-color-scheme: dark) {
-  .badge.serie.active { background: #4a2a10; color: #ffd2a8; border-color: #8a5226; }
+  :root:not([data-theme="clair"]) .badge.serie.active { background: #4a2a10; color: #ffd2a8; border-color: #8a5226; }
 }
 
 /* Sauvegarde Google (compte.js) : le badge sert aussi de bouton */
@@ -347,10 +398,14 @@ details[open] > summary::before { transform: rotate(90deg); }
 .au-par   { color: var(--accent); }
 .bogey    { color: #9a5b00; }
 .double   { color: #b0122f; }
+/* sombre (bouton ou réglage du téléphone) */
+:root[data-theme="sombre"] .sous-par { color: #7cc0ff; }
+:root[data-theme="sombre"] .bogey { color: #ffc266; }
+:root[data-theme="sombre"] .double { color: #ff8a8a; }
 @media (prefers-color-scheme: dark) {
-  .sous-par { color: #7cc0ff; }
-  .bogey    { color: #ffc266; }
-  .double   { color: #ff8a8a; }
+  :root:not([data-theme="clair"]) .sous-par { color: #7cc0ff; }
+  :root:not([data-theme="clair"]) .bogey { color: #ffc266; }
+  :root:not([data-theme="clair"]) .double { color: #ff8a8a; }
 }
 
 .numero-trou { margin: 0; font-size: 1.6rem; }
@@ -548,15 +603,7 @@ details[open] > summary::before { transform: rotate(90deg); }
 .titre-altus { margin: 14px 0 0; font-size: 1.6rem; }
 .bandeau-demo { margin: 0 0 10px; padding: 8px 12px; border-radius: 10px; background: var(--alerte-fond); color: var(--alerte-texte); font-weight: 600; font-size: 0.85rem; }
 .bandeau-demo[hidden] { display: none; }
-.onglets.onglets-altus { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-/* 5 onglets : 3 + 2 sur téléphone, tous sur une ligne en grand */
-.onglets.onglets-altus { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-.onglets.onglets-altus .onglet { grid-column: span 2; font-size: 0.95rem; padding-left: 4px; padding-right: 4px; }
-/* 6 onglets depuis l'ajout de 🏋️ Prépa (21/11/2026) : 3 + 3 sur téléphone, une ligne sur grand écran */
-@media (min-width: 600px) {
-  .onglets.onglets-altus { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-  .onglets.onglets-altus .onglet, .onglets.onglets-altus .onglet:nth-child(4), .onglets.onglets-altus .onglet:nth-child(5) { grid-column: auto; }
-}
+/* Onglets : voir « Visuel ALTUS » (barre du bas sur téléphone, barre de gauche sur ordinateur) */
 .semaine-info { margin: 4px 0 14px; color: var(--texte-doux); }
 .bloc-defi { border: 2px solid var(--accent); border-radius: 14px; padding: 14px 12px 4px; }
 .accueil-altus form { display: flex; flex-direction: column; gap: 6px; }
@@ -597,15 +644,9 @@ details[open] > summary::before { transform: rotate(90deg); }
 .carte .pelz-liste { padding: 0; }
 
 /* Logo Altus (images/logo.svg) et rouge du logo */
-:root { --rouge-altus: #EB574C; }
 .titre-altus { display: flex; align-items: center; gap: 10px; }
 .logo-altus { width: 44px; height: 44px; flex: none; }
 .bloc-defi { border-color: var(--rouge-altus); }
-.onglet.actif { box-shadow: inset 0 -4px 0 var(--rouge-altus); }
-/* Mode sombre : fond clair derrière le logo (la flèche bleu marine resterait invisible) */
-@media (prefers-color-scheme: dark) {
-  .logo-altus { background: #f4f7f3; border-radius: 10px; padding: 3px; }
-}
 /* Puces des jeux : la distance porte son unité (« 10 ft », « 6,1 m ») : texte un peu plus petit pour tenir dans le rond */
 .point-trefle text { font-size: 20px; letter-spacing: -0.5px; }
 
@@ -643,7 +684,6 @@ details[open] > summary::before { transform: rotate(90deg); }
 .mes-matchs { margin-top: 10px; }
 .match-resultat input[type=radio] { width: 22px; height: 22px; min-height: 0; flex: none; margin: 0; padding: 0; accent-color: var(--accent); }
 .match-resultat label { justify-content: flex-start; text-align: left; }
-@media (min-width: 600px) { .onglets.onglets-altus .onglet { font-size: 0.9rem; } }
 
 /* Technique (exos donnés par le coach) */
 .zone-technique { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
@@ -670,61 +710,11 @@ details[open] > summary::before { transform: rotate(90deg); }
    Visuel « maquette » (21/11/2026) : tout le site (joueurs ET coachs)
    prend le style de la maquette « Interface coach » validée par le coach :
    bandeau sombre avec les onglets, fond gris clair, cartes blanches,
-   tableaux à en-tête gris, filtres en pastilles, titres en Space Grotesk.
+   tableaux à en-tête gris, filtres en pastilles (titres : Montserrat depuis le visuel ALTUS).
    Placé AVANT les thèmes perso (Clara, Stan) pour qu'ils restent prioritaires.
    ========================================================= */
-:root {
-  --fond: #f4f6f8;
-  --carte: #ffffff;
-  --texte: #15202b;
-  --texte-doux: #5b6672;
-  --bord: #dde3e9;
-  --accent: #2f4a6b;
-  --accent-texte: #ffffff;
-  --accent-doux: #d4e3f1;
-  --alerte-fond: #fbe0cc;
-  --alerte-texte: #7a2e0b;
-  --ombre: none;
-  --encre: #15202b;            /* bandeau du haut, pastilles actives */
-  --entete-tableau: #eef2f5;
-  --police-titres: "Space Grotesk", Inter, system-ui, sans-serif;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --fond: #0f151b;
-    --carte: #18212a;
-    --texte: #eef2f5;
-    --texte-doux: #b3bec9;
-    --bord: #2c3946;
-    --accent: #8db3d6;
-    --accent-texte: #0b1520;
-    --accent-doux: #1f3347;
-    --alerte-fond: #4a2a14;
-    --alerte-texte: #ffd2b0;
-    --encre: #0a0f14;
-    --entete-tableau: #22303d;
-  }
-}
 body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overflow-x: clip; }
 h1, h2, h3, .bloc-titre, .carte-titre, .pr-categorie-titre, .kpi strong, .resume-total { font-family: var(--police-titres); letter-spacing: -0.01em; }
-
-/* Bandeau du haut : toute la largeur de l'écran, titre + onglets */
-.bandeau-haut {
-  margin: 0 calc(50% - 50vw) 20px; padding: 0 calc(50vw - 50%);
-  background: var(--encre); color: #ffffff;
-}
-.bandeau-haut header { padding-top: max(14px, env(safe-area-inset-top)); }
-.bandeau-haut .titre-altus { color: #ffffff; font-size: 1.55rem; font-weight: 700; }
-.bandeau-haut .logo-altus { background: #ffffff; border-radius: 10px; padding: 3px; }
-.bandeau-haut .date { color: #c9d3dd; }
-.bandeau-haut .bandeau-demo { color: var(--alerte-texte); }
-.bandeau-haut .onglets { margin-bottom: 0; padding-bottom: 14px; }
-.bandeau-haut .onglets:empty { padding-bottom: 6px; }
-.bandeau-haut .onglet {
-  min-height: 48px; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 10px;
-  background: rgba(255, 255, 255, 0.06); color: #c9d3dd; font-weight: 600;
-}
-.bandeau-haut .onglet.actif { background: var(--fond); color: var(--texte); border-color: var(--fond); font-weight: 800; }
 
 /* Cartes et blocs */
 .pr-bloc, .bloc.pr-bloc { border-radius: 12px; border: 1px solid var(--bord); box-shadow: none; }
@@ -738,12 +728,12 @@ h1, h2, h3, .bloc-titre, .carte-titre, .pr-categorie-titre, .kpi strong, .resume
 .bouton.principal { background: var(--accent); border-color: var(--accent); color: var(--accent-texte); }
 .bouton.danger { border-color: #e2a48a; color: #b4410c; }
 .bouton:disabled { opacity: 0.45; }
-@media (prefers-color-scheme: dark) { .bouton { border-color: var(--bord); } .bouton.danger { color: #ffb08a; } }
+
 
 /* Filtres : pastilles, l'active en encre foncée */
 .filtre { min-height: 40px; border: 1px solid #c9d2db; border-radius: 999px; background: var(--carte); color: var(--texte); font-weight: 600; font-size: 0.85rem; }
 .filtre.actif { background: var(--encre); border-color: var(--encre); color: #ffffff; font-weight: 700; }
-@media (prefers-color-scheme: dark) { .filtre { border-color: var(--bord); } .filtre.actif { background: var(--accent); border-color: var(--accent); color: var(--accent-texte); } }
+
 
 /* Tableaux : en-tête gris, petites majuscules */
 .tableau-defilant { border-radius: 12px; border-color: var(--bord); }
@@ -752,7 +742,7 @@ h1, h2, h3, .bloc-titre, .carte-titre, .pr-categorie-titre, .kpi strong, .resume
   text-transform: uppercase; letter-spacing: 0.04em;
 }
 .tableau-admin td, .table-distances td, .table-matchs td { border-bottom-color: #e6ebef; }
-@media (prefers-color-scheme: dark) { .tableau-admin td, .table-distances td, .table-matchs td { border-bottom-color: var(--bord); } }
+
 .tableau-coach tfoot th { background: var(--encre); color: #ffffff; text-transform: none; font-size: 0.85rem; }
 .tableau-equipe th { text-transform: none; letter-spacing: 0; }
 .barre-pc { background: var(--entete-tableau); border-radius: 99px; }
@@ -768,13 +758,6 @@ h1, h2, h3, .bloc-titre, .carte-titre, .pr-categorie-titre, .kpi strong, .resume
 
 /* Champs de saisie */
 .champ, .accueil-altus input, .consignes-admin input, .pr-bloc input, .ajout-consigne select, .consignes-admin textarea { border-radius: 8px; }
-
-/* Thèmes perso : le bandeau sombre s'efface devant le thème de la joueuse / du joueur */
-body.theme-rose-renard .bandeau-haut { background: transparent; color: inherit; }
-body.theme-rose-renard .bandeau-haut .date { color: #d4007a; }
-body.theme-noir-orange .bandeau-haut { background: #000000; }
-body.theme-rose-renard .filtre.actif, body.theme-noir-orange .filtre.actif { background: var(--accent); border-color: var(--accent); color: var(--accent-texte); }
-body.theme-noir-orange { --entete-tableau: #222222; --encre: #000000; }
 
 /* ---------- ☀️ Forme du matin (forme.js, 21/11/2026) ---------- */
 .bloc-forme { border-top: 4px solid var(--rouge-altus); }
@@ -793,10 +776,7 @@ body.theme-noir-orange { --entete-tableau: #222222; --encre: #000000; }
 .statut-forme-vert { background: #d8efe0; color: #14532d; }
 .statut-forme-orange { background: #fbe0cc; color: #7a2e0b; }
 .statut-forme-rouge { background: #b3261e; color: #ffffff; }
-@media (prefers-color-scheme: dark) {
-  .statut-forme-vert { background: #1d3b2a; color: #b7f0c9; }
-  .statut-forme-orange { background: #4a2a14; color: #ffd2b0; }
-}
+
 .note-hooper { display: inline-block; min-width: 22px; margin: 0 1px; padding: 1px 4px; border-radius: 6px; background: var(--entete-tableau); font-weight: 700; font-size: 0.8rem; }
 .note-hooper.haute { background: var(--alerte-fond); color: var(--alerte-texte); }
 .ligne-attente td { color: var(--texte-doux); }
@@ -811,13 +791,273 @@ body.theme-noir-orange { --entete-tableau: #222222; --encre: #000000; }
 .prepa-saisie .prepa-champ { margin: 4px 0; }
 .prepa-presc { margin: 12px 0; padding: 12px; border: 1px solid var(--bord); border-radius: 10px; background: var(--fond); }
 .prepa-presc-tete { display: flex; align-items: center; gap: 8px; }
-.prepa-texte-presc { font-family: "Space Grotesk", system-ui, sans-serif; font-weight: 700; font-size: 1.05rem; margin: 6px 0 0; }
+.prepa-texte-presc { font-family: var(--police-titres); font-weight: 700; font-size: 1.05rem; margin: 6px 0 0; }
 .prepa-exo { padding: 10px 0; border-top: 1px solid var(--bord); }
 .prepa-exo-tete { display: flex; align-items: center; gap: 8px; }
 .prepa-num { flex: 0 0 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--accent-texte, #fff); font-weight: 700; font-size: 0.85rem; }
 .prepa-prevu { margin: 6px 0 0 34px; font-size: 0.9rem; }
 .prepa-exo .prepa-saisie { margin-left: 34px; }
 .prepa-rm { width: 80px; font: inherit; padding: 6px 8px; border: 1px solid var(--bord); border-radius: 6px; background: var(--carte); color: var(--texte); }
+
+.detail-exo { margin: 8px 0; padding: 8px 0; border-top: 1px solid var(--bord); }
+.detail-exo summary { cursor: pointer; }
+
+/* =========================================================
+   Interface coach (21/11/2026) : même visuel que les joueurs
+   ========================================================= */
+/* Chiffres clés de la semaine */
+.kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+@media (min-width: 700px) { .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.kpi { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; background: var(--carte); border: 1px solid var(--bord); border-left: 6px solid var(--accent); border-radius: 12px; box-shadow: var(--ombre); }
+.kpi span { font-size: 0.8rem; font-weight: 700; color: var(--texte-doux); }
+.kpi strong { font-size: 1.6rem; line-height: 1.1; }
+.kpi small { color: var(--texte-doux); }
+/* Semaine précédente / suivante */
+.nav-semaine { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.nav-semaine .bouton { min-width: 52px; }
+/* Tableaux du coach */
+.tableau-coach td, .tableau-coach th { vertical-align: middle; }
+.tableau-coach td.nombre, .tableau-coach th.nombre { text-align: center; }
+.tableau-coach td.vide { color: var(--texte-doux); }
+.tableau-coach td.case-faite { background: var(--accent-doux); }
+.tableau-coach tfoot th { background: var(--accent); color: var(--accent-texte); }
+.tableau-equipe th { white-space: normal; min-width: 64px; font-size: 0.78rem; text-align: center; }
+.tableau-equipe th:first-child { text-align: left; }
+.lien-joueur { font-weight: 800; text-align: left; white-space: nowrap; }
+/* Pastilles des situations du Pelz (A, B, C…) */
+.pastilles-pelz { display: inline-flex; gap: 3px; vertical-align: middle; }
+.pastille-pelz { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--bord); font-size: 0.7rem; font-weight: 800; color: var(--texte-doux); }
+.pastille-pelz.faite { background: var(--accent); border-color: var(--accent); color: var(--accent-texte); }
+/* Statuts */
+.statut { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; white-space: nowrap; }
+.statut-top { background: var(--accent); color: var(--accent-texte); }
+.statut-ok { background: var(--accent-doux); color: var(--texte); }
+.statut-alerte { background: var(--alerte-fond); color: var(--alerte-texte); }
+.statut-attente { background: var(--bord); color: var(--texte); }
+/* Classements : 30 jours et année côte à côte (l'un sous l'autre sur téléphone) */
+.deux-colonnes { display: grid; grid-template-columns: 1fr; gap: 4px 20px; }
+@media (min-width: 600px) { .deux-colonnes { grid-template-columns: 1fr 1fr; } }
+.deux-colonnes h3 { margin: 6px 0 0; font-size: 0.95rem; }
+.deux-colonnes h3 small { font-weight: normal; color: var(--texte-doux); }
+.classement-court li { padding: 6px 0; }
+.bloc-titre small { font-weight: normal; color: var(--texte-doux); font-size: 0.8em; }
+/* À vérifier */
+.liste-verifier { margin: 6px 0 10px; padding-left: 18px; }
+.liste-verifier li { margin: 4px 0; }
+.liste-verifier small { color: var(--alerte-texte); }
+
+/* =========================================================
+   🎨 Visuel ALTUS (21/11/2026, maquette validée par le coach) : tout le site.
+   Couleurs dans les variables tout en haut du fichier (clair + sombre).
+   - Téléphone : en-tête clair (logo, prénom, date, bouton thème, initiale),
+     onglets dans une barre fixée EN BAS (icône + nom court).
+   - Ordinateur (≥ 1100 px, plus bas) : barre marine à gauche.
+   - Cartes blanches arrondies (16 px), bordure 1 px, pas de dégradé.
+   - Boutons et notes : 44 px de haut minimum, coins 10-12 px.
+   Les thèmes perso (Clara, Stan) viennent APRÈS : ils restent prioritaires.
+   ========================================================= */
+body { background: var(--fond); color: var(--texte); }
+h1, h2, h3, .bloc-titre, .carte-titre, .pr-categorie-titre, .kpi strong, .resume-total, .titre-altus, .rang { font-family: var(--police-titres); }
+h2, .bloc-titre { font-weight: 700; letter-spacing: -0.01em; }
+h3, .carte-titre { font-weight: 600; }
+.bloc-titre { font-size: 1.2rem; }
+
+/* ---------- En-tête (téléphone et tablette) ---------- */
+.bandeau-haut {
+  margin: 0 calc(50% - 50vw) 20px; padding: 0 calc(50vw - 50%);
+  background: var(--carte); color: var(--texte); border-bottom: 1px solid var(--bord);
+}
+.bandeau-haut header { padding-top: max(10px, env(safe-area-inset-top)); }
+.entete-ligne { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-bottom: 10px; }
+.titre-altus { margin: 0; display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 1.05rem; font-weight: 700; line-height: 1.1; color: var(--texte); }
+.titre-altus span { max-width: 7.2em; }   /* « Altus / Performance » sur deux lignes si la place manque */
+.logo-altus { width: 36px; height: 36px; flex: none; background: none; padding: 0; border-radius: 0; }
+.logo-pour-sombre { display: none; }
+.entete-droite { display: flex; align-items: center; gap: 8px; flex: none; }
+.entete-qui { margin: 0; display: flex; flex-direction: column; align-items: flex-end; line-height: 1.2; }
+#sous-titre { font-weight: 700; font-size: 0.85rem; color: var(--texte); }
+.entete-date { font-size: 0.72rem; color: var(--texte-doux); }
+.entete-date::first-letter { text-transform: uppercase; }
+.bouton-theme {
+  width: 40px; height: 40px; padding: 0; flex: none; display: grid; place-items: center; cursor: pointer;
+  border-radius: 50%; border: 1px solid var(--bord); background: var(--champ); color: var(--texte);
+}
+.bouton-theme svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.icone-soleil { display: none; }
+.bouton-theme:focus-visible { outline: 3px solid var(--corail); outline-offset: 2px; }
+.initiale {
+  width: 38px; height: 38px; flex: none; display: grid; place-items: center; border-radius: 50%;
+  background: var(--accent); color: #FFFFFF; font-family: var(--police-titres); font-weight: 700; font-size: 0.9rem;
+}
+.initiale[hidden] { display: none; }
+.bandeau-demo { border-radius: 10px; background: var(--alerte-fond); color: var(--alerte-texte); }
+/* Mode sombre : logo à flèche blanche, soleil à la place de la lune */
+:root[data-theme="sombre"] .logo-pour-clair, :root[data-theme="sombre"] .icone-lune { display: none; }
+:root[data-theme="sombre"] .logo-pour-sombre, :root[data-theme="sombre"] .icone-soleil { display: block; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="clair"]) .logo-pour-clair, :root:not([data-theme="clair"]) .icone-lune { display: none; }
+  :root:not([data-theme="clair"]) .logo-pour-sombre, :root:not([data-theme="clair"]) .icone-soleil { display: block; }
+}
+
+/* ---------- Onglets : icônes fines (SVG, trait 1,8 px) ---------- */
+.onglet-icone { width: 24px; height: 24px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.onglet-nom { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.onglet-nom-long { display: none; }
+@media (min-width: 1100px) { .onglet-nom-court { display: none; } .onglet-nom-long { display: inline; } }
+/* Téléphone et tablette : barre fixée en bas de l'écran, comme une appli */
+@media (max-width: 1099.98px) {
+  .bandeau-haut .onglets.onglets-altus, .bandeau-haut .onglets.onglets-altus.onglets-coach {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; max-width: none; margin: 0;
+    display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none;
+    padding: 6px max(6px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
+    background: var(--carte); border-top: 1px solid var(--bord); box-shadow: 0 -2px 12px rgba(26, 31, 43, 0.06);
+  }
+  .bandeau-haut .onglets::-webkit-scrollbar { display: none; }
+  .bandeau-haut .onglets:empty { display: none; }
+  .bandeau-haut .onglets .onglet:nth-child(n) {
+    position: relative; flex: 1 0 58px; min-width: 58px; min-height: 56px; padding: 6px 2px 4px; margin: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    border: none; border-radius: 10px; background: none; box-shadow: none;
+    color: var(--texte-doux); font-size: 0.62rem; font-weight: 600; line-height: 1.1; letter-spacing: -0.01em;
+  }
+  .bandeau-haut .onglets.onglets-coach .onglet:nth-child(n) { flex-basis: 66px; }
+  .bandeau-haut .onglets .onglet.actif:nth-child(n) { color: var(--lien); font-weight: 700; background: var(--accent-doux); }
+  /* Petite barre corail au-dessus de l'onglet choisi (décor) */
+  .bandeau-haut .onglets .onglet.actif::before {
+    content: ""; position: absolute; top: -6px; left: 50%; width: 24px; height: 3px; margin-left: -12px;
+    border-radius: 0 0 3px 3px; background: var(--corail);
+  }
+  body { padding-bottom: calc(86px + env(safe-area-inset-bottom)); }
+}
+
+/* ---------- Cartes et blocs ---------- */
+.bloc { margin-bottom: 20px; }
+.pr-bloc, .bloc.pr-bloc, .carte, .resume, .kpi {
+  background: var(--carte); border: 1px solid var(--bord); border-radius: 16px; box-shadow: var(--ombre);
+}
+.pr-bloc, .bloc.pr-bloc { padding: 18px 16px; }
+.carte { border-left-width: 1px; padding: 16px; }
+.carte.faite { border-color: var(--bord); }
+.pr-bloc + .pr-bloc, .bloc-coach + .pr-bloc, .bloc-coach + .bloc-defi { margin-top: 20px; }
+.bloc-info, .semaine-info { color: var(--texte-doux); font-weight: 500; }
+.petit, .bloc-titre small, .pr-categorie-titre small, .kpi small, .classement small { color: var(--texte-doux); }
+/* Défis de la semaine et exos du coach : un titre puis une carte par exo (plus de cadre autour) */
+.bloc-defi, .bloc-coach { border: none; border-radius: 0; padding: 0; background: none; }
+.bloc-defi .carte, .bloc-coach .carte { margin: 12px 0 0; }
+.message-coach { background: var(--carte); border: 1px solid var(--bord); border-left: 3px solid var(--corail); border-radius: 12px; }
+.pastille { background: var(--corail-fond); color: var(--corail-texte); font-size: 0.75rem; font-weight: 700; }
+.pastille.trackman { background: var(--accent-doux); color: var(--lien); }
+
+/* ---------- Boutons ---------- */
+.bouton {
+  min-height: 46px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--bord);
+  background: var(--champ); color: var(--texte); font-weight: 700;
+}
+.bouton.principal { background: var(--accent); border-color: var(--accent); color: var(--accent-texte); }
+.bouton.action-corail { background: var(--corail-action); border-color: var(--corail-action); color: #FFFFFF; }
+.bouton.danger { background: var(--carte); border-color: var(--erreur-fond); color: var(--erreur-texte); }
+.bouton.fait { background: var(--accent-doux); color: var(--lien); }
+.bouton:focus-visible, .onglet:focus-visible, summary:focus-visible, .filtre:focus-visible, .choix-bouton:focus-visible { outline: 3px solid var(--corail); outline-offset: 2px; }
+.lien-bouton, summary, .petit a, .source a, a { color: var(--lien); }
+.lien-bouton { text-underline-offset: 3px; }
+.pr-bouton { background: var(--accent); color: var(--accent-texte); border-radius: 12px; }
+
+/* Cartes d'exo : « Règles » (contour) et « Commencer » (marine) côte à côte */
+.carte > details > summary {
+  display: inline-flex; min-height: 46px; padding: 0 16px; align-items: center;
+  border: 1px solid var(--bord); border-radius: 12px; background: var(--carte); color: var(--texte); font-weight: 700;
+}
+.carte > details > summary::before { content: none; }
+.carte > details[open] > summary { margin-bottom: 8px; background: var(--accent-doux); }
+.carte:has(> .zone-trefle) { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 10px; align-items: start; }
+.carte:has(> .zone-trefle) > * { grid-column: 1 / -1; }
+.carte:has(> .zone-trefle) > details { grid-column: 1; margin: 0; }
+.carte:has(> .zone-trefle) > details[open] { grid-column: 1 / -1; }
+.carte:has(> .zone-trefle) > .zone-trefle { grid-column: 2; margin: 0; }
+.carte:has(> .zone-trefle) > details[open] + .zone-trefle { grid-column: 1 / -1; }
+.carte-titre { margin: 8px 0 12px; font-size: 1.15rem; }
+.boutons-modes { gap: 8px; }
+.boutons-modes .bouton { line-height: 1.2; padding-top: 8px; padding-bottom: 8px; }
+
+/* ---------- Champs ---------- */
+.champ, .accueil-altus input, .consignes-admin input, .pr-bloc input, .pr-bloc select, .pr-bloc textarea, select.choix,
+.ajout-consigne select, .consignes-admin textarea, .forme-champ input, .forme-commentaire, .prepa-champ input, .prepa-menu, .prepa-select,
+.zone-saisie input, .form-match input, .zone-technique textarea {
+  background: var(--champ); color: var(--texte); border: 1px solid var(--bord); border-radius: 10px;
+}
+.forme-champ input, .prepa-champ input { min-height: 46px; }
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
+
+/* ---------- Notes 1-7 (Hooper) et 0-10 (RPE) ---------- */
+.choix.choix-forme { border: none; padding: 0; margin: 0; background: none; min-height: 0; gap: 6px; }
+.choix-bouton { min-height: 46px; border: 1px solid var(--bord); border-radius: 11px; background: var(--champ); color: var(--texte); font-weight: 700; }
+.choix-bouton.actif { background: var(--note-choisie); border-color: var(--note-choisie); color: #FFFFFF; }
+
+/* ---------- ☀️ Forme du jour ---------- */
+.bloc-forme { border-top: 1px solid var(--bord); }
+.forme-tete { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pastille-compte { flex: none; padding: 4px 12px; border-radius: 999px; background: var(--corail-fond); color: var(--corail-texte); font-weight: 700; font-size: 0.8rem; }
+.pastille-compte.complet { background: var(--accent-doux); color: var(--lien); }
+.forme-question { margin-top: 20px; }
+.forme-question h3 { margin: 0 0 8px; font-size: 0.98rem; }
+.forme-q-tete { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.forme-q-tete h3, .forme-q-tete .forme-sous-titre { margin: 0; }
+.forme-choisi { flex: none; max-width: 50%; text-align: right; font-size: 0.8rem; font-weight: 700; color: var(--corail-texte); }
+.forme-sous-titre { font-size: 0.85rem; color: var(--texte-doux); }
+.forme-champ { margin-bottom: 12px; }
+.forme-hier { margin-top: 24px; padding-top: 6px; border-top: 1px solid var(--separateur); }
+.forme-hier-titre { margin: 14px 0 -6px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--texte-doux); }
+.bloc-forme .bouton.principal { margin-top: 20px; }
+
+/* ---------- Classements ---------- */
+.rang {
+  display: inline-grid; place-items: center; width: 28px; height: 28px; margin-right: 10px; flex: none;
+  border-radius: 50%; background: var(--rang-fond); color: var(--texte); font-size: 0.8rem; font-weight: 700;
+}
+.rang-premier { background: var(--corail); color: #FFFFFF; }
+.classement li { align-items: center; padding: 9px 0; border-bottom-color: var(--separateur); }
+.classement li > span { display: flex; align-items: center; }
+.classement li.moi { color: var(--lien); }
+.classement li.moi .rang:not(.rang-premier) { background: var(--accent); color: #FFFFFF; }
+.table-matchs .rang { margin: 0; }
+/* Record de l'année : encart marine */
+.record-annee { margin: 6px 0 12px; padding: 12px 14px; border-radius: 12px; background: var(--accent); color: #FFFFFF; }
+.record-annee small { color: rgba(255, 255, 255, 0.75); }
+
+/* ---------- Filtres, tableaux, chiffres clés, statuts ---------- */
+.filtre { min-height: 44px; border: 1px solid var(--bord); border-radius: 999px; background: var(--champ); color: var(--texte); font-weight: 600; }
+.filtre.actif { background: var(--accent); border-color: var(--accent); color: #FFFFFF; font-weight: 700; }
+.tableau-defilant { border: 1px solid var(--bord); border-radius: 14px; background: var(--carte); }
+.tableau-admin th, .table-distances th, .table-matchs th { background: var(--entete-tableau); color: var(--texte-doux); }
+.tableau-admin td, .table-distances td, .table-matchs td, .pelz-liste li, .consigne, .pr-mois li, .pr-stats li, .prepa-exo { border-color: var(--separateur); }
+.tableau-coach tfoot th { background: var(--accent); color: #FFFFFF; }
+.tableau-coach td.case-faite { background: var(--accent-doux); }
+.kpis { gap: 12px; margin-bottom: 20px; }
+.kpi { padding: 14px 16px; border-left-width: 1px; }
+.kpi span { font-size: 0.78rem; font-weight: 600; color: var(--texte-doux); }
+.kpi strong { font-size: 1.75rem; font-weight: 700; color: var(--texte); }
+.kpi strong small { font-size: 0.55em; font-weight: 600; }
+.statut { padding: 3px 10px; font-size: 0.78rem; }
+.statut-forme-vert { background: var(--vert-fond); color: var(--vert-texte); }
+.statut-forme-orange { background: var(--orange-fond); color: var(--orange-texte); }
+.statut-forme-rouge { background: var(--rouge-fond); color: var(--rouge-texte); }
+.statut-top { background: var(--accent); color: #FFFFFF; }
+.statut-ok { background: var(--accent-doux); color: var(--lien); }
+.statut-alerte { background: var(--corail-fond); color: var(--corail-texte); }
+.statut-attente { background: var(--rang-fond); color: var(--texte-doux); }
+.note-hooper { background: var(--rang-fond); }
+.note-hooper.haute { background: var(--orange-fond); color: var(--orange-texte); }
+.pastille-pelz { border-color: var(--bord); }
+.pastille-pelz.faite { background: var(--accent); border-color: var(--accent); color: #FFFFFF; }
+.barre-pc { background: var(--rang-fond); }
+.barre-pc span { background: var(--accent); }
+.note { background: var(--alerte-fond); color: var(--alerte-texte); }
+/* Commentaires du jour (coach) */
+.liste-commentaires { list-style: none; margin: 8px 0 0; padding: 0; }
+.liste-commentaires li { display: flex; flex-direction: column; gap: 2px; padding: 10px 0; border-bottom: 1px solid var(--separateur); }
+.liste-commentaires li:last-child { border-bottom: none; }
+.liste-commentaires span { color: var(--texte-doux); }
+.pied { padding-top: 4px; }
 
 /* ---------- Thème perso « rose fuchsia + renards » (Clara, 20/11/2026) ----------
    Fond BLANC avec des renards, tout le reste en rose fuchsia flashy (demande de Clara).
@@ -881,62 +1121,41 @@ body.theme-noir-orange .classement li.moi, body.theme-noir-orange .table-matchs 
 body.theme-noir-orange .petit, body.theme-noir-orange .bloc-info { color: #ffc48a; }
 body.theme-noir-orange input, body.theme-noir-orange select, body.theme-noir-orange textarea { background: #111; color: #f5f5f5; border-color: #ff7a00; }
 body.theme-noir-orange #trefle-jeu, body.theme-noir-orange .trefle-jeu { background: #0d0d0d; color: #f5f5f5; }
-.detail-exo { margin: 8px 0; padding: 8px 0; border-top: 1px solid var(--bord); }
-.detail-exo summary { cursor: pointer; }
 
-/* =========================================================
-   Interface coach (21/11/2026) : même visuel que les joueurs
-   ========================================================= */
-/* 8 onglets + Retour : 3 lignes de 3 (la page reste étroite, même sur ordinateur) */
-.onglets.onglets-altus.onglets-coach { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.onglets.onglets-altus.onglets-coach .onglet,
-.onglets.onglets-altus.onglets-coach .onglet:nth-child(4),
-.onglets.onglets-altus.onglets-coach .onglet:nth-child(5) { grid-column: auto; font-size: 0.8rem; }
-/* Chiffres clés de la semaine */
-.kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
-@media (min-width: 700px) { .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.kpi { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; background: var(--carte); border: 1px solid var(--bord); border-left: 6px solid var(--accent); border-radius: 12px; box-shadow: var(--ombre); }
-.kpi span { font-size: 0.8rem; font-weight: 700; color: var(--texte-doux); }
-.kpi strong { font-size: 1.6rem; line-height: 1.1; }
-.kpi small { color: var(--texte-doux); }
-/* Semaine précédente / suivante */
-.nav-semaine { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
-.nav-semaine .bouton { min-width: 52px; }
-/* Tableaux du coach */
-.tableau-coach td, .tableau-coach th { vertical-align: middle; }
-.tableau-coach td.nombre, .tableau-coach th.nombre { text-align: center; }
-.tableau-coach td.vide { color: var(--texte-doux); }
-.tableau-coach td.case-faite { background: var(--accent-doux); }
-.tableau-coach tfoot th { background: var(--accent); color: var(--accent-texte); }
-.tableau-equipe th { white-space: normal; min-width: 64px; font-size: 0.78rem; text-align: center; }
-.tableau-equipe th:first-child { text-align: left; }
-.lien-joueur { font-weight: 800; text-align: left; white-space: nowrap; }
-/* Pastilles des situations du Pelz (A, B, C…) */
-.pastilles-pelz { display: inline-flex; gap: 3px; vertical-align: middle; }
-.pastille-pelz { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--bord); font-size: 0.7rem; font-weight: 800; color: var(--texte-doux); }
-.pastille-pelz.faite { background: var(--accent); border-color: var(--accent); color: var(--accent-texte); }
-/* Statuts */
-.statut { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; white-space: nowrap; }
-.statut-top { background: var(--accent); color: var(--accent-texte); }
-.statut-ok { background: var(--accent-doux); color: var(--texte); }
-.statut-alerte { background: var(--alerte-fond); color: var(--alerte-texte); }
-.statut-attente { background: var(--bord); color: var(--texte); }
-/* Classements : 30 jours et année côte à côte (l'un sous l'autre sur téléphone) */
-.deux-colonnes { display: grid; grid-template-columns: 1fr; gap: 4px 20px; }
-@media (min-width: 600px) { .deux-colonnes { grid-template-columns: 1fr 1fr; } }
-.deux-colonnes h3 { margin: 6px 0 0; font-size: 0.95rem; }
-.deux-colonnes h3 small { font-weight: normal; color: var(--texte-doux); }
-.classement-court li { padding: 6px 0; }
-.bloc-titre small { font-weight: normal; color: var(--texte-doux); font-size: 0.8em; }
-/* À vérifier */
-.liste-verifier { margin: 6px 0 10px; padding-left: 18px; }
-.liste-verifier li { margin: 4px 0; }
-.liste-verifier small { color: var(--alerte-texte); }
+/* Thèmes perso + visuel ALTUS (21/11/2026) : l'en-tête, la barre du bas et la barre de gauche
+   suivent le thème de Clara / Stan (ces règles passent devant celles du visuel ALTUS). */
+body.theme-rose-renard .titre-altus, body.theme-noir-orange .titre-altus { white-space: normal; font-size: 1.05rem; }
+/* Nouvelles couleurs du visuel ALTUS, adaptées à chaque thème perso */
+body.theme-rose-renard { --champ: #ffffff; --lien: #e6007e; --note-choisie: #ff0f8f; --corail-texte: #d4007a; --corail-fond: #ffe0f1; --rang-fond: #ffe0f1; --separateur: #ffd0ea; }
+body.theme-noir-orange { --champ: #111111; --lien: #ff9a3d; --note-choisie: #ff7a00; --corail-texte: #ff9a3d; --corail-fond: #3a2410; --rang-fond: #2a2a2a; --separateur: #333333; --entete-tableau: #222222; }
+body.theme-rose-renard .bandeau-haut { background: #ffffff; border-bottom: 3px solid #ff0f8f; }
+body.theme-rose-renard .logo-pour-clair { display: block !important; }      /* fond blanc : logo à flèche marine */
+body.theme-rose-renard .logo-pour-sombre { display: none !important; }
+body.theme-rose-renard .bandeau-haut .onglets.onglets-altus { background: #ffffff; border-color: #ff0f8f; }
+body.theme-rose-renard .bandeau-haut .onglets .onglet:nth-child(n) { color: #ff0f8f; background: none; }
+body.theme-rose-renard .bandeau-haut .onglets .onglet.actif:nth-child(n) { background: #ffe0f1; color: #e6007e; }
+body.theme-rose-renard .bandeau-haut .onglets .onglet.actif::before { background: #ff8a00; }
+body.theme-rose-renard .initiale { background: #ff0f8f; }
+body.theme-noir-orange .bandeau-haut { background: #000000; border-bottom: 2px solid #ff7a00; }
+body.theme-noir-orange .logo-pour-clair { display: none !important; }       /* fond noir : logo à flèche blanche */
+body.theme-noir-orange .logo-pour-sombre { display: block !important; }
+body.theme-noir-orange #sous-titre { color: #ff7a00; }
+body.theme-noir-orange .bandeau-haut .onglets.onglets-altus { background: #000000; border-color: #ff7a00; }
+body.theme-noir-orange .bandeau-haut .onglets .onglet:nth-child(n) { color: #ff9a3d; background: none; }
+body.theme-noir-orange .bandeau-haut .onglets .onglet.actif:nth-child(n) { background: #ff7a00; color: #111111; }
+body.theme-noir-orange .bandeau-haut .onglets .onglet.actif::before { background: #ffffff; }
+body.theme-noir-orange .initiale { background: #ff7a00; color: #111111; }
+body.theme-noir-orange .choix-bouton.actif { color: #111111; }
+@media (min-width: 1100px) {
+  body.theme-rose-renard .bandeau-haut { background: rgba(255, 255, 255, 0.94); border-bottom: none; border-right: 3px solid #ff0f8f; }
+  body.theme-rose-renard .titre-altus, body.theme-rose-renard #sous-titre { color: #ff0f8f; }
+  body.theme-noir-orange .bandeau-haut { border-bottom: none; border-right: 2px solid #ff7a00; }
+}
 
 /* =========================================================
    💻 Version ORDINATEUR (21/11/2026, demande du coach) : écrans ≥ 1100 px.
    Le téléphone ne change pas. Sur ordinateur :
-   - le bandeau sombre devient une barre à gauche (titre + onglets les uns sous les autres) ;
+   - barre marine à gauche (--barre, dans les deux modes) : logo, prénom, bouton thème, onglets ;
    - le contenu prend toute la largeur et se range en 2 colonnes selon la vue
      (body[data-vue], posé par afficherVue dans app.js).
    ========================================================= */
@@ -944,18 +1163,36 @@ body.theme-noir-orange #trefle-jeu, body.theme-noir-orange .trefle-jeu { backgro
   body { padding-left: 276px; padding-right: 32px; }
   .bandeau-haut {
     position: fixed; top: 0; left: 0; bottom: 0; z-index: 10; width: 244px;
-    margin: 0; padding: 0 16px 20px; overflow-y: auto; box-sizing: border-box;
+    margin: 0; padding: 0 14px 20px; overflow-y: auto; box-sizing: border-box;
+    background: var(--barre); color: #FFFFFF; border: none;
   }
   .bandeau-haut header, .bandeau-haut nav { max-width: none; }
   .bandeau-haut header { padding-top: 22px; }
-  .bandeau-haut .titre-altus { font-size: 1.3rem; }
+  .entete-ligne { flex-direction: column; align-items: stretch; gap: 16px; padding-bottom: 16px; margin-bottom: 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+  .titre-altus { color: #FFFFFF; font-size: 1.15rem; }
+  .titre-altus span { max-width: none; }
+  /* Fond marine : toujours le logo à flèche blanche */
+  .bandeau-haut .logo-pour-clair { display: none; }
+  .bandeau-haut .logo-pour-sombre { display: block; }
+  .entete-droite { gap: 10px; }
+  .initiale { order: -1; background: #3E4E72; }
+  .entete-qui { flex: 1; align-items: flex-start; }
+  #sous-titre { color: #FFFFFF; }
+  .entete-date { color: #A3ABBC; }
+  .bouton-theme { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.16); color: #FFFFFF; }
   .bandeau-haut .bandeau-demo { font-size: 0.8rem; }
-  /* Onglets les uns sous les autres, texte à gauche */
-  .bandeau-haut .onglets.onglets-altus, .bandeau-haut .onglets.onglets-altus.onglets-coach { grid-template-columns: 1fr; gap: 6px; }
-  .bandeau-haut .onglets.onglets-altus .onglet,
-  .bandeau-haut .onglets.onglets-altus .onglet:nth-child(n),
-  .bandeau-haut .onglets.onglets-altus.onglets-coach .onglet:nth-child(n) { grid-column: auto; min-height: 44px; padding: 0 14px; text-align: left; font-size: 0.95rem; }
-  .bandeau-haut .onglet.actif { box-shadow: inset 4px 0 0 var(--rouge-altus, #e5484d); }
+  /* Onglets les uns sous les autres : icône + nom */
+  .bandeau-haut .onglets.onglets-altus, .bandeau-haut .onglets.onglets-altus.onglets-coach { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; }
+  .bandeau-haut .onglets .onglet:nth-child(n) {
+    position: relative; display: flex; align-items: center; justify-content: flex-start; gap: 12px;
+    min-height: 44px; padding: 0 14px; margin: 0; border: none; border-radius: 10px;
+    background: none; box-shadow: none; color: #C5CBD8; font-size: 0.92rem; font-weight: 600; text-align: left;
+  }
+  .bandeau-haut .onglets .onglet:nth-child(n):hover { background: rgba(255, 255, 255, 0.05); }
+  .bandeau-haut .onglets .onglet.actif:nth-child(n) { background: rgba(255, 255, 255, 0.1); color: #FFFFFF; font-weight: 700; }
+  .bandeau-haut .onglets .onglet.actif::before {
+    content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0; background: var(--corail);
+  }
   main, footer { max-width: 1240px; margin: 0 auto; }
   main { padding-top: 28px; }
 
@@ -982,6 +1219,4 @@ body.theme-noir-orange #trefle-jeu, body.theme-noir-orange .trefle-jeu { backgro
   body[data-vue="c-gestion"] #contenu > .bloc:has(.tableau-defilant) { grid-column: 1 / -1; }
   body[data-vue="c-classements"] #contenu { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .prepa-saisie { max-width: 560px; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
-  /* Thèmes perso : la barre de gauche suit le thème */
-  body.theme-rose-renard .bandeau-haut { background: rgba(255, 255, 255, 0.92); border-right: 3px solid #ff0f8f; }
 }

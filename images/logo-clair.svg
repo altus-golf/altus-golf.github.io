@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Logo Altus (version pour fond sombre)">
+  <!-- Logo Altus redessiné d'après l'image fournie par l'utilisateur (19/11/2026) :
+       bouclier rouge en forme de « W » + flèche bleu marine vers le haut.
+       Version pour fond sombre (mode sombre, barre de gauche) : flèche BLANCHE -->
+  <path d="M15 74 L6 18 Q50 5 94 18 L85 74 L50 24 Z" fill="none" stroke="#E85040" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M50 42 L78 84 L55 84 L55 73 L63 73 L50 55 L37 73 L45 73 L45 84 L22 84 Z" fill="#FFFFFF"/>
+</svg>

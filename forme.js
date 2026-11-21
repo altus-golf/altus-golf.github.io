@@ -166,38 +166,42 @@ function blocFormeDuMatin() {
     : formeVierge());
   const champTexte = (id, valeur, etiquette, attributs) => `<label class="forme-champ"><span>${etiquette}</span>
     <input id="forme-${id}" value="${echapper(String(valeur ?? ""))}" ${attributs}></label>`;
+  // Visuel ALTUS (21/11/2026) : pastille « x / 4 » des notes remplies, mot du barème choisi à droite
+  // du titre de chaque note, partie « Hier » (golf et prépa : durée + RPE + mot de l'échelle CR-10)
+  const remplies = CHAMPS_HOOPER.filter(([c]) => b[c]).length;
+  const motChoisi = (texte) => `<span class="forme-choisi">${texte ? echapper(texte) : ""}</span>`;
   return `<section class="bloc pr-bloc bloc-forme">
-    <h2 class="bloc-titre">☀️ Forme du jour</h2>
+    <div class="forme-tete"><h2 class="bloc-titre">☀️ Forme du jour</h2><span class="pastille-compte ${remplies === 4 ? "complet" : ""}">${remplies} / 4</span></div>
     <p class="bloc-info">30 secondes, chaque matin. Pour les 4 notes : 1 = le meilleur état, 7 = le pire. Seuls tes coachs voient tes réponses.</p>
     ${CHAMPS_HOOPER.map(([c, titre, textes]) => `<div class="forme-question">
-      <h3>${titre}</h3>
+      <div class="forme-q-tete"><h3>${titre}</h3>${motChoisi(b[c] ? textes[b[c] - 1] : "")}</div>
       ${boutonsNote(c, b[c], 1, 7, 7)}
-      <p class="forme-texte-note">${b[c] ? echapper(textes[b[c] - 1]) : "&nbsp;"}</p>
     </div>`).join("")}
     <div class="forme-question">
       <h3>🛏️ Heures de sommeil cette nuit</h3>
       ${champTexte("heures", b.heures, "Heures (8 h 30 = 8,5)", 'inputmode="decimal" placeholder="ex. 8,5" maxlength="5"')}
     </div>
-    <div class="forme-question">
-      <h3>⛳ Hier, au golf</h3>
-      ${champTexte("golfH", b.golfH, "Heures (3 h 30 = 3,5 ; 0 si pas de golf)", 'inputmode="decimal" placeholder="ex. 3,5" maxlength="5"')}
-      <p class="forme-sous-titre">RPE du golf : difficulté ressentie, 0 = repos, 10 = maximal</p>
-      ${boutonsNote("golfRpe", b.golfRpe, 0, 10, 6)}
-      <p class="forme-texte-note">${b.golfRpe !== null ? echapper(TEXTES_RPE[b.golfRpe]) : "&nbsp;"}</p>
-    </div>
-    <div class="forme-question">
-      <h3>🏋️ Hier, en prépa physique</h3>
-      ${champTexte("prepaMin", b.prepaMin, "Minutes (0 si pas de prépa)", 'inputmode="numeric" placeholder="ex. 60" maxlength="3"')}
-      <p class="forme-sous-titre">RPE de la séance de prépa physique</p>
-      ${boutonsNote("prepaRpe", b.prepaRpe, 0, 10, 6)}
-      <p class="forme-texte-note">${b.prepaRpe !== null ? echapper(TEXTES_RPE[b.prepaRpe]) : "&nbsp;"}</p>
+    <div class="forme-hier">
+      <h3 class="forme-hier-titre">Hier</h3>
+      <div class="forme-question">
+        <h3>⛳ Golf</h3>
+        ${champTexte("golfH", b.golfH, "Durée en heures (3 h 30 = 3,5 ; 0 si pas de golf)", 'inputmode="decimal" placeholder="ex. 3,5" maxlength="5"')}
+        <div class="forme-q-tete"><p class="forme-sous-titre">RPE du golf <small>(0 = repos, 10 = maximal)</small></p>${motChoisi(b.golfRpe !== null ? TEXTES_RPE[b.golfRpe] : "")}</div>
+        ${boutonsNote("golfRpe", b.golfRpe, 0, 10, 6)}
+      </div>
+      <div class="forme-question">
+        <h3>🏋️ Prépa physique</h3>
+        ${champTexte("prepaMin", b.prepaMin, "Durée en minutes (0 si pas de prépa)", 'inputmode="numeric" placeholder="ex. 60" maxlength="3"')}
+        <div class="forme-q-tete"><p class="forme-sous-titre">RPE de la séance</p>${motChoisi(b.prepaRpe !== null ? TEXTES_RPE[b.prepaRpe] : "")}</div>
+        ${boutonsNote("prepaRpe", b.prepaRpe, 0, 10, 6)}
+      </div>
     </div>
     <div class="forme-question">
       <h3>💬 Un commentaire ? <small>(douleur, blessure, examens, moral…)</small></h3>
       <textarea id="forme-com" rows="2" maxlength="300" class="forme-commentaire">${echapper(b.com || "")}</textarea>
     </div>
     ${messageForme ? `<p class="erreur">${echapper(messageForme)}</p>` : ""}
-    <button type="button" class="bouton principal pleine-largeur" data-a="forme-envoyer">Envoyer ma forme du jour</button>
+    <button type="button" class="bouton principal action-corail pleine-largeur" data-a="forme-envoyer">Envoyer ma forme du jour</button>
     ${r ? `<button type="button" class="lien-bouton" data-a="forme-annuler">Annuler la modification</button>` : ""}
   </section>`;
 }
@@ -344,14 +348,17 @@ function vueCoachForme() {
   if (!joueurs.some((j) => j.uid === joueurFormeCoach)) joueurFormeCoach = (lignes[0] || {}).j?.uid || null;
   const jh = joueurs.find((j) => j.uid === joueurFormeCoach);
   const fh = jh ? formeDe(jh) : null;
+  // Chiffres clés (visuel ALTUS, 21/11/2026) : moyennes des réponses du jour, pour l'affichage seulement
+  const duJour = lignes.filter((l) => l.r);
+  const avecHeures = duJour.filter((l) => l.r.heures !== null);
+  const chargeMoy = duJour.length ? Math.round(duJour.reduce((t, l) => t + chargeJour(l.r), 0) / duJour.length) : null;
+  const sommeilMoy = avecHeures.length ? avecHeures.reduce((t, l) => t + l.r.heures, 0) / avecHeures.length : null;
   return `<div class="kpis">
-      ${kpi("Réponses aujourd'hui", `${repondu} / ${joueurs.length}`, "forme du matin")}
-      ${kpi("🟠 Orange", oranges, "au-dessus de sa norme")}
-      ${kpi("🔴 Rouge", rouges, "nettement au-dessus")}
-      ${kpi("💬 Commentaires", commentaires.length, "aujourd'hui")}
+      ${kpi("Questionnaires remplis", `${repondu} / ${joueurs.length}`, "forme du matin")}
+      ${kpi("À surveiller", oranges + rouges, `${oranges} orange · ${rouges} rouge`)}
+      ${kpi("Charge moyenne d'hier", chargeMoy === null ? "—" : `${chargeMoy} <small>UA</small>`, "golf + prépa (minutes × RPE)")}
+      ${kpi("Sommeil moyen", sommeilMoy === null ? "—" : `${texte1(sommeilMoy)} <small>h</small>`, "cette nuit")}
     </div>
-    ${commentaires.length ? `<section class="bloc pr-bloc bloc-defi"><h2 class="bloc-titre">💬 Commentaires du jour</h2>
-      <ul class="liste-verifier">${commentaires.map((l) => `<li><strong>${echapper(l.j.prenom)}</strong> : ${echapper(l.r.com)}</li>`).join("")}</ul></section>` : ""}
     <section class="bloc pr-bloc">
       <h2 class="bloc-titre">💪 Forme du ${echapper(dateLisible(aujourdhui))}</h2>
       <div class="tableau-defilant"><table class="tableau-admin tableau-coach">
@@ -373,6 +380,8 @@ function vueCoachForme() {
       <p class="petit">Vert : dans sa norme · Orange : au-dessus de sa moyenne des 28 derniers jours + 1 écart-type · Rouge : + 2 écarts-types. * = ligne de base en construction (moins de ${CALIBRAGE_FORME} questionnaires) : orange si une note vaut 6 ou 7. Charge = minutes × RPE (golf + prépa de la veille), en UA. 🔒 Ces réponses ne sont visibles que par les coachs et le joueur.</p>
       <button type="button" class="bouton" data-a="forme-coach-actualiser">↻ Actualiser</button>
     </section>
+    ${commentaires.length ? `<section class="bloc pr-bloc bloc-commentaires"><h2 class="bloc-titre">💬 Commentaires du jour</h2>
+      <ul class="liste-commentaires">${commentaires.map((l) => `<li><strong>${echapper(l.j.prenom)}</strong><span>${echapper(l.r.com)}</span></li>`).join("")}</ul></section>` : ""}
     ${jh ? `<section class="bloc pr-bloc">
       <h2 class="bloc-titre">📈 Historique de ${echapper(jh.prenom)}</h2>
       <div class="filtres">${joueurs.map((j) => `<button type="button" class="filtre ${j.uid === jh.uid ? "actif" : ""}" data-a="forme-coach-joueur" data-uid="${echapper(j.uid)}">${echapper(j.prenom)}</button>`).join("")}</div>

@@ -142,3 +142,13 @@
 - Le même jour, la réponse donnée dans l'appli passe avant celle du Google Form ; réimporter met à jour sans doublon. 📄 = réponse importée dans l'historique.
 - Les joueurs sans compte apparaissent aussi dans l'onglet Forme (historique du classeur) : leur forme importée les suivra quand ils se connecteront avec le même prénom.
 - Testé en mode démo avec le vrai fichier (126 réponses, 17 noms, aucune ligne ignorée). Les données ne sont pas dans le dépôt.
+
+## 21/11/2026 — v74 : nouveau visuel ALTUS (maquette validée)
+- 🎨 Tout le site (joueurs et coachs) : couleurs ALTUS (marine #313F5B, corail du logo #E85040 seulement pour le décor, bouton d'action #D2412F), titres en Montserrat, cartes arrondies sans ombre, boutons et notes de 46 px.
+- 🌙 Bouton clair / sombre dans l'en-tête (le choix est gardé ; sans choix, le site suit le téléphone). Mode sombre « marine nuit ». Le thème est appliqué avant l'affichage (stockage.js dans le <head>, pas de clignotement).
+- 📱 Téléphone : en-tête clair (logo, prénom, date, bouton thème, initiale) et onglets dans une barre fixée en bas (icône fine + nom court ; « Podium » pour les classements). 💻 Ordinateur : barre marine à gauche.
+- Icônes SVG fines à la place des emojis dans les onglets (joueurs et coachs).
+- Forme du jour : pastille « x / 4 », mot du barème à droite de chaque note, partie « Hier » (golf, prépa + mot de l'échelle CR-10), bouton corail. Défis : boutons « Règles » et « Commencer ». Classements : rangs dans des ronds (1er en corail), record de l'année en encart marine. Coach Forme : 4 chiffres clés (questionnaires, à surveiller, charge moyenne d'hier, sommeil moyen), tableau, puis commentaires du jour.
+- Logo aux vraies couleurs + version à flèche blanche pour le sombre ; icônes de l'écran d'accueil refaites.
+- Aucun calcul ni aucune donnée changés. Thèmes de Clara et Stan toujours prioritaires.
+- Testé en mode démo (Playwright) : téléphone 390 px et ordinateur 1440 px, clair et sombre, bouton thème (choix gardé après rechargement), jeu plein écran par-dessus la barre du bas, thèmes de Clara et Stan, Prépa et import de la Forme inchangés.
