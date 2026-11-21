@@ -264,7 +264,7 @@ function carteExo(fiche, options = {}) {
     <div class="carte-haut"><span class="pastille">${echapper(options.etiquette || fiche.type)}</span></div>
     <h3 class="carte-titre">${echapper(fiche.titre)}</h3>
     <details ${options.ouvert ? "open" : ""}>
-      <summary>Mise en place et règles</summary>
+      <summary>Règles</summary>
       <p class="regles">${echapper(fiche.regles)}</p>
     </details>
     ${fiche.id === "pelz" ? zonePelz() : fiche.saisie ? zoneSaisie(fiche) : fiche.technique ? zoneTechnique(fiche) : zoneExoPoints(fiche.id)}
@@ -450,7 +450,8 @@ function appliquerEffacementsCoach() {
   return change;
 }
 
-const medaille = (i) => ["🥇", "🥈", "🥉"][i] || `${i + 1}.`;
+// Rang dans un rond (visuel ALTUS, 21/11/2026) : le 1er en corail, les autres en gris-bleu (style.css)
+const medaille = (i) => `<span class="rang ${i === 0 ? "rang-premier" : ""}">${i + 1}</span>`;
 
 function ligneClassement(i, nom, valeur, estMoi) {
   return `<li class="${estMoi ? "moi" : ""}"><span>${medaille(i)} ${echapper(nom)}</span><strong>${valeur}</strong></li>`;
@@ -853,14 +854,58 @@ const EMOJI_THEME = { "rose-renard": " 🦊" };
 
 const ONGLETS = [["seance", "🎯 Séance"], ["matchs", "⚔️ Matchs"], ["moi", "📈 Moi"], ["classements", "🏆 Classements"], ["exos", "📚 Exos"], ["prepa", "🏋️ Prépa"]];
 
+// Icônes fines des onglets (visuel ALTUS, 21/11/2026) : dessins SVG 24 × 24, trait 1,8 px (style.css),
+// à la place des emojis ; joueurs (ONGLETS) et coachs (ONGLETS_COACH, coach.js) + Retour.
+const ICONES_ONGLETS = {
+  seance: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="0.8"/>',
+  matchs: '<path d="M5 4l12.5 12.5M19 4L6.5 16.5M14.5 19.5l5-5M9.5 19.5l-5-5"/>',
+  moi: '<path d="M4 4v16h16"/><path d="M7.5 15l3.5-4 3 2.5 5-6"/>',
+  classements: '<path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 6H5v1a3 3 0 0 0 3 3M16 6h3v1a3 3 0 0 1-3 3M12 13v4M8.5 20h7M10 17h4"/>',
+  exos: '<path d="M5 5.5A2.5 2.5 0 0 1 7.5 3H19v15H7.5A2.5 2.5 0 0 0 5 20.5z"/><path d="M5 20.5A2.5 2.5 0 0 1 7.5 18H19v3H7.5"/>',
+  prepa: '<path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/>',
+  "c-semaine": '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 9.5h16M8.5 3v4M15.5 3v4"/>',
+  "c-forme": '<path d="M3 12h4.5l2-4.5 4 9 2-4.5H21"/>',
+  "c-equipe": '<circle cx="9" cy="8.5" r="3"/><path d="M3.5 19.5a5.5 5.5 0 0 1 11 0"/><circle cx="16.5" cy="9.5" r="2.5"/><path d="M15.5 14.2a4.5 4.5 0 0 1 5 4.8"/>',
+  "c-classements": '<path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 6H5v1a3 3 0 0 0 3 3M16 6h3v1a3 3 0 0 1-3 3M12 13v4M8.5 20h7M10 17h4"/>',
+  "c-pelz": '<path d="M8 21V3.5l9 3.8-9 3.7"/><path d="M4 21h12"/>',
+  "c-prepa": '<path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/>',
+  "c-joueur": '<circle cx="12" cy="8" r="3.8"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>',
+  "c-distances": '<path d="M3 12h18M6 8.5v7M12 8.5v7M18 8.5v7"/>',
+  "c-verifier": '<path d="M12 4l9 16H3z"/><path d="M12 10v4.5M12 17.2v.3"/>',
+  "c-gestion": '<path d="M4 7h9M18 7h2M4 17h3M12 17h8"/><circle cx="15.5" cy="7" r="2.3"/><circle cx="9.5" cy="17" r="2.3"/>',
+  retour: '<path d="M19 12H5M11 6l-6 6 6 6"/>',
+};
+// Noms courts sous l'icône (barre du bas du téléphone, la place y est comptée) ;
+// le nom complet (sans son emoji) reste affiché dans la barre de gauche de l'ordinateur
+const NOMS_COURTS_ONGLETS = { classements: "Podium", "c-classements": "Podium" };
+function contenuOnglet(id, nom) {
+  const complet = String(nom).replace(/^\S+\s+/, "");
+  const court = NOMS_COURTS_ONGLETS[id] || complet;
+  return `<svg class="onglet-icone" viewBox="0 0 24 24" aria-hidden="true">${ICONES_ONGLETS[id] || ""}</svg>`
+    + `<span class="onglet-nom onglet-nom-court">${echapper(court)}</span><span class="onglet-nom onglet-nom-long">${echapper(complet)}</span>`;
+}
+
+// Bouton 🌙 / ☀️ : force le mode sombre ou clair (choix gardé dans altus-v1:theme, relu par stockage.js)
+function basculerTheme() {
+  ecrireStockage("theme", themeAffiche() === "sombre" ? "clair" : "sombre");   // stockage.js
+  appliquerTheme();
+  majBoutonTheme();
+}
+function majBoutonTheme() {
+  const bouton = document.getElementById("bouton-theme");
+  if (bouton) bouton.setAttribute("aria-label", themeAffiche() === "sombre" ? "Passer en mode clair" : "Passer en mode sombre");
+}
+// Le réglage du téléphone change (ex. passage automatique en sombre le soir) : le bouton suit
+try { window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { appliquerTheme(); majBoutonTheme(); }); } catch (e) { /* vieux navigateur */ }
+
 function afficherVue() {
   const m = moi();
   const enCoach = vue === "coach";
   document.getElementById("bandeau-demo").hidden = !modeDemo();
   document.getElementById("bandeau-stockage").hidden = !stockageBloque;
   document.getElementById("onglets").innerHTML = m && !enCoach
-    ? ONGLETS.map(([id, nom]) => `<button type="button" class="onglet ${vue === id ? "actif" : ""}" data-a="vue" data-vue="${id}" aria-pressed="${vue === id}">${nom}</button>`).join("")
-    : enCoach ? (coachConnecte() ? ongletsCoach() : `<button type="button" class="onglet" data-a="vue" data-vue="seance">← Retour</button>`) : "";   // coach.js
+    ? ONGLETS.map(([id, nom]) => `<button type="button" class="onglet ${vue === id ? "actif" : ""}" data-a="vue" data-vue="${id}" aria-pressed="${vue === id}">${contenuOnglet(id, nom)}</button>`).join("")
+    : enCoach ? (coachConnecte() ? ongletsCoach() : `<button type="button" class="onglet" data-a="vue" data-vue="seance">${contenuOnglet("retour", "← Retour")}</button>`) : "";   // coach.js
   document.getElementById("onglets").classList.toggle("onglets-coach", enCoach && coachConnecte());
   // Version ordinateur (style.css, écrans ≥ 1100 px) : la mise en page dépend de la vue affichée
   document.body.dataset.vue = enCoach ? (coachConnecte() ? ongletCoach : "coach") : m ? vue : "accueil";
@@ -868,7 +913,13 @@ function afficherVue() {
   const theme = m ? THEMES_JOUEURS[slugPrenom(m.prenom)] : null;
   document.body.classList.toggle("theme-rose-renard", theme === "rose-renard");
   document.body.classList.toggle("theme-noir-orange", theme === "noir-orange");
-  document.getElementById("sous-titre").textContent = m ? `${m.prenom}${EMOJI_THEME[theme] || ""} · groupe Altus` : "Petit jeu et putting";
+  // En-tête : prénom, date du jour, rond avec l'initiale (visuel ALTUS, 21/11/2026)
+  document.getElementById("sous-titre").textContent = m ? `${m.prenom}${EMOJI_THEME[theme] || ""}` : "Petit jeu et putting";
+  document.getElementById("entete-date").textContent = new Date().toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });
+  const initiale = document.getElementById("initiale");
+  initiale.textContent = m ? m.prenom.trim().charAt(0).toUpperCase() : "";
+  initiale.hidden = !m;
+  majBoutonTheme();
   const contenu = document.getElementById("contenu");
   document.getElementById("lien-deconnexion").hidden = !utilisateurGoogle() || modeDemo();
   if (!firebasePret()) contenu.innerHTML = `<p class="petit">Chargement…</p>`;
@@ -1083,6 +1134,7 @@ document.addEventListener("DOMContentLoaded", () => {
         deconnecter().then(() => { groupeDonnees = null; prenomsAccueil = null; accueilAutrePrenom = false; prenomChoisi = null; sauvegardeVerifiee = false; changerVue("seance"); });
       });
     }
+    if (a === "theme") basculerTheme();
     if (a.startsWith("coach-")) actionCoach(a, bouton);
     if (a.startsWith("forme-")) actionForme(a, bouton);   // forme.js
     if (a.startsWith("prepa-")) actionPrepa(a, bouton);   // prepa.js

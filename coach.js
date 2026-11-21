@@ -58,8 +58,9 @@ const boutonJoueur = (j) => `<button type="button" class="lien-bouton lien-joueu
 
 /* --- Navigation entre les onglets du coach --- */
 function ongletsCoach() {
-  return ONGLETS_COACH.map(([id, nom]) => `<button type="button" class="onglet ${ongletCoach === id ? "actif" : ""}" data-a="coach-onglet" data-onglet="${id}" aria-pressed="${ongletCoach === id}">${nom}</button>`).join("")
-    + `<button type="button" class="onglet" data-a="vue" data-vue="seance">← Retour</button>`;
+  // contenuOnglet (app.js) : icône fine + nom court
+  return ONGLETS_COACH.map(([id, nom]) => `<button type="button" class="onglet ${ongletCoach === id ? "actif" : ""}" data-a="coach-onglet" data-onglet="${id}" aria-pressed="${ongletCoach === id}">${contenuOnglet(id, nom)}</button>`).join("")
+    + `<button type="button" class="onglet" data-a="vue" data-vue="seance">${contenuOnglet("retour", "← Retour")}</button>`;
 }
 
 // Actions de l'interface coach (renvoie true si l'action a été traitée ici)
