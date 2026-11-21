@@ -643,7 +643,7 @@ details[open] > summary::before { transform: rotate(90deg); }
 .pelz-boutons small { font-weight: 600; opacity: 0.8; }
 .carte .pelz-liste { padding: 0; }
 
-/* Logo Altus (images/logo.svg) et rouge du logo */
+/* Logo Altus (ancien réglage, remplacé par la couche « Visuel ALTUS ») */
 .titre-altus { display: flex; align-items: center; gap: 10px; }
 .logo-altus { width: 44px; height: 44px; flex: none; }
 .bloc-defi { border-color: var(--rouge-altus); }
@@ -869,9 +869,10 @@ h3, .carte-titre { font-weight: 600; }
 }
 .bandeau-haut header { padding-top: max(10px, env(safe-area-inset-top)); }
 .entete-ligne { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-bottom: 10px; }
-.titre-altus { margin: 0; display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 1.05rem; font-weight: 700; line-height: 1.1; color: var(--texte); }
-.titre-altus span { max-width: 7.2em; }   /* « Altus / Performance » sur deux lignes si la place manque */
-.logo-altus { width: 36px; height: 36px; flex: none; background: none; padding: 0; border-radius: 0; }
+/* Logo officiel (bouclier + ALTUS) et « PERFORMANCE » en petites capitales sous « ALTUS » */
+.titre-altus { margin: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; min-width: 0; line-height: 1; color: var(--texte); }
+.logo-altus { width: auto; height: 30px; flex: none; background: none; padding: 0; border-radius: 0; }
+.titre-sous { margin-right: -0.34em; font-size: 0.6rem; font-weight: 600; letter-spacing: 0.34em; text-transform: uppercase; color: var(--texte-doux); }
 .logo-pour-sombre { display: none; }
 .entete-droite { display: flex; align-items: center; gap: 8px; flex: none; }
 .entete-qui { margin: 0; display: flex; flex-direction: column; align-items: flex-end; line-height: 1.2; }
@@ -1124,7 +1125,11 @@ body.theme-noir-orange #trefle-jeu, body.theme-noir-orange .trefle-jeu { backgro
 
 /* Thèmes perso + visuel ALTUS (21/11/2026) : l'en-tête, la barre du bas et la barre de gauche
    suivent le thème de Clara / Stan (ces règles passent devant celles du visuel ALTUS). */
-body.theme-rose-renard .titre-altus, body.theme-noir-orange .titre-altus { white-space: normal; font-size: 1.05rem; }
+body.theme-rose-renard .titre-altus, body.theme-noir-orange .titre-altus { white-space: normal; font-size: 1rem; }
+body.theme-rose-renard .titre-altus::after { content: none; }
+body.theme-rose-renard .titre-sous::after { content: " 🦊"; letter-spacing: 0; }
+body.theme-rose-renard .titre-sous { color: #ff0f8f; }
+body.theme-noir-orange .titre-sous { color: #ff7a00; }
 /* Nouvelles couleurs du visuel ALTUS, adaptées à chaque thème perso */
 body.theme-rose-renard { --champ: #ffffff; --lien: #e6007e; --note-choisie: #ff0f8f; --corail-texte: #d4007a; --corail-fond: #ffe0f1; --rang-fond: #ffe0f1; --separateur: #ffd0ea; }
 body.theme-noir-orange { --champ: #111111; --lien: #ff9a3d; --note-choisie: #ff7a00; --corail-texte: #ff9a3d; --corail-fond: #3a2410; --rang-fond: #2a2a2a; --separateur: #333333; --entete-tableau: #222222; }
@@ -1169,8 +1174,9 @@ body.theme-noir-orange .choix-bouton.actif { color: #111111; }
   .bandeau-haut header, .bandeau-haut nav { max-width: none; }
   .bandeau-haut header { padding-top: 22px; }
   .entete-ligne { flex-direction: column; align-items: stretch; gap: 16px; padding-bottom: 16px; margin-bottom: 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
-  .titre-altus { color: #FFFFFF; font-size: 1.15rem; }
-  .titre-altus span { max-width: none; }
+  .titre-altus { align-self: flex-start; color: #FFFFFF; }
+  .logo-altus { height: 38px; }
+  .titre-sous { color: #A3ABBC; }
   /* Fond marine : toujours le logo à flèche blanche */
   .bandeau-haut .logo-pour-clair { display: none; }
   .bandeau-haut .logo-pour-sombre { display: block; }

@@ -152,3 +152,8 @@
 - Logo aux vraies couleurs + version à flèche blanche pour le sombre ; icônes de l'écran d'accueil refaites.
 - Aucun calcul ni aucune donnée changés. Thèmes de Clara et Stan toujours prioritaires.
 - Testé en mode démo (Playwright) : téléphone 390 px et ordinateur 1440 px, clair et sombre, bouton thème (choix gardé après rechargement), jeu plein écran par-dessus la barre du bas, thèmes de Clara et Stan, Prépa et import de la Forme inchangés.
+
+## 21/11/2026 — v75 : logo officiel ALTUS
+- Le logo officiel fourni par le coach (bouclier + « ALTUS ») remplace le logo redessiné : en-tête du téléphone, barre de gauche de l'ordinateur (version à lettres blanches en mode sombre), avec « PERFORMANCE » en petites capitales dessous.
+- Le bouclier seul sert d'icône de l'onglet du navigateur et d'icône de l'écran d'accueil (iPhone et Android, refaites).
+- Testé en mode démo : téléphone et ordinateur, clair et sombre, thèmes de Clara et Stan.
