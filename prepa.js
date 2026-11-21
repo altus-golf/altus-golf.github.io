@@ -40,10 +40,15 @@ const EXOS_PREPA = [
   ...["Squat", "Front squat", "Fente avant", "Fente arrière", "Fente latérale", "Deadlift", "Soulevé de terre roumain", "Hip thrust", "Leg press", "Leg extension", "Leg curl", "Adducteur", "Abducteur", "Mollets"].map((n) => [n, "Bas du corps"]),
   ...["Développé couché", "Développé incliné", "Développé militaire", "Tirage dos (poulie haute)", "Tractions lestées", "Rowing barre", "Rowing haltère", "Papillon (pec deck)", "Oiseau / papillon inversé", "Rotation poulie (ouverture)", "Rotation poulie (fermeture)", "Élévations latérales", "Triceps poulie", "Curl biceps", "Bûcheron"].map((n) => [n, "Haut du corps"]),
 ];
-// « Mes 1RM » : seulement ces exercices (demandé par l'utilisateur, 21/11/2026) ; [nom dans EXOS_PREPA, nom affiché]
-const EXOS_1RM = [
+// « Mes 1RM » : ces 7 exercices EN PREMIER, puis tous les autres (demandé par l'utilisateur, 21/11/2026)
+// [nom dans EXOS_PREPA, nom affiché]
+const EXOS_1RM_PRINCIPAUX = [
   ["Squat", "Squat"], ["Soulevé de terre roumain", "RDL"], ["Hip thrust", "Hip thrust"],
   ["Curl biceps", "Biceps (curl)"], ["Rowing barre", "Rowing"], ["Bûcheron", "Bûcheron"], ["Développé couché", "Développé couché"],
+];
+const EXOS_1RM = [
+  ...EXOS_1RM_PRINCIPAUX,
+  ...EXOS_PREPA.filter(([n]) => !EXOS_1RM_PRINCIPAUX.some(([p]) => p === n)).map(([n]) => [n, n]),
 ];
 const zonePrepa = (nom) => (EXOS_PREPA.find(([n]) => n === nom) || [, ""])[1];
 const DEBUT_PREPA = "2026-11-09";      // lundi de la semaine 1 du programme
@@ -276,14 +281,14 @@ function vuePrepa() {
 }
 
 function blocMes1RM(locale) {
-  const n = EXOS_1RM.filter(([nom]) => locale.rm[nom]).length;
+  const n = EXOS_1RM.filter(([nom]) => locale.rm[nom]).length;   // tous les exos du tableau
   return `<section class="bloc pr-bloc">
     <details class="pr-categorie" ${prepaRmOuvert ? "open" : ""} data-prepa-rm>
       <summary><h3 class="pr-categorie-titre">📏 Mes 1RM <small>(${n} saisi${n > 1 ? "s" : ""})</small></h3></summary>
       <p class="petit">Charge maximale sur 1 répétition, mesurée lors des tests. Elle sert à calculer tes charges (1RM × %).</p>
       <div class="tableau-defilant"><table class="tableau-admin tableau-coach">
         <thead><tr><th>Exercice</th><th>1RM (kg)</th><th>Test du</th></tr></thead>
-        <tbody>${EXOS_1RM.map(([nom, affiche], i) => `<tr><td>${echapper(affiche)} <small>${zonePrepa(nom) === "Bas du corps" ? "bas" : "haut"}</small></td>
+        <tbody>${EXOS_1RM.map(([nom, affiche], i) => `${i === EXOS_1RM_PRINCIPAUX.length ? `<tr><td colspan="3"><strong>Autres exercices</strong></td></tr>` : ""}<tr><td>${echapper(affiche)} <small>${zonePrepa(nom) === "Bas du corps" ? "bas" : "haut"}</small></td>
           <td><input id="prepa-rm-${i}" class="prepa-rm" inputmode="decimal" value="${locale.rm[nom] ? echapper(virguleA(locale.rm[nom].kg)) : ""}" aria-label="1RM ${echapper(nom)}"></td>
           <td class="nombre">${locale.rm[nom] && locale.rm[nom].d ? echapper(dateLisible(locale.rm[nom].d)) : "—"}</td></tr>`).join("")}</tbody>
       </table></div>
