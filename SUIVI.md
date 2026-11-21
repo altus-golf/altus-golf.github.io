@@ -128,3 +128,6 @@
 - Testé en mode démo (Playwright, téléphone 390 px).
 - À faire : import de l'historique du fichier « ALTUS Forme » ; import des 1RM depuis « Suivi_charges_muscu » si le coach le souhaite.
 
+
+## 21/11/2026 — v71 : temps de golf en heures
+- ☀️ Forme du matin : le temps passé au golf la veille se tape en HEURES (« 3,5 » ou « 3h30 »), demande du coach. Toujours gardé en minutes en ligne (`golfMin`) pour la charge = minutes × RPE (UA). Le coach voit « 3 h 30 · RPE 5 ».

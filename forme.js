@@ -139,7 +139,7 @@ function boutonsNote(champ, valeur, min, max, colonnes) {
 // Nouvelle forme : la prépa d'hier est pré-remplie si le joueur a noté sa séance dans 🏋️ Prépa (prepa.js)
 function formeVierge() {
   const p = typeof prepaDeLaVeille === "function" ? prepaDeLaVeille() : null;
-  return { sommeil: null, fatigue: null, stress: null, courbatures: null, heures: "", golfMin: "", golfRpe: null,
+  return { sommeil: null, fatigue: null, stress: null, courbatures: null, heures: "", golfH: "", golfRpe: null,
     prepaMin: p && p.minutes !== null ? p.minutes : "", prepaRpe: p ? p.rpe : null, com: "" };
 }
 function blocFormeDuMatin() {
@@ -157,7 +157,7 @@ function blocFormeDuMatin() {
       <button type="button" class="lien-bouton" data-a="forme-modifier">✏️ Modifier ma réponse</button>
     </section>`;
   }
-  const b = formeBrouillon || (formeBrouillon = r ? { ...r, heures: r.heures ?? "", golfMin: r.golfMin ?? "", prepaMin: r.prepaMin ?? "" }
+  const b = formeBrouillon || (formeBrouillon = r ? { ...r, heures: r.heures ?? "", golfH: r.golfMin === null || r.golfMin === undefined ? "" : virguleA(r.golfMin / 60), prepaMin: r.prepaMin ?? "" }
     : formeVierge());
   const champTexte = (id, valeur, etiquette, attributs) => `<label class="forme-champ"><span>${etiquette}</span>
     <input id="forme-${id}" value="${echapper(String(valeur ?? ""))}" ${attributs}></label>`;
@@ -175,7 +175,7 @@ function blocFormeDuMatin() {
     </div>
     <div class="forme-question">
       <h3>⛳ Hier, au golf</h3>
-      ${champTexte("golfMin", b.golfMin, "Minutes (0 si pas de golf)", 'inputmode="numeric" placeholder="ex. 120" maxlength="3"')}
+      ${champTexte("golfH", b.golfH, "Heures (3 h 30 = 3,5 ; 0 si pas de golf)", 'inputmode="decimal" placeholder="ex. 3,5" maxlength="5"')}
       <p class="forme-sous-titre">RPE du golf : difficulté ressentie, 0 = repos, 10 = maximal</p>
       ${boutonsNote("golfRpe", b.golfRpe, 0, 10, 6)}
       <p class="forme-texte-note">${b.golfRpe !== null ? echapper(TEXTES_RPE[b.golfRpe]) : "&nbsp;"}</p>
@@ -197,6 +197,11 @@ function blocFormeDuMatin() {
   </section>`;
 }
 
+// 210 min → « 3 h 30 » ; 45 → « 45 min »
+function texteDuree(min) {
+  const h = Math.floor(min / 60), m = Math.round(min % 60);
+  return h ? `${h} h${m ? ` ${String(m).padStart(2, "0")}` : ""}` : `${m} min`;
+}
 // Nombre tapé par le joueur : « 8,5 », « 8.5 », « 8h30 », « 8 h 30 »
 function nombreForme(texte) {
   const t = String(texte ?? "").trim().toLowerCase().replace(/\s/g, "");
@@ -212,10 +217,10 @@ async function envoyerFormeDuJour() {
   if (!b) return;
   messageForme = "";
   const manque = CHAMPS_HOOPER.filter(([c]) => !b[c]).map(([, t]) => t.replace(/^\S+\s/, ""));
-  const heures = nombreForme(b.heures), golfMin = nombreForme(b.golfMin), prepaMin = nombreForme(b.prepaMin);
+  const heures = nombreForme(b.heures), golfH = nombreForme(b.golfH), golfMin = golfH === null || Number.isNaN(golfH) ? golfH : golfH * 60, prepaMin = nombreForme(b.prepaMin);
   if (manque.length) messageForme = `Il manque : ${manque.join(", ")}.`;
   else if (heures === null || Number.isNaN(heures) || heures < 0 || heures > 16) messageForme = "Indique tes heures de sommeil (entre 0 et 16, ex. 8,5).";
-  else if (golfMin === null || Number.isNaN(golfMin) || golfMin < 0 || golfMin > 900) messageForme = "Indique tes minutes de golf d'hier (0 si tu n'as pas joué).";
+  else if (golfMin === null || Number.isNaN(golfMin) || golfMin < 0 || golfMin > 900) messageForme = "Indique tes heures de golf d'hier (ex. 3,5 ou 3h30 ; 0 si tu n'as pas joué).";
   else if (golfMin > 0 && b.golfRpe === null) messageForme = "Choisis le RPE de ton golf d'hier (0 à 10).";
   else if (prepaMin === null || Number.isNaN(prepaMin) || prepaMin < 0 || prepaMin > 600) messageForme = "Indique tes minutes de prépa physique d'hier (0 si pas de prépa).";
   else if (prepaMin > 0 && b.prepaRpe === null) messageForme = "Choisis le RPE de ta séance de prépa (0 à 10).";
@@ -361,7 +366,7 @@ function vueCoachForme() {
           <td class="nombre"><strong>${indiceHooper(r)}</strong></td>
           <td class="nombre">${CHAMPS_HOOPER.map(([c]) => `<span class="note-hooper ${r[c] >= 6 ? "haute" : ""}">${r[c]}</span>`).join("")}</td>
           <td class="nombre">${r.heures === null ? "—" : texte1(r.heures)}</td>
-          <td class="nombre">${r.golfMin ? `${r.golfMin} min · RPE ${r.golfRpe}` : "—"}</td>
+          <td class="nombre">${r.golfMin ? `${texteDuree(r.golfMin)} · RPE ${r.golfRpe}` : "—"}</td>
           <td class="nombre">${r.prepaMin ? `${r.prepaMin} min · RPE ${r.prepaRpe}` : "—"}</td>
           <td class="nombre">${chargeJour(r)}</td>
           <td>${echapper(r.com || "")}</td></tr>`; }).join("")}</tbody>
