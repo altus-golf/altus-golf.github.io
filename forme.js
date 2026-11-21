@@ -27,6 +27,20 @@ const CHAMPS_HOOPER = [
 const TEXTES_RPE = ["Repos", "Très, très facile", "Facile", "Modéré", "Un peu dur", "Dur", "Dur +", "Très dur", "Très dur +", "Très, très dur", "Maximal"];
 const MAX_REPONSES_FORME = 400;
 const CALIBRAGE_FORME = 20;          // questionnaires avant d'utiliser la moyenne ± écart-type
+// Balles tapées la veille (21/11/2026) : facultatif, 0 à 1500
+const MAX_BALLES = 1500;
+// Seuil de balles sur 7 jours au-delà duquel un joueur apparaît dans ⚠️ À vérifier.
+// null = pas de seuil (à régler plus tard, par ex. 1500) ; le repère individuel (moyenne 28 j) marche sans.
+const SEUIL_BALLES_SEMAINE = null;
+// 🛏️ Alerte sommeil (coach, 21/11/2026) sur les 7 derniers jours (questionnaires remplis seulement).
+// Seuil : recommandation de l'American Academy of Sleep Medicine pour les 13-18 ans = 8 à 10 h par nuit
+// (Paruthi et al., 2016, J Clin Sleep Med 12(6):785-786).
+const SEUIL_SOMMEIL = 8;              // heures
+const SOMMEIL_NUITS_ORANGE = 3;       // orange : 3 nuits ou plus sous le seuil…
+const SOMMEIL_MOY_ORANGE = 8;         // … OU moyenne sur 7 jours sous 8 h
+const SOMMEIL_NUITS_ROUGE = 5;        // rouge : 5 nuits ou plus sous le seuil…
+const SOMMEIL_MOY_ROUGE = 7;          // … OU moyenne sur 7 jours sous 7 h
+const SOMMEIL_MIN_REPONSES = 4;       // moins de 4 réponses sur 7 jours = pas assez de données (pas d'alerte)
 
 let formeBrouillon = null;           // réponses en cours de saisie (joueur)
 let formeOuverte = false;            // joueur : « ✏️ Modifier » la forme du jour
@@ -47,6 +61,7 @@ function normaliserReponseForme(r) {
     sommeil: r.sommeil, fatigue: r.fatigue, stress: r.stress, courbatures: r.courbatures,
     heures: nb(r.heures, 24),
     golfMin: nb(r.golfMin, 900), golfRpe: entierEntre(r.golfRpe, 0, 10) ? r.golfRpe : null,
+    balles: entierEntre(r.balles, 0, MAX_BALLES) ? r.balles : null,   // ancien questionnaire sans balles = null (pas 0)
     prepaMin: nb(r.prepaMin, 600), prepaRpe: entierEntre(r.prepaRpe, 0, 10) ? r.prepaRpe : null,
     com: typeof r.com === "string" ? r.com.slice(0, 300) : "",
     ...(r.src === "form" ? { src: "form" } : {}),   // réponse reprise de l'ancien Google Form (import du coach)
@@ -70,6 +85,47 @@ const indiceHooper = (r) => r.sommeil + r.fatigue + r.stress + r.courbatures;
 const chargeGolf = (r) => (r.golfMin && r.golfRpe !== null ? r.golfMin * r.golfRpe : 0);
 const chargePrepa = (r) => (r.prepaMin && r.prepaRpe !== null ? r.prepaMin * r.prepaRpe : 0);
 const chargeJour = (r) => chargeGolf(r) + chargePrepa(r);
+
+// Moyenne et écart-type d'une liste de nombres (écart-type de l'échantillon)
+function moyenneEcart(l) {
+  const moy = l.reduce((t, v) => t + v, 0) / l.length;
+  return { moy, et: Math.sqrt(l.reduce((t, v) => t + (v - moy) ** 2, 0) / Math.max(1, l.length - 1)) };
+}
+// Balles tapées la veille comparées à SA moyenne des 28 jours précédents (comme la charge) :
+// orange > moyenne + 1 écart-type, rouge > + 2. Il faut au moins 5 jours renseignés, sinon pas de repère.
+const BALLES_MIN_JOURS = 5;
+function statutBalles(reponses, r) {
+  if (!r || r.balles === null) return null;
+  const depuis = dateEnTexte(ajouterJours(texteEnDate(r.d), -28));
+  const base = reponses.filter((x) => x.d < r.d && x.d >= depuis && x.balles !== null).map((x) => x.balles);
+  if (base.length < BALLES_MIN_JOURS) return null;
+  const { moy, et } = moyenneEcart(base);
+  const code = r.balles > moy + 2 * et ? "rouge" : r.balles > moy + et ? "orange" : "vert";
+  return { code, texte: { vert: "normal", orange: "élevé", rouge: "très élevé" }[code], moy };
+}
+// Total des balles sur les 7 derniers jours (null si aucune réponse avec des balles)
+function ballesSemaine(reponses) {
+  const depuis7 = dateEnTexte(ajouterJours(new Date(), -7));
+  const l = reponses.filter((x) => x.d > depuis7 && x.balles !== null);
+  return l.length ? l.reduce((t, x) => t + x.balles, 0) : null;
+}
+
+// Sommeil des 7 derniers jours : { code: vert | orange | rouge | gris, texte, moy, nuits, n }
+function statutSommeil(reponses) {
+  const depuis7 = dateEnTexte(ajouterJours(new Date(), -7));
+  const l = reponses.filter((x) => x.d > depuis7 && x.heures !== null).map((x) => x.heures);
+  if (l.length < SOMMEIL_MIN_REPONSES) return { code: "gris", texte: "Pas assez de données", moy: null, nuits: null, n: l.length };
+  const moy = l.reduce((t, v) => t + v, 0) / l.length;
+  const nuits = l.filter((h) => h < SEUIL_SOMMEIL).length;
+  const code = nuits >= SOMMEIL_NUITS_ROUGE || moy < SOMMEIL_MOY_ROUGE ? "rouge" : nuits >= SOMMEIL_NUITS_ORANGE || moy < SOMMEIL_MOY_ORANGE ? "orange" : "vert";
+  return { code, texte: { vert: "OK", orange: "Orange", rouge: "Rouge" }[code], moy, nuits, n: l.length };
+}
+// Case « Sommeil 7 j » du coach : pastille avec le MOT + moyenne et nuits courtes
+function celluleSommeil(ss) {
+  const pastille = `<span class="statut ${ss.code === "gris" ? "statut-attente" : `statut-forme-${ss.code}`}">${ss.texte}</span>`;
+  if (ss.code === "gris") return `${pastille} <small>${ss.n} réponse${ss.n > 1 ? "s" : ""} / 7 j</small>`;
+  return `${pastille} ${texte1(ss.moy)} h${ss.nuits ? ` <small>· ${ss.nuits} nuit${ss.nuits > 1 ? "s" : ""} &lt; ${SEUIL_SOMMEIL} h</small>` : ""}`;
+}
 
 // Statut d'une réponse par rapport aux réponses précédentes du joueur
 function statutForme(reponses, r) {
@@ -144,7 +200,7 @@ function boutonsNote(champ, valeur, min, max, colonnes) {
 // Nouvelle forme : la prépa d'hier est pré-remplie si le joueur a noté sa séance dans 🏋️ Prépa (prepa.js)
 function formeVierge() {
   const p = typeof prepaDeLaVeille === "function" ? prepaDeLaVeille() : null;
-  return { sommeil: null, fatigue: null, stress: null, courbatures: null, heures: "", golfH: "", golfRpe: null,
+  return { sommeil: null, fatigue: null, stress: null, courbatures: null, heures: "", golfH: "", balles: "", golfRpe: null,
     prepaMin: p && p.minutes !== null ? p.minutes : "", prepaRpe: p ? p.rpe : null, com: "" };
 }
 function blocFormeDuMatin() {
@@ -162,7 +218,7 @@ function blocFormeDuMatin() {
       <button type="button" class="lien-bouton" data-a="forme-modifier">✏️ Modifier ma réponse</button>
     </section>`;
   }
-  const b = formeBrouillon || (formeBrouillon = r ? { ...r, heures: r.heures ?? "", golfH: r.golfMin === null || r.golfMin === undefined ? "" : virguleA(r.golfMin / 60), prepaMin: r.prepaMin ?? "" }
+  const b = formeBrouillon || (formeBrouillon = r ? { ...r, heures: r.heures ?? "", golfH: r.golfMin === null || r.golfMin === undefined ? "" : virguleA(r.golfMin / 60), balles: r.balles ?? "", prepaMin: r.prepaMin ?? "" }
     : formeVierge());
   const champTexte = (id, valeur, etiquette, attributs) => `<label class="forme-champ"><span>${etiquette}</span>
     <input id="forme-${id}" value="${echapper(String(valeur ?? ""))}" ${attributs}></label>`;
@@ -186,6 +242,7 @@ function blocFormeDuMatin() {
       <div class="forme-question">
         <h3>⛳ Golf</h3>
         ${champTexte("golfH", b.golfH, "Durée en heures (3 h 30 = 3,5 ; 0 si pas de golf)", 'inputmode="decimal" placeholder="ex. 3,5" maxlength="5"')}
+        ${champTexte("balles", b.balles, "Nombre de balles tapées (0 si pas de practice)", 'inputmode="numeric" placeholder="ex. 120" maxlength="4"')}
         <div class="forme-q-tete"><p class="forme-sous-titre">RPE du golf <small>(0 = repos, 10 = maximal)</small></p>${motChoisi(b.golfRpe !== null ? TEXTES_RPE[b.golfRpe] : "")}</div>
         ${boutonsNote("golfRpe", b.golfRpe, 0, 10, 6)}
       </div>
@@ -227,17 +284,19 @@ async function envoyerFormeDuJour() {
   messageForme = "";
   const manque = CHAMPS_HOOPER.filter(([c]) => !b[c]).map(([, t]) => t.replace(/^\S+\s/, ""));
   const heures = nombreForme(b.heures), golfH = nombreForme(b.golfH), golfMin = golfH === null || Number.isNaN(golfH) ? golfH : golfH * 60, prepaMin = nombreForme(b.prepaMin);
+  const balles = nombreForme(b.balles);   // facultatif (sinon les joueurs habitués à l'ancien questionnaire seraient bloqués)
   if (manque.length) messageForme = `Il manque : ${manque.join(", ")}.`;
   else if (heures === null || Number.isNaN(heures) || heures < 0 || heures > 16) messageForme = "Indique tes heures de sommeil (entre 0 et 16, ex. 8,5).";
   else if (golfMin === null || Number.isNaN(golfMin) || golfMin < 0 || golfMin > 900) messageForme = "Indique tes heures de golf d'hier (ex. 3,5 ou 3h30 ; 0 si tu n'as pas joué).";
   else if (golfMin > 0 && b.golfRpe === null) messageForme = "Choisis le RPE de ton golf d'hier (0 à 10).";
+  else if (balles !== null && (!Number.isInteger(balles) || balles < 0 || balles > MAX_BALLES)) messageForme = `Nombre de balles tapées : un nombre entier entre 0 et ${MAX_BALLES} (ou laisse vide).`;
   else if (prepaMin === null || Number.isNaN(prepaMin) || prepaMin < 0 || prepaMin > 600) messageForme = "Indique tes minutes de prépa physique d'hier (0 si pas de prépa).";
   else if (prepaMin > 0 && b.prepaRpe === null) messageForme = "Choisis le RPE de ta séance de prépa (0 à 10).";
   if (messageForme) return afficherVue();
   const r = normaliserReponseForme({
     d: dateEnTexte(new Date()), t: Date.now(),
     sommeil: b.sommeil, fatigue: b.fatigue, stress: b.stress, courbatures: b.courbatures,
-    heures: Math.round(heures * 100) / 100, golfMin: Math.round(golfMin), golfRpe: golfMin > 0 ? b.golfRpe : 0,
+    heures: Math.round(heures * 100) / 100, golfMin: Math.round(golfMin), golfRpe: golfMin > 0 ? b.golfRpe : 0, balles,
     prepaMin: Math.round(prepaMin), prepaRpe: prepaMin > 0 ? b.prepaRpe : 0, com: String(b.com || "").trim(),
   });
   const locale = maFormeLocale();
@@ -247,6 +306,8 @@ async function envoyerFormeDuJour() {
   afficherVue();
   const ok = await synchroniserMaForme();
   messageForme = ok && !maFormeLocale().enAttente ? "Merci, c'est envoyé à tes coachs 👍" : "Pas de réseau : ta réponse est gardée sur ce téléphone et partira toute seule.";
+  // Message doux (pas bloquant) : golf hier mais pas de balles notées
+  if (golfMin > 0 && balles === null) messageForme += " Pense à noter aussi tes balles tapées la prochaine fois 🙂";
   afficherVue();
 }
 
@@ -297,10 +358,12 @@ function formesDemo(db) {
       if ((i + k) % 6 === 5) continue;   // quelques oublis
       const d = dateEnTexte(ajouterJours(new Date(), -i));
       const n = (base) => Math.max(1, Math.min(7, base + Math.round((Math.random() - 0.5) * 2.4)));
-      const golf = i % 7 === 0 ? 0 : 90 + ((i * 17 + k * 7) % 4) * 30;
+      const golf = i % 7 === 3 ? 0 : 90 + ((i * 17 + k * 7) % 4) * 30;
       const prepa = [1, 3, 5].includes((i + k) % 7) ? 60 : 0;
+      // Balles : environ 150 à 300 les jours de golf ; un gros jour hier pour 2 joueurs (repère orange / rouge)
+      const balles = !golf ? 0 : i === 0 && k < 2 ? 520 + k * 200 : 150 + ((i * 37 + k * 11) % 7) * 25;
       reponses.push({ d, t: Date.now() - i * 864e5, sommeil: n(2 + (k % 2)), fatigue: n(3), stress: n(2 + (i < 3 && k === 1 ? 4 : 0)), courbatures: n(2),
-        heures: 7 + ((i + k) % 4) * 0.5, golfMin: golf, golfRpe: golf ? 4 + ((i + k) % 4) : 0, prepaMin: prepa, prepaRpe: prepa ? 5 + (k % 3) : 0,
+        heures: k === 1 && i < 7 ? 6.5 + (i % 3) * 0.5 : k === 3 && i < 7 ? (i % 2 ? 9 : 7.5) : 7.5 + ((i + k) % 4) * 0.5, golfMin: golf, golfRpe: golf ? 4 + ((i + k) % 4) : 0, balles, prepaMin: prepa, prepaRpe: prepa ? 5 + (k % 3) : 0,
         com: i === 1 && k === 2 ? "Douleur au poignet gauche" : "" });
     }
     res[b.uid] = { uid: b.uid, prenom: b.prenom, reponses };
@@ -341,7 +404,7 @@ function vueCoachForme() {
     const st = r ? statutForme(f.reponses, r) : null;
     if (r) { repondu++; if (st.code === "orange") oranges++; if (st.code === "rouge") rouges++; }
     const charge7 = f.reponses.filter((x) => x.d > depuis7).reduce((t, x) => t + chargeJour(x), 0);
-    return { j, f, r, st, derniere, charge7 };
+    return { j, f, r, st, derniere, charge7, sb: statutBalles(f.reponses, r), balles7: ballesSemaine(f.reponses), ss: statutSommeil(f.reponses) };
   }).sort((a, b) => (!!b.r - !!a.r) || ({ rouge: 3, orange: 2, vert: 1 }[b.st?.code] || 0) - ({ rouge: 3, orange: 2, vert: 1 }[a.st?.code] || 0) || a.j.prenom.localeCompare(b.j.prenom, "fr"));
   const commentaires = lignes.filter((l) => l.r && l.r.com);
   const kpi = (titre, valeur, detail) => `<div class="kpi"><span>${titre}</span><strong>${valeur}</strong><small>${detail}</small></div>`;
@@ -362,7 +425,7 @@ function vueCoachForme() {
     <section class="bloc pr-bloc">
       <h2 class="bloc-titre">💪 Forme du ${echapper(dateLisible(aujourdhui))}</h2>
       <div class="tableau-defilant"><table class="tableau-admin tableau-coach">
-        <thead><tr><th>Joueur</th><th>Statut</th><th>Hooper</th><th>Sommeil · Fatigue · Stress · Courb.</th><th>Habituel</th><th>Sommeil (h)</th><th>Charge hier</th><th>Charge 7 j</th></tr></thead>
+        <thead><tr><th>Joueur</th><th>Statut</th><th>Hooper</th><th title="Sommeil · Fatigue · Stress · Courbatures">S · F · St · C</th><th>Habituel</th><th>Sommeil (h)</th><th>Sommeil 7 j</th><th>Charge hier</th><th>Charge 7 j</th><th>Balles hier</th><th>Balles 7 j</th></tr></thead>
         <tbody>${lignes.map((l) => l.r ? `<tr>
           <td><button type="button" class="lien-bouton lien-joueur" data-a="forme-coach-joueur" data-uid="${echapper(l.j.uid)}">${echapper(l.j.prenom)}</button></td>
           <td><span class="statut statut-forme-${l.st.code}">${l.st.texte}${l.st.calibrage ? " *" : ""}</span></td>
@@ -370,14 +433,17 @@ function vueCoachForme() {
           <td class="nombre">${CHAMPS_HOOPER.map(([c]) => `<span class="note-hooper ${l.r[c] >= 6 ? "haute" : ""}">${l.r[c]}</span>`).join("")}</td>
           <td class="nombre">${l.st.moy === null ? "—" : texte1(l.st.moy)}</td>
           <td class="nombre">${l.r.heures === null ? "—" : texte1(l.r.heures)}</td>
+          <td class="nombre">${celluleSommeil(l.ss)}</td>
           <td class="nombre">${chargeJour(l.r)}</td>
           <td class="nombre">${l.charge7}</td>
+          <td class="nombre">${celluleBalles(l.r, l.sb)}</td>
+          <td class="nombre">${l.balles7 === null ? "—" : l.balles7}</td>
         </tr>` : `<tr class="ligne-attente">
           <td><button type="button" class="lien-bouton lien-joueur" data-a="forme-coach-joueur" data-uid="${echapper(l.j.uid)}">${echapper(l.j.prenom)}</button></td>
-          <td colspan="7"><span class="statut statut-attente">Pas encore répondu</span> <small>${l.derniere ? `dernière réponse : ${echapper(dateLisible(l.derniere.d))}` : "aucune réponse"}</small></td>
+          <td colspan="10"><span class="statut statut-attente">Pas encore répondu</span> <small>${l.derniere ? `dernière réponse : ${echapper(dateLisible(l.derniere.d))}` : "aucune réponse"}</small>${["orange", "rouge"].includes(l.ss.code) ? ` · sommeil 7 j : ${celluleSommeil(l.ss)}` : ""}</td>
         </tr>`).join("")}</tbody>
       </table></div>
-      <p class="petit">Vert : dans sa norme · Orange : au-dessus de sa moyenne des 28 derniers jours + 1 écart-type · Rouge : + 2 écarts-types. * = ligne de base en construction (moins de ${CALIBRAGE_FORME} questionnaires) : orange si une note vaut 6 ou 7. Charge = minutes × RPE (golf + prépa de la veille), en UA. 🔒 Ces réponses ne sont visibles que par les coachs et le joueur.</p>
+      <p class="petit">Vert : dans sa norme · Orange : au-dessus de sa moyenne des 28 derniers jours + 1 écart-type · Rouge : + 2 écarts-types. * = ligne de base en construction (moins de ${CALIBRAGE_FORME} questionnaires) : orange si une note vaut 6 ou 7. Charge = minutes × RPE (golf + prépa de la veille), en UA. Sommeil 7 j : orange = ${SOMMEIL_NUITS_ORANGE} nuits ou plus sous ${SEUIL_SOMMEIL} h, ou moyenne sous ${SOMMEIL_MOY_ORANGE} h ; rouge = ${SOMMEIL_NUITS_ROUGE} nuits ou plus, ou moyenne sous ${SOMMEIL_MOY_ROUGE} h (recommandation 13-18 ans : 8 à 10 h) ; moins de ${SOMMEIL_MIN_REPONSES} réponses = pas assez de données. Balles : orange / rouge = au-dessus de SA moyenne des 28 jours précédents + 1 / + 2 écarts-types (au moins ${BALLES_MIN_JOURS} jours renseignés). 🔒 Ces réponses ne sont visibles que par les coachs et le joueur.</p>
       <button type="button" class="bouton" data-a="forme-coach-actualiser">↻ Actualiser</button>
     </section>
     ${commentaires.length ? `<section class="bloc pr-bloc bloc-commentaires"><h2 class="bloc-titre">💬 Commentaires du jour</h2>
@@ -386,7 +452,7 @@ function vueCoachForme() {
       <h2 class="bloc-titre">📈 Historique de ${echapper(jh.prenom)}</h2>
       <div class="filtres">${joueurs.map((j) => `<button type="button" class="filtre ${j.uid === jh.uid ? "actif" : ""}" data-a="forme-coach-joueur" data-uid="${echapper(j.uid)}">${echapper(j.prenom)}</button>`).join("")}</div>
       ${fh.reponses.length ? `<div class="tableau-defilant"><table class="tableau-admin tableau-coach">
-        <thead><tr><th>Date</th><th>Statut</th><th>Hooper</th><th>S · F · St · C</th><th>Sommeil (h)</th><th>Golf hier</th><th>Prépa hier</th><th>Charge</th><th>Commentaire</th></tr></thead>
+        <thead><tr><th>Date</th><th>Statut</th><th>Hooper</th><th>S · F · St · C</th><th>Sommeil (h)</th><th>Golf hier</th><th>Balles</th><th>Prépa hier</th><th>Charge</th><th>Commentaire</th></tr></thead>
         <tbody>${fh.reponses.slice(-21).reverse().map((r) => { const st = statutForme(fh.reponses, r); return `<tr>
           <td class="nombre">${echapper(dateLisible(r.d))}${r.src ? ` <small title="Réponse importée du Google Form">📄</small>` : ""}</td>
           <td><span class="statut statut-forme-${st.code}">${st.texte}</span></td>
@@ -394,6 +460,7 @@ function vueCoachForme() {
           <td class="nombre">${CHAMPS_HOOPER.map(([c]) => `<span class="note-hooper ${r[c] >= 6 ? "haute" : ""}">${r[c]}</span>`).join("")}</td>
           <td class="nombre">${r.heures === null ? "—" : texte1(r.heures)}</td>
           <td class="nombre">${r.golfMin ? `${texteDuree(r.golfMin)} · RPE ${r.golfRpe}` : "—"}</td>
+          <td class="nombre">${celluleBalles(r, statutBalles(fh.reponses, r))}</td>
           <td class="nombre">${r.prepaMin ? `${r.prepaMin} min · RPE ${r.prepaRpe}` : "—"}</td>
           <td class="nombre">${chargeJour(r)}</td>
           <td>${echapper(r.com || "")}</td></tr>`; }).join("")}</tbody>
@@ -402,6 +469,51 @@ function vueCoachForme() {
     </section>` : ""}
     ${blocImportForme(joueurs)}`;
 }
+// Case « balles » du coach : le nombre, avec le mot du repère s'il est au-dessus de la norme du joueur
+function celluleBalles(r, sb) {
+  if (!r || r.balles === null) return "—";
+  if (!sb || sb.code === "vert") return String(r.balles);
+  return `<span class="statut statut-forme-${sb.code}" title="Moyenne habituelle : ${Math.round(sb.moy)}">${r.balles} · ${sb.texte}</span>`;
+}
+
+/* ---------- Coach : ⚠️ À vérifier (forme, sommeil, mesures) ---------- */
+// Lignes à signaler pour un joueur : [{ j, texte }] (texte déjà échappé)
+function alertesFormeVerifier() {
+  if (!formesCoach || formesCoach.erreur) return [];
+  const res = [];
+  joueursForme().forEach((j) => {
+    const f = formeDe(j);
+    const b7 = ballesSemaine(f.reponses);
+    if (SEUIL_BALLES_SEMAINE !== null && b7 !== null && b7 > SEUIL_BALLES_SEMAINE) res.push({ j, texte: `${b7} balles tapées sur 7 jours <small>(seuil : ${SEUIL_BALLES_SEMAINE})</small>` });
+    const ss = statutSommeil(f.reponses);
+    if (ss.code === "orange" || ss.code === "rouge") res.push({ j, texte: `🛏️ sommeil : ${celluleSommeil(ss)}` });
+  });
+  return res;
+}
+// Bloc ajouté en bas de 📅 Semaine (coach.js) : joueurs dont le sommeil des 7 derniers jours est orange / rouge
+function blocSommeilSemaine() {
+  if (!formesCoach) { Promise.resolve().then(chargerFormesCoach); return ""; }
+  if (formesCoach.erreur) return "";
+  const l = joueursForme().map((j) => ({ j, ss: statutSommeil(formeDe(j).reponses) })).filter((x) => x.ss.code === "orange" || x.ss.code === "rouge")
+    .sort((a, b) => (b.ss.code === "rouge") - (a.ss.code === "rouge") || a.ss.moy - b.ss.moy);
+  return `<section class="bloc pr-bloc">
+    <h2 class="bloc-titre">🛏️ Sommeil à surveiller <small>(7 derniers jours)</small></h2>
+    ${l.length ? `<ul class="liste-commentaires">${l.map((x) => `<li><strong>${echapper(x.j.prenom)}</strong><span>${celluleSommeil(x.ss)}</span></li>`).join("")}</ul>` : `<p class="petit">✅ Personne sous les seuils de sommeil.</p>`}
+    <p class="petit">Repère : ${SEUIL_SOMMEIL} h minimum par nuit (13-18 ans : 8 à 10 h). Détail dans 💪 Forme. Le joueur ne voit pas ces couleurs.</p>
+  </section>`;
+}
+// Bloc ajouté en bas de ⚠️ À vérifier (coach.js) ; lance la lecture des réponses si besoin
+function blocVerifierSuivi() {
+  if (!formesCoach) Promise.resolve().then(chargerFormesCoach);
+  const lignes = [...alertesFormeVerifier(), ...(typeof alertesMesuresVerifier === "function" ? alertesMesuresVerifier() : [])];   // prepa.js
+  return `<section class="bloc pr-bloc">
+    <h2 class="bloc-titre">💪 Forme, sommeil et mesures <small>(${lignes.length})</small></h2>
+    ${!formesCoach ? `<p class="petit">Chargement…</p>` : formesCoach.erreur ? `<p class="petit">Réponses de la Forme illisibles (règles Firestore « forme » ?).</p>`
+      : lignes.length ? `<ul class="liste-verifier">${lignes.map((l) => `<li><strong>${echapper(l.j.prenom)}</strong> : ${l.texte}</li>`).join("")}</ul>` : `<p class="petit">✅ Rien à signaler.</p>`}
+    <p class="petit">Balles : seuil sur 7 jours ${SEUIL_BALLES_SEMAINE === null ? "pas encore réglé" : `= ${SEUIL_BALLES_SEMAINE}`} (constante SEUIL_BALLES_SEMAINE, forme.js).</p>
+  </section>`;
+}
+
 // Onglets 🏋️ Prépa (joueur et coach) : voir prepa.js
 
 /* ---------- Coach : import de l'historique du Google Form « Forme du matin » ----------

@@ -158,3 +158,11 @@
 - Le bouclier seul sert d'icône de l'onglet du navigateur et d'icône de l'écran d'accueil (iPhone et Android, refaites).
 - Testé en mode démo : téléphone et ordinateur, clair et sombre, thèmes de Clara et Stan.
 - v76 (21/11/2026) : « Mes 1RM » = d'abord Squat, RDL, Hip thrust, Biceps, Rowing, Bûcheron, Développé couché, puis les autres exos (Bûcheron ajouté aux exos de prépa).
+
+## 21/11/2026 — v77 : balles tapées, mesures, alerte sommeil, calendrier
+- 🏌️ Forme du matin : nouveau champ facultatif « Nombre de balles tapées » (0 à 1500) dans « Hier, au golf ». Coach : colonnes « Balles hier » (repère orange / rouge par rapport à la moyenne 28 jours du joueur) et « Balles 7 j » ; balles dans l'historique. `SEUIL_BALLES_SEMAINE` (forme.js) prêt pour À vérifier, vide pour l'instant.
+- 📐 Mesures tous les 3 mois (mesures.js) : saisies par les coachs dans 🏋️ Prépa (taille debout, taille assis, poids, envergure + naissance et sexe), visibles par le joueur avec ses courbes. Calculs : longueur de jambes, vitesse de croissance (« poussée » > 0,6 cm/mois), décalage de maturité (Mirwald 2002, estimation ± 1 an), prochaine mesure à 90 jours (retards dans À vérifier). Liste de champs extensible (CHAMPS_MESURES) pour les futurs tests de mobilité.
+- 🛏️ Alerte sommeil (coach) : sur 7 jours, orange si 3 nuits < 8 h ou moyenne < 8 h, rouge si 5 nuits ou moyenne < 7 h, gris si moins de 4 réponses. Colonne « Sommeil 7 j » dans 💪 Forme, bloc dans 📅 Semaine, et dans ⚠️ À vérifier.
+- 🗓️ Calendrier (calendrier.js) : onglet coach pour créer / modifier / supprimer (compétition, stage / voyage, scolaire / examens, tests, autre ; format, tours, niveau pour les compétitions ; résultats prévus plus tard). Joueurs : « À venir » en bas de la Séance.
+- 🔒 Règles Firestore : 2 nouveaux blocs `mesures` (coachs seulement en écriture) et `calendrier`. À recoller dans la console Firebase AVANT la mise en ligne.
+- Testé en mode démo (Playwright), données fictives pour chaque nouveauté ; aucun calcul existant changé.

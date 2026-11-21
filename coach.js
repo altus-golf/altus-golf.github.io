@@ -16,7 +16,7 @@ const ONGLETS_COACH = [
   ["c-semaine", "📅 Semaine"], ["c-forme", "💪 Forme"], ["c-equipe", "👥 Équipe"],
   ["c-classements", "🏆 Classements"], ["c-pelz", "🏌️ Pelz"], ["c-prepa", "🏋️ Prépa"],
   ["c-joueur", "👤 Joueur"], ["c-distances", "🎯 Distances"], ["c-verifier", "⚠️ À vérifier"],
-  ["c-gestion", "⚙️ Gestion"],
+  ["c-calendrier", "🗓️ Calendrier"], ["c-gestion", "⚙️ Gestion"],
 ];
 let ongletCoach = "c-semaine";     // onglet ouvert dans l'espace coachs
 let metriqueEquipe = "m30";        // Équipe : moyenne 30 j / année / record / nombre
@@ -112,7 +112,8 @@ function vueCoachSemaine() {
         </tr>`).join("")}</tbody>
       </table></div>
       <p class="petit">Toucher un prénom ouvre sa fiche. « Exos » = exos différents (le Pelz et le Start Line comptent pour un).</p>
-    </section>`;
+    </section>
+    ${blocSommeilSemaine()}`;   // forme.js
 }
 
 /* ---------- 👥 Équipe : tous les joueurs × tous les exos ---------- */
@@ -321,5 +322,6 @@ function vueCoachVerifier() {
       <p><strong>Sans aucun score :</strong> ${sansScore.length ? sansScore.map((x) => boutonJoueur(x.j)).join(", ") : "personne ✅"}</p>
       <p><strong>Historique du classeur pas encore repris (📄) :</strong> ${pasInscrits.length ? pasInscrits.map((x) => boutonJoueur(x.j)).join(", ") : "personne ✅"}</p>
       <p class="petit">📄 = joueur pas encore inscrit sur le site : son historique du classeur l'attend, il le récupère en choisissant son prénom à l'accueil.</p>
-    </section>`;
+    </section>
+    ${blocVerifierSuivi()}`;   // forme.js : balles, sommeil, mesures en retard
 }

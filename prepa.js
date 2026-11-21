@@ -277,6 +277,7 @@ function vuePrepa() {
       ${locale.enAttente ? `<p class="petit">📶 Pas encore envoyé (pas de réseau) : ça partira tout seul.</p>` : ""}
     </section>
     ${blocMes1RM(locale)}
+    ${blocMesMesures()}
     ${blocMesSeances(locale)}`;
 }
 
@@ -355,6 +356,7 @@ async function enregistrer1RM() {
 }
 
 function actionPrepa(a, bouton) {
+  if (a.startsWith("prepa-mes-")) return actionMesures(a, bouton);   // mesures.js
   if (a === "prepa-enregistrer") return enregistrerSeancePrepa();
   if (a === "prepa-rm") return enregistrer1RM();
   if (a === "prepa-plan" && prepaBrouillon) { const p = planDe(prepaBrouillon.cle); if (p) prepaBrouillon.presc = { ...p.presc }; return afficherVue(); }
@@ -365,7 +367,7 @@ function actionPrepa(a, bouton) {
   }
   if (a === "prepa-nouvelle") { prepaBrouillon = null; prepaChoix = null; messagePrepa = ""; return afficherVue(); }
   if (a === "prepa-coach-joueur") { joueurPrepaCoach = bouton.dataset.uid; return afficherVue(); }
-  if (a === "prepa-coach-actualiser") { prepasCoach = null; formesCoach = null; return afficherVue(); }
+  if (a === "prepa-coach-actualiser") { prepasCoach = null; formesCoach = null; mesuresCoach = null; return afficherVue(); }
 }
 // RPE de séance : mêmes boutons que la Forme (data-a="forme-note") → on les intercepte ici
 document.addEventListener("click", (e) => {
@@ -509,6 +511,7 @@ function vueCoachPrepa() {
         ${Object.keys(sel.f.rm).length ? `<ul class="liste-verifier">${Object.entries(sel.f.rm).map(([n, v]) => `<li>${echapper(n)} : <strong>${virguleA(v.kg)} kg</strong>${v.d ? ` <small>(${echapper(dateLisible(v.d))})</small>` : ""}</li>`).join("")}</ul>` : `<p class="petit">Aucun 1RM saisi.</p>`}
       </details>
     </section>` : ""}
+    ${blocMesuresCoach(joueurs, sel ? sel.j : null)}
     ${formesCoach && !formesCoach.erreur ? blocPrepaDeclaree(joueurs) : ""}`;
 }
 // Prépa déclarée dans la Forme du matin (pour les joueurs qui ne notent pas encore leurs séances)

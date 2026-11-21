@@ -657,6 +657,7 @@ function vueSeance() {
     html += `<section class="bloc pr-bloc"><h2 class="bloc-titre">🎯 Défi de la semaine</h2>
       <p class="petit">Pas encore de défi cette semaine : ton coach va le choisir. En attendant, joue un exo de l'onglet 📚 Exos.</p></section>`;
   }
+  html += blocAVenir();   // calendrier.js : événements à venir (lecture seule)
   return html;
 }
 
@@ -756,7 +757,7 @@ function vueCoach() {
   if (!groupeDonnees) return html + `<p class="petit">${erreurGroupe ? "Pas de connexion." : "Chargement…"}</p>`;
   const vuesCoach = { "c-semaine": vueCoachSemaine, "c-equipe": vueCoachEquipe, "c-classements": vueCoachClassements,
     "c-pelz": vueCoachPelz, "c-distances": vueCoachDistances, "c-verifier": vueCoachVerifier,
-    "c-forme": vueCoachForme, "c-prepa": vueCoachPrepa };   // forme.js / prepa.js
+    "c-forme": vueCoachForme, "c-prepa": vueCoachPrepa, "c-calendrier": vueCoachCalendrier };   // forme.js / prepa.js / calendrier.js
   if (vuesCoach[ongletCoach]) return html + vuesCoach[ongletCoach]();
   if (ongletCoach === "c-gestion") return html + vueCoachGestion();
   return html + vueCoachJoueur();
@@ -872,6 +873,7 @@ const ICONES_ONGLETS = {
   "c-joueur": '<circle cx="12" cy="8" r="3.8"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>',
   "c-distances": '<path d="M3 12h18M6 8.5v7M12 8.5v7M18 8.5v7"/>',
   "c-verifier": '<path d="M12 4l9 16H3z"/><path d="M12 10v4.5M12 17.2v.3"/>',
+  "c-calendrier": '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 9.5h16M8.5 3v4M15.5 3v4"/><path d="M8 13h.01M12 13h.01M16 13h.01M8 16.5h.01M12 16.5h.01"/>',
   "c-gestion": '<path d="M4 7h9M18 7h2M4 17h3M12 17h8"/><circle cx="15.5" cy="7" r="2.3"/><circle cx="9.5" cy="17" r="2.3"/>',
   retour: '<path d="M19 12H5M11 6l-6 6 6 6"/>',
 };
@@ -1138,6 +1140,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (a.startsWith("coach-")) actionCoach(a, bouton);
     if (a.startsWith("forme-")) actionForme(a, bouton);   // forme.js
     if (a.startsWith("prepa-")) actionPrepa(a, bouton);   // prepa.js
+    if (a.startsWith("cal-")) actionCalendrier(a, bouton);   // calendrier.js
     if (a === "choisir-prenom") { prenomChoisi = bouton.dataset.prenom; messageAccueil = ""; afficherVue(); window.scrollTo(0, 0); }
     if (a === "confirmer-prenom" && prenomChoisi && !entreeEnCours) { messageAccueil = ""; entrerAvecPrenom(prenomChoisi); }
     if (a === "autre-prenom" || a === "liste-prenoms") { accueilAutrePrenom = a === "autre-prenom"; prenomChoisi = null; messageAccueil = ""; afficherVue(); }

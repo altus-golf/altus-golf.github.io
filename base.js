@@ -414,17 +414,20 @@ async function lireGroupe(commeCoach = false) {
       defi: normaliserDefi(db.defi),
       consignes: commeCoach ? mapObjet(db.consignes, normaliserConsignes) : { [m.uid]: normaliserConsignes(db.consignes[m.uid]) },
       matchs: (db.matchs || []).map(normaliserMatch).filter(Boolean).sort((a, b) => b.date.localeCompare(a.date)),
+      calendrier: calendrierDemo(db),   // calendrier.js
     };
   }
   if (!(await demarrerFirebase())) return null;
   try {
     const g = commeCoach ? groupeCoach(code) : groupe(code);
-    const [bilans, defi, consignes, matchs] = await Promise.all([
+    const [bilans, defi, consignes, matchs, calendrier] = await Promise.all([
       g.collection("bilans").get(),
       g.collection("reglages").doc("defi").get(),
       commeCoach ? g.collection("consignes").get() : g.collection("consignes").doc(m.uid).get(),
       // Matchs (match.js) : si les règles ne sont pas encore recollées, on fait sans
       g.collection("matchs").get().catch(() => null),
+      // Calendrier (calendrier.js) : idem, sans les règles « calendrier » on fait sans
+      g.collection("calendrier").get().catch(() => null),
     ]);
     const lesConsignes = {};
     if (commeCoach) consignes.docs.forEach((d) => { lesConsignes[d.id] = normaliserConsignes(d.data()); });
@@ -434,6 +437,7 @@ async function lireGroupe(commeCoach = false) {
       defi: normaliserDefi(defi.exists ? defi.data() : null),
       consignes: lesConsignes,
       matchs: matchs ? matchs.docs.map((d) => normaliserMatch({ ...d.data(), id: d.id })).filter(Boolean).sort((a, b) => b.date.localeCompare(a.date)) : [],
+      calendrier: calendrier ? trierEvenements(calendrier.docs.map((d) => normaliserEvenement({ ...d.data(), id: d.id })).filter(Boolean)) : [],
     };
   } catch (e) {
     return null;
@@ -558,13 +562,13 @@ async function effacerMatch(id) {
 // Coach : retirer un joueur du groupe (son bilan + ses exos donnés).
 // Un joueur qui utilise encore le site réapparaît dès qu'il joue un exo.
 async function supprimerJoueur(uid) {
-  if (modeDemo()) { const db = baseDemo(); delete db.bilans[uid]; delete db.consignes[uid]; if (db.forme) delete db.forme[uid]; if (db.prepa) delete db.prepa[uid]; ecrireStockage("demo", db); return ""; }
+  if (modeDemo()) { const db = baseDemo(); delete db.bilans[uid]; delete db.consignes[uid]; if (db.forme) delete db.forme[uid]; if (db.prepa) delete db.prepa[uid]; if (db.mesures) delete db.mesures[uid]; ecrireStockage("demo", db); return ""; }
   try {
     const g = groupeCoach(codeCoach());
     await g.collection("bilans").doc(uid).delete();
     await g.collection("consignes").doc(uid).delete();
     // Forme et prépa (données confidentielles) : effacées aussi ; sans effet si les règles ne sont pas encore recollées
-    for (const c of ["forme", "prepa"]) { try { await g.collection(c).doc(uid).delete(); } catch (e) { /* règles pas encore à jour */ } }
+    for (const c of ["forme", "prepa", "mesures"]) { try { await g.collection(c).doc(uid).delete(); } catch (e) { /* règles pas encore à jour */ } }
     return "";
   } catch (e) {
     return "Suppression refusée (connexion coach ?).";
