@@ -131,3 +131,7 @@
 
 ## 21/11/2026 — v71 : temps de golf en heures
 - ☀️ Forme du matin : le temps passé au golf la veille se tape en HEURES (« 3,5 » ou « 3h30 »), demande du coach. Toujours gardé en minutes en ligne (`golfMin`) pour la charge = minutes × RPE (UA). Le coach voit « 3 h 30 · RPE 5 ».
+
+## 21/11/2026 — v72 : version ordinateur
+- 💻 Sur un écran d'ordinateur (≥ 1100 px), le site change de mise en page : barre de navigation sombre à gauche, contenu sur toute la largeur en 2 colonnes (Forme à gauche et défis à droite ; séance de prépa à gauche, 1RM et séances à droite ; Exos 3 par ligne ; classements 2 ou 3 par ligne ; grands tableaux du coach en pleine largeur). Le téléphone ne change pas.
+- Testé (Playwright) : 1440 px pour toutes les vues joueurs et coachs, 390 px pour vérifier que le téléphone n'a pas bougé.
