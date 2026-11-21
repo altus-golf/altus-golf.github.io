@@ -592,11 +592,13 @@ async function effacerMatch(id) {
 // Coach : retirer un joueur du groupe (son bilan + ses exos donnés).
 // Un joueur qui utilise encore le site réapparaît dès qu'il joue un exo.
 async function supprimerJoueur(uid) {
-  if (modeDemo()) { const db = baseDemo(); delete db.bilans[uid]; delete db.consignes[uid]; ecrireStockage("demo", db); return ""; }
+  if (modeDemo()) { const db = baseDemo(); delete db.bilans[uid]; delete db.consignes[uid]; if (db.forme) delete db.forme[uid]; if (db.prepa) delete db.prepa[uid]; ecrireStockage("demo", db); return ""; }
   try {
     const g = groupeCoach(codeCoach());
     await g.collection("bilans").doc(uid).delete();
     await g.collection("consignes").doc(uid).delete();
+    // Forme et prépa (données confidentielles) : effacées aussi ; sans effet si les règles ne sont pas encore recollées
+    for (const c of ["forme", "prepa"]) { try { await g.collection(c).doc(uid).delete(); } catch (e) { /* règles pas encore à jour */ } }
     return "";
   } catch (e) {
     return "Suppression refusée (connexion coach ?).";

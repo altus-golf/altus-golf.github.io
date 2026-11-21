@@ -552,9 +552,9 @@ details[open] > summary::before { transform: rotate(90deg); }
 /* 5 onglets : 3 + 2 sur téléphone, tous sur une ligne en grand */
 .onglets.onglets-altus { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .onglets.onglets-altus .onglet { grid-column: span 2; font-size: 0.95rem; padding-left: 4px; padding-right: 4px; }
-.onglets.onglets-altus .onglet:nth-child(4), .onglets.onglets-altus .onglet:nth-child(5) { grid-column: span 3; }
+/* 6 onglets depuis l'ajout de 🏋️ Prépa (21/11/2026) : 3 + 3 sur téléphone, une ligne sur grand écran */
 @media (min-width: 600px) {
-  .onglets.onglets-altus { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .onglets.onglets-altus { grid-template-columns: repeat(6, minmax(0, 1fr)); }
   .onglets.onglets-altus .onglet, .onglets.onglets-altus .onglet:nth-child(4), .onglets.onglets-altus .onglet:nth-child(5) { grid-column: auto; }
 }
 .semaine-info { margin: 4px 0 14px; color: var(--texte-doux); }
@@ -775,6 +775,49 @@ body.theme-rose-renard .bandeau-haut .date { color: #d4007a; }
 body.theme-noir-orange .bandeau-haut { background: #000000; }
 body.theme-rose-renard .filtre.actif, body.theme-noir-orange .filtre.actif { background: var(--accent); border-color: var(--accent); color: var(--accent-texte); }
 body.theme-noir-orange { --entete-tableau: #222222; --encre: #000000; }
+
+/* ---------- ☀️ Forme du matin (forme.js, 21/11/2026) ---------- */
+.bloc-forme { border-top: 4px solid var(--rouge-altus); }
+.forme-question { margin-top: 14px; }
+.forme-question h3 { margin: 0 0 6px; font-size: 1rem; }
+.forme-question h3 small { font-weight: 500; color: var(--texte-doux); }
+.choix-forme { gap: 6px; }
+.choix-forme .choix-bouton { min-height: 44px; font-size: 1.05rem; font-weight: 800; }
+.forme-texte-note { margin: 4px 0 0; min-height: 1.4em; font-size: 0.85rem; font-weight: 600; color: var(--accent); }
+.forme-sous-titre { margin: 8px 0 6px; font-size: 0.85rem; color: var(--texte-doux); }
+.forme-champ { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--texte-doux); }
+.forme-champ input, .forme-commentaire { font: inherit; font-size: 1rem; padding: 10px 12px; border: 1px solid var(--bord); border-radius: 8px; background: var(--carte); color: var(--texte); max-width: 220px; }
+.forme-commentaire { max-width: none; width: 100%; resize: vertical; }
+.bloc-forme .bouton.principal { margin-top: 16px; }
+.forme-resume { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.statut-forme-vert { background: #d8efe0; color: #14532d; }
+.statut-forme-orange { background: #fbe0cc; color: #7a2e0b; }
+.statut-forme-rouge { background: #b3261e; color: #ffffff; }
+@media (prefers-color-scheme: dark) {
+  .statut-forme-vert { background: #1d3b2a; color: #b7f0c9; }
+  .statut-forme-orange { background: #4a2a14; color: #ffd2b0; }
+}
+.note-hooper { display: inline-block; min-width: 22px; margin: 0 1px; padding: 1px 4px; border-radius: 6px; background: var(--entete-tableau); font-weight: 700; font-size: 0.8rem; }
+.note-hooper.haute { background: var(--alerte-fond); color: var(--alerte-texte); }
+.ligne-attente td { color: var(--texte-doux); }
+
+/* ---------- 🏋️ Prépa physique (prepa.js, 21/11/2026) ---------- */
+.prepa-champ { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--texte-doux); margin: 8px 0; }
+.prepa-champ input, .prepa-menu, .prepa-select { font: inherit; font-size: 1rem; padding: 9px 10px; border: 1px solid var(--bord); border-radius: 8px; background: var(--carte); color: var(--texte); min-width: 0; }
+.prepa-champ input { width: 100%; box-sizing: border-box; }
+.prepa-champ-large { width: 100%; }
+.prepa-menu, .prepa-select { width: 100%; box-sizing: border-box; }
+.prepa-saisie { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 0 10px; align-items: end; max-width: 440px; }
+.prepa-saisie .prepa-champ { margin: 4px 0; }
+.prepa-presc { margin: 12px 0; padding: 12px; border: 1px solid var(--bord); border-radius: 10px; background: var(--fond); }
+.prepa-presc-tete { display: flex; align-items: center; gap: 8px; }
+.prepa-texte-presc { font-family: "Space Grotesk", system-ui, sans-serif; font-weight: 700; font-size: 1.05rem; margin: 6px 0 0; }
+.prepa-exo { padding: 10px 0; border-top: 1px solid var(--bord); }
+.prepa-exo-tete { display: flex; align-items: center; gap: 8px; }
+.prepa-num { flex: 0 0 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--accent-texte, #fff); font-weight: 700; font-size: 0.85rem; }
+.prepa-prevu { margin: 6px 0 0 34px; font-size: 0.9rem; }
+.prepa-exo .prepa-saisie { margin-left: 34px; }
+.prepa-rm { width: 80px; font: inherit; padding: 6px 8px; border: 1px solid var(--bord); border-radius: 6px; background: var(--carte); color: var(--texte); }
 
 /* ---------- Thème perso « rose fuchsia + renards » (Clara, 20/11/2026) ----------
    Fond BLANC avec des renards, tout le reste en rose fuchsia flashy (demande de Clara).

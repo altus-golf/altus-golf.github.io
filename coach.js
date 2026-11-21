@@ -2,8 +2,9 @@
    Interface coach (21/11/2026) : demandée par le coach, sur le modèle de la
    maquette « Interface coach » et avec le même visuel que les écrans des
    joueurs (onglets, blocs, filtres, tableaux).
-   Onglets : Semaine, Équipe, Classements, Pelz, Joueur, Distances,
-   À vérifier, Gestion (défis, rapport Excel, import du classeur).
+   Onglets : Semaine, Forme, Équipe, Classements, Pelz, Prépa, Joueur,
+   Distances, À vérifier, Gestion (défis, rapport Excel, import du classeur).
+   Forme et Prépa sont dans forme.js.
    Les calculs se font à partir des bilans du groupe (groupeDonnees) :
    - hist = les 30 derniers scores par exo → semaine, 30 derniers jours, Pelz ;
    - exos = statistiques de l'année (n, moyenne, record).
@@ -12,9 +13,10 @@
    ========================================================= */
 
 const ONGLETS_COACH = [
-  ["c-semaine", "📅 Semaine"], ["c-equipe", "👥 Équipe"], ["c-classements", "🏆 Classements"],
-  ["c-pelz", "🏌️ Pelz"], ["c-joueur", "👤 Joueur"], ["c-distances", "🎯 Distances"],
-  ["c-verifier", "⚠️ À vérifier"], ["c-gestion", "⚙️ Gestion"],
+  ["c-semaine", "📅 Semaine"], ["c-forme", "💪 Forme"], ["c-equipe", "👥 Équipe"],
+  ["c-classements", "🏆 Classements"], ["c-pelz", "🏌️ Pelz"], ["c-prepa", "🏋️ Prépa"],
+  ["c-joueur", "👤 Joueur"], ["c-distances", "🎯 Distances"], ["c-verifier", "⚠️ À vérifier"],
+  ["c-gestion", "⚙️ Gestion"],
 ];
 let ongletCoach = "c-semaine";     // onglet ouvert dans l'espace coachs
 let metriqueEquipe = "m30";        // Équipe : moyenne 30 j / année / record / nombre
