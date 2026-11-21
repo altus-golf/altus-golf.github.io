@@ -95,3 +95,8 @@
 - 📊 Rapport Excel refait avec ExcelJS (couleurs, volets figés, vraies dates, impression en paysage), à la demande du coach : l'appli doit remplacer son classeur de suivi.
 - Onglets : Semaine, Équipe, Classements (30 derniers jours ET année), Pelz (total par semaine), une page par joueur, Données.
 - Testé en mode démo (Playwright, téléchargement + lecture du fichier) ; ExcelJS servi en local pendant le test.
+
+## 21/11/2026 — v66 : rapport Excel sur le modèle du coach
+- 📊 Le rapport reprend le modèle « Rapport Altus lisible » du coach : Vue équipe et Fiche joueur avec sélecteurs (formules), Réussite distance, À vérifier (rempli par le site), Saisie, Paramètres ; on garde Semaine, Classements (30 j et année) et Pelz. Plus de page par joueur.
+- Testé en mode démo : 682 formules recalculées par LibreOffice = mêmes valeurs que celles pré-calculées par le site, 0 erreur.
+- ⚠ `DEBUT_SAISON` (classeur.js) à mettre à jour à chaque nouvelle saison.

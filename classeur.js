@@ -366,7 +366,11 @@ function dateExcel(date) {
    Le fichier est fabriqué dans le téléphone / l'ordinateur du coach avec
    ExcelJS (la version gratuite de SheetJS ne sait pas écrire les couleurs) :
    rien ne passe par le dépôt.
-   Onglets : Semaine, Équipe, Classements, Pelz, une page par joueur, Données.
+   Onglets : Semaine, Vue équipe (sélecteur d'indicateur), Fiche joueur
+   (sélecteur du joueur), Classements, Pelz, Réussite distance, À vérifier,
+   Saisie (données), Paramètres — modèle validé par le coach le 21/11/2026.
+   Vue équipe et Fiche joueur = formules sur l'onglet Saisie, avec le résultat
+   déjà calculé pour le choix par défaut (lisible même sans recalcul).
    Classements : moyenne des 30 derniers jours (2 scores min.) ET moyenne de
    l'année (3 scores min., comme l'onglet Classements du site) — choix du
    coach, 21/11/2026. */
@@ -376,7 +380,7 @@ let messageRapport = "";
 function blocRapportExcel() {
   return `<section class="bloc pr-bloc">
     <h2 class="bloc-titre">📊 Rapport Excel</h2>
-    <p class="petit">Un fichier Excel prêt à lire : la semaine (qui a fait quoi, Pelz), la vue équipe, les classements (30 derniers jours et année), l'historique du Pelz, une page par joueur et toutes les données.</p>
+    <p class="petit">Un fichier Excel prêt à lire : la semaine (qui a fait quoi, Pelz), la vue équipe et la fiche joueur (avec sélecteurs), les classements (30 derniers jours et année), le Pelz, la réussite par distance, les points à vérifier et toutes les données. À ouvrir dans Excel ou Google Sheets.</p>
     <button type="button" class="bouton principal pleine-largeur" data-a="rapport-excel">⬇️ Télécharger le rapport</button>
     ${messageRapport ? `<p class="${messageRapport.startsWith("✅") ? "petit" : "erreur"}">${echapper(messageRapport)}</p>` : ""}
   </section>`;
@@ -399,15 +403,6 @@ function joueursDuRapport() {
 function ordreRapport() {
   const rang = (id) => CATEGORIES_PROGRES.findIndex((c) => c.contient(id));
   return [...ITEMS_ALTUS].sort((a, b) => rang(a.id) - rang(b.id));
-}
-
-// Nom de feuille Excel : 31 caractères max, sans : \ / ? * [ ], unique
-function nomDeFeuille(nom, pris) {
-  let base = nom.replace(/[:\\/?*\[\]]/g, " ").trim().slice(0, 28) || "Joueur";
-  let n = base, i = 2;
-  while (pris.has(n.toLowerCase())) n = `${base} ${i++}`;
-  pris.add(n.toLowerCase());
-  return n;
 }
 
 // Bibliothèque ExcelJS (écriture du rapport avec couleurs), chargée seulement quand on en a besoin
@@ -527,6 +522,17 @@ function figer(f, colonnes, lignes) {
 }
 
 /* --- Le rapport --- */
+// Début de la saison 2026-2027 (semaine des tests de début novembre, choix du coach) :
+// un score daté d'avant est signalé dans l'onglet « À vérifier ».
+const DEBUT_SAISON = "2026-11-02";
+const INDICATEURS_EQUIPE = ["Moyenne 30 jours", "Moyenne de l'année", "Record de l'année", "Nombre de scores (année)"];
+
+// Cellule avec formule + résultat déjà calculé (affiché même dans un aperçu qui ne recalcule pas)
+function formule(c, f, resultat, format) {
+  c.value = { formula: f, result: resultat === null || resultat === undefined ? "" : resultat };
+  if (format) c.numFmt = format;
+}
+
 async function telechargerRapport() {
   messageRapport = "";
   if (!groupeDonnees) { messageRapport = "Groupe pas encore chargé."; return afficherVue(); }
@@ -537,37 +543,100 @@ async function telechargerRapport() {
     // sinon (pas encore de sauvegarde) les 30 derniers par exo de leur bilan
     const sauvegardes = await lireSauvegardesCoach(joueurs.filter((j) => j.source !== "classeur").map((j) => j.uid));   // base.js
     const donnees = scoresDuRapport(joueurs, sauvegardes);
+    // Prénoms uniques dans le rapport (les formules cherchent le joueur par son prénom) : « Hugo », « Hugo 2 »…
+    const prisNoms = {};
+    donnees.forEach((x) => { const n = (prisNoms[x.j.prenom] = (prisNoms[x.j.prenom] || 0) + 1); x.nom = n > 1 ? `${x.j.prenom} ${n}` : x.j.prenom; });
     const items = ordreRapport();
     const aujourdhui = dateEnTexte(new Date());
     const lundi = lundiDe();
     const dimanche = dateEnTexte(ajouterJours(texteEnDate(lundi), 6));
     const depuis30 = dateEnTexte(ajouterJours(new Date(), -30));
     const annee = String(new Date().getFullYear());
+    const debutAnnee = `${annee}-01-01`;
     const sur30 = (l) => l.filter(([d]) => d >= depuis30);
-    const surAnnee = (l) => l.filter(([d]) => d.startsWith(annee));
+    const surAnnee = (l) => l.filter(([d]) => d >= debutAnnee);
+    const maxDe = (l) => (l.length ? Math.max(...l.map(([, v]) => v)) : null);
+    const ar = (v) => (v === null ? "" : arrondi1(v));
 
     const classeur = new ExcelJS.Workbook();
     classeur.creator = "Altus Performance";
-    const pris = new Set(["semaine", "équipe", "classements", "pelz", "données"]);
-
-    // ---------- 1. Semaine : qui a fait quoi ----------
+    classeur.calcProperties.fullCalcOnLoad = true;   // Excel recalcule tout à l'ouverture
+    // Onglets créés dans l'ordre d'affichage
     const fs = classeur.addWorksheet("Semaine");
+    const fe = classeur.addWorksheet("Vue équipe");
+    const ff = classeur.addWorksheet("Fiche joueur");
+    const fc = classeur.addWorksheet("Classements");
+    const fp = classeur.addWorksheet("Pelz");
+    const fdi = classeur.addWorksheet("Réussite distance");
+    const fv = classeur.addWorksheet("À vérifier");
+    const fsa = classeur.addWorksheet("Saisie");
+    const fpa = classeur.addWorksheet("Paramètres");
+
+    // ---------- Saisie : une ligne par score (source de toutes les formules) ----------
+    const toutes = [];
+    donnees.forEach((x) => items.forEach((it) => x.scores[it.id].forEach(([d, v]) => toutes.push({ d, j: x.nom, it, v, origine: x.origine, alerte: "" }))));
+    toutes.sort((a, b) => b.d.localeCompare(a.d) || a.j.localeCompare(b.j, "fr"));
+    // Alertes ligne par ligne
+    const vus = {};
+    toutes.forEach((s) => { const k = `${s.j}|${s.it.id}|${s.d}|${s.v}`; vus[k] = (vus[k] || 0) + 1; });
+    toutes.forEach((s) => {
+      const m = [];
+      if (s.d < DEBUT_SAISON) m.push("date avant la saison");
+      if (s.d > aujourdhui) m.push("date dans le futur");
+      if (s.v > s.it.max) m.push(`au-dessus du maximum (${s.it.max})`);
+      if (!s.it.id.startsWith("tc-") && !Number.isInteger(s.v)) m.push("score à virgule");
+      if (vus[`${s.j}|${s.it.id}|${s.d}|${s.v}`] > 1) m.push("doublon possible");
+      s.alerte = m.join(" · ");
+    });
+    titreFeuille(fsa, "Saisie : toutes les données", "Une ligne par score, du plus récent au plus ancien. Filtres sur la ligne de titres. En orange : ligne à vérifier.");
+    ligneEnTete(fsa, 4, ["Date", "Joueur", "Catégorie", "Exercice", "Score", "Sur", "Origine", "À vérifier"]);
+    toutes.forEach((s, i) => {
+      const r = fsa.getRow(5 + i);
+      r.values = [dateExcel(s.d), s.j, categorieRapport(s.it.id), s.it.titre, s.v, s.it.max, s.origine, s.alerte];
+      r.font = { name: "Arial", size: 10 };
+      r.getCell(1).numFmt = "dd/mm/yyyy";
+      if (s.alerte) {
+        for (let c = 1; c <= 8; c++) r.getCell(c).fill = fondXL(XL.orangeClair);
+        r.getCell(8).font = { name: "Arial", size: 10, bold: true, color: { argb: XL.orangeTexte } };
+      }
+    });
+    [12, 16, 12, 34, 8, 7, 24, 34].forEach((w, k) => { fsa.getColumn(k + 1).width = w; });
+    fsa.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4 + Math.max(1, toutes.length), column: 8 } };
+    figer(fsa, 0, 4);
+    // Plages des formules (avec de la marge si le coach ajoute des lignes à la main)
+    const der = 4 + toutes.length + 1000;
+    const SA = `Saisie!$A$5:$A$${der}`, SB = `Saisie!$B$5:$B$${der}`, SD = `Saisie!$D$5:$D$${der}`, SE = `Saisie!$E$5:$E$${der}`;
+
+    // ---------- Paramètres ----------
+    titreFeuille(fpa, "Paramètres", "Listes utilisées par les sélecteurs et les formules. La date du rapport sert d'« aujourd'hui » pour les calculs sur 30 jours.");
+    ligneEnTete(fpa, 4, ["Catégorie", "Exercice", "Titre court", "Sur"]);
+    items.forEach((it, i) => ligneValeurs(fpa, 5 + i, [categorieRapport(it.id), it.titre, titreCourt(it).replace("\n", " "), it.max]));
+    ligneEnTete(fpa, 4, ["Joueurs"], 6);
+    donnees.forEach((x, i) => ligneValeurs(fpa, 5 + i, [x.nom], 6));
+    ligneEnTete(fpa, 4, ["Date du rapport", "Début de l'année", "Début de saison"], 8);
+    ligneValeurs(fpa, 5, [dateExcel(aujourdhui), dateExcel(debutAnnee), dateExcel(DEBUT_SAISON)], 8);
+    [12, 36, 22, 7, 3, 16, 3, 15, 15, 15].forEach((w, k) => { fpa.getColumn(k + 1).width = w; });
+    figer(fpa, 0, 4);
+    const REF = "Paramètres!$H$5", Y0 = "Paramètres!$I$5";
+    const LISTE_JOUEURS = `Paramètres!$F$5:$F$${4 + Math.max(1, joueurs.length)}`;
+
+    // ---------- Semaine : qui a fait quoi ----------
     titreFeuille(fs, `Semaine du ${dateRapport(lundi)} au ${dateRapport(dimanche)}`, `Rapport du ${dateRapport(aujourdhui)} · Pelz sur ${PELZ_SITUATIONS.length} situations (points sur 40)`);
     const entSem = ["Joueur", "Scores cette semaine", "Exercices différents", ...PELZ_SITUATIONS.map((s) => "Pelz " + s.id.toUpperCase()), "Pelz faites", `Total /${PELZ_MAX_TOTAL}`, "Dernière saisie", "Statut"];
     ligneEnTete(fs, 4, entSem);
     const lignesSem = donnees.map((x) => {
       const semaine = [];
-      items.forEach((it) => x.scores[it.id].forEach(([d, v]) => { if (d >= lundi && d <= dimanche) semaine.push(it); }));
+      items.forEach((it) => x.scores[it.id].forEach(([d]) => { if (d >= lundi && d <= dimanche) semaine.push(it); }));
       const fiches = new Set(semaine.filter((it) => it.id !== "pelz-total").map((it) => it.fiche));
       const pz = pelzDeLaSemaine(x.scores, lundi);
       let derniere = "";
       items.forEach((it) => { const l = x.scores[it.id]; if (l.length && l[l.length - 1][0] > derniere) derniere = l[l.length - 1][0]; });
       const statut = x.j.source === "classeur" ? "Pas encore inscrit sur le site" : !semaine.length ? "Rien cette semaine" : pz.total !== null ? "Pelz complet" : "Actif";
       return { x, n: semaine.filter((it) => it.id !== "pelz-total").length, fiches: fiches.size, pz, derniere, statut };
-    }).sort((a, b) => b.n - a.n || a.x.j.prenom.localeCompare(b.x.j.prenom, "fr"));
+    }).sort((a, b) => b.n - a.n || a.x.nom.localeCompare(b.x.nom, "fr"));
     lignesSem.forEach((s, i) => {
       const r = 5 + i;
-      ligneValeurs(fs, r, [s.x.j.prenom, s.n, s.fiches, ...PELZ_SITUATIONS.map((p) => (s.pz.pts[p.id] !== undefined ? s.pz.pts[p.id] : "")),
+      ligneValeurs(fs, r, [s.x.nom, s.n, s.fiches, ...PELZ_SITUATIONS.map((p) => (s.pz.pts[p.id] !== undefined ? s.pz.pts[p.id] : "")),
         `${s.pz.n}/${PELZ_SITUATIONS.length}`, s.pz.total, s.derniere ? dateExcel(s.derniere) : "", s.statut]);
       fs.getCell(r, 1).font = { name: "Arial", size: 10, bold: true };
       PELZ_SITUATIONS.forEach((p, k) => { if (s.pz.pts[p.id] !== undefined) fs.getCell(r, 4 + k).fill = fondXL(XL.bleuClair); });
@@ -580,39 +649,180 @@ async function telechargerRapport() {
     fs.getRow(4).height = 32;
     figer(fs, 1, 4);
 
-    // ---------- 2. Équipe : moyennes de chacun sur chaque exo ----------
-    const fe = classeur.addWorksheet("Équipe");
-    titreFeuille(fe, "Vue équipe", "Plus la case est foncée, meilleur est le joueur dans sa colonne. Case vide = exo pas fait sur la période.");
-    let ligne = 4;
-    [["Moyenne des 30 derniers jours", sur30], [`Moyenne de l'année ${annee}`, surAnnee]].forEach(([titre, filtre]) => {
-      sousTitreBloc(fe, ligne, titre);
-      ligneEnTete(fe, ligne + 1, ["Joueur", ...items.map(titreCourt)]);
-      ligneValeurs(fe, ligne + 2, ["Sur", ...items.map((it) => it.unite.replace("/ ", ""))]);
-      fe.getRow(ligne + 2).eachCell((c) => { c.font = { name: "Arial", size: 9, italic: true, color: { argb: XL.grisTexte } }; c.fill = fondXL(XL.grisFond); });
-      fe.getRow(ligne + 1).height = 58;
-      const l1 = ligne + 3;
-      donnees.forEach((x, i) => {
-        ligneValeurs(fe, l1 + i, [x.j.prenom, ...items.map((it) => { const l = filtre(x.scores[it.id]); return l.length ? arrondi1(moyenneDe(l)) : ""; })]);
-        fe.getCell(l1 + i, 1).font = { name: "Arial", size: 10, bold: true };
-      });
-      const l2 = l1 + donnees.length - 1;
-      items.forEach((it, k) => degradeColonne(fe, lettreCol(2 + k), l1, l2));
-      const lg = l2 + 1;
-      ligneValeurs(fe, lg, ["Groupe", ...items.map((it) => { const l = [].concat(...donnees.map((x) => filtre(x.scores[it.id]))); return l.length ? arrondi1(moyenneDe(l)) : ""; })]);
-      fe.getRow(lg).eachCell((c) => { c.font = { name: "Arial", size: 10, bold: true, color: { argb: XL.blanc } }; c.fill = fondXL(XL.marine); });
-      ligne = lg + 3;
+    // ---------- Vue équipe : sélecteur d'indicateur en B3 ----------
+    titreFeuille(fe, "Vue équipe", "Choisir l'indicateur en B3. Plus la case est foncée, meilleur est le joueur dans sa colonne. Case vide = rien sur la période.");
+    fe.getCell("A3").value = "Indicateur :";
+    fe.getCell("A3").font = { name: "Arial", size: 10, bold: true };
+    const b3 = fe.getCell("B3");
+    b3.value = INDICATEURS_EQUIPE[0];
+    b3.font = { name: "Arial", size: 11, bold: true };
+    b3.fill = fondXL("FFFFF2CC");
+    b3.border = bordXL;
+    b3.dataValidation = { type: "list", allowBlank: false, formulae: [`"${INDICATEURS_EQUIPE.join(",")}"`] };
+    fe.mergeCells("B3:D3");
+    fe.getCell("E3").value = "← liste déroulante";
+    fe.getCell("E3").font = { name: "Arial", size: 9, italic: true, color: { argb: XL.grisTexte } };
+    // Ligne 5 : catégories ; ligne 6 : titres courts ; ligne 4 (masquée) : nom exact de l'exo pour les formules
+    const C0 = 5;
+    let debutCat = C0;
+    items.forEach((it, k) => {
+      fe.getCell(4, C0 + k).value = it.titre;
+      const fin = k === items.length - 1 || categorieRapport(items[k + 1].id) !== categorieRapport(it.id);
+      if (fin) {
+        if (C0 + k > debutCat) fe.mergeCells(5, debutCat, 5, C0 + k);
+        const c = fe.getCell(5, debutCat);
+        c.value = categorieRapport(it.id);
+        c.font = { name: "Arial", size: 10, bold: true, color: { argb: XL.marine } };
+        c.alignment = { horizontal: "center" };
+        c.border = { bottom: { style: "medium", color: { argb: XL.marine } } };
+        debutCat = C0 + k + 1;
+      }
     });
-    fe.getColumn(1).width = 16;
-    items.forEach((it, k) => { fe.getColumn(2 + k).width = 11; });
-    figer(fe, 1, 0);
+    fe.getRow(4).hidden = true;
+    ligneEnTete(fe, 6, ["Joueur", "Scores (année)", "Dernière saisie", "Scores 7 derniers jours", ...items.map((it) => `${titreCourt(it)}\n/${it.max}`)]);
+    fe.getRow(6).height = 64;
+    const choix = (crit, cle, l) => {
+      // crit = critères COUNTIFS/AVERAGEIFS communs ; l = scores pour le résultat déjà calculé (1er indicateur)
+      const f = `IFERROR(CHOOSE(MATCH($B$3,{"${INDICATEURS_EQUIPE.join('","')}"},0),` +
+        `AVERAGEIFS(${SE},${crit}${SD},${cle},${SA},">="&(${REF}-30)),` +
+        `AVERAGEIFS(${SE},${crit}${SD},${cle},${SA},">="&${Y0}),` +
+        `IF(COUNTIFS(${crit}${SD},${cle},${SA},">="&${Y0})=0,"",_xlfn.MAXIFS(${SE},${crit}${SD},${cle},${SA},">="&${Y0})),` +
+        `IF(COUNTIFS(${crit}${SD},${cle},${SA},">="&${Y0})=0,"",COUNTIFS(${crit}${SD},${cle},${SA},">="&${Y0}))),"")`;
+      const l30 = sur30(l);
+      return [f, l30.length ? arrondi1(moyenneDe(l30)) : ""];
+    };
+    const R0 = 7;
+    donnees.forEach((x, i) => {
+      const r = R0 + i;
+      const cJ = `$A${r}`;
+      ligneValeurs(fe, r, [x.nom]);
+      fe.getCell(r, 1).font = { name: "Arial", size: 10, bold: true };
+      const tousJ = [].concat(...items.map((it) => x.scores[it.id]));
+      formule(fe.getCell(r, 2), `COUNTIFS(${SB},${cJ},${SA},">="&${Y0})`, surAnnee(tousJ).length);
+      const derniere = tousJ.reduce((m, [d]) => (d > m ? d : m), "");
+      formule(fe.getCell(r, 3), `IF(COUNTIFS(${SB},${cJ})=0,"",_xlfn.MAXIFS(${SA},${SB},${cJ}))`, derniere ? dateExcel(derniere) : "", "dd/mm/yyyy");
+      const depuis7 = dateEnTexte(ajouterJours(new Date(), -6));
+      formule(fe.getCell(r, 4), `COUNTIFS(${SB},${cJ},${SA},">="&(${REF}-6))`, tousJ.filter(([d]) => d >= depuis7).length);
+      items.forEach((it, k) => {
+        const col = lettreCol(C0 + k);
+        const [f, res] = choix(`${SB},${cJ},`, `${col}$4`, x.scores[it.id]);
+        formule(fe.getCell(r, C0 + k), f, res, "0.0;-0.0;0");
+      });
+      for (let c = 1; c < C0 + items.length; c++) { const cc = fe.getCell(r, c); cc.border = bordXL; if (c > 1) cc.alignment = { horizontal: "center" }; }
+    });
+    const R1 = R0 + donnees.length - 1, RG = R1 + 1;
+    ligneValeurs(fe, RG, ["Groupe"]);
+    items.forEach((it, k) => {
+      const col = lettreCol(C0 + k);
+      const [f, res] = choix("", `${col}$4`, [].concat(...donnees.map((x) => x.scores[it.id])));
+      formule(fe.getCell(RG, C0 + k), f, res, "0.0;-0.0;0");
+    });
+    for (let c = 1; c < C0 + items.length; c++) {
+      const cc = fe.getCell(RG, c);
+      cc.font = { name: "Arial", size: 10, bold: true, color: { argb: XL.blanc } }; cc.fill = fondXL(XL.marine); cc.border = bordXL;
+      if (c > 1) cc.alignment = { horizontal: "center" };
+    }
+    items.forEach((it, k) => degradeColonne(fe, lettreCol(C0 + k), R0, R1));
+    fe.addConditionalFormatting({ ref: `D${R0}:D${Math.max(R0, R1)}`, rules: [{ type: "cellIs", operator: "equal", formulae: ["0"], priority: 2,
+      style: { fill: { type: "pattern", pattern: "solid", bgColor: { argb: XL.orangeClair } }, font: { color: { argb: XL.orangeTexte }, bold: true } } }] });
+    fe.getColumn(1).width = 16; fe.getColumn(2).width = 9; fe.getColumn(3).width = 11; fe.getColumn(4).width = 10;
+    items.forEach((it, k) => { fe.getColumn(C0 + k).width = 10; });
+    figer(fe, 1, 6);
 
-    // ---------- 3. Classements : 30 derniers jours ET année ----------
-    const fc = classeur.addWorksheet("Classements");
+    // ---------- Fiche joueur : sélecteur du joueur en B3 ----------
+    const j0 = donnees.length ? donnees[0] : null;
+    titreFeuille(ff, "Fiche joueur", "Choisir le joueur en B3. Moyennes, record et écart à la moyenne du groupe (30 derniers jours), puis le Pelz semaine par semaine.");
+    ff.getCell("A3").value = "Joueur :";
+    ff.getCell("A3").font = { name: "Arial", size: 10, bold: true };
+    const fb3 = ff.getCell("B3");
+    fb3.value = j0 ? j0.nom : "";
+    fb3.font = { name: "Arial", size: 13, bold: true };
+    fb3.fill = fondXL("FFFFF2CC");
+    fb3.border = bordXL;
+    fb3.dataValidation = { type: "list", allowBlank: false, formulae: [LISTE_JOUEURS] };
+    const nbJ0 = j0 ? items.reduce((t, it) => t + j0.scores[it.id].length, 0) : 0;
+    const derJ0 = j0 ? items.reduce((m, it) => { const l = j0.scores[it.id]; return l.length && l[l.length - 1][0] > m ? l[l.length - 1][0] : m; }, "") : "";
+    ff.getCell("D3").value = "Scores :"; ff.getCell("G3").value = "Dernière saisie :";
+    ff.mergeCells("G3:H3");
+    formule(ff.getCell("E3"), `COUNTIFS(${SB},$B$3)`, nbJ0);
+    formule(ff.getCell("I3"), `IF(COUNTIFS(${SB},$B$3)=0,"",_xlfn.MAXIFS(${SA},${SB},$B$3))`, derJ0 ? dateExcel(derJ0) : "", "dd/mm/yyyy");
+    ["D3", "G3"].forEach((a) => { ff.getCell(a).font = { name: "Arial", size: 10, color: { argb: XL.grisTexte } }; ff.getCell(a).alignment = { horizontal: "right" }; });
+    ["E3", "I3"].forEach((a) => { ff.getCell(a).font = { name: "Arial", size: 10, bold: true }; ff.getCell(a).alignment = { horizontal: "left" }; });
+    ff.mergeCells("I3:J3");
+    ligneEnTete(ff, 5, ["Catégorie", "Exercice", "Sur", "Scores (année)", "Moy. 30 j", "Moy. année", "Record (année)", "Date du record", "Dernier score", "Date", "Moy. groupe 30 j", "Écart au groupe"]);
+    ff.getRow(5).height = 30;
+    items.forEach((it, i) => {
+      const r = 6 + i, K = `$B${r}`, P = "$B$3";
+      ligneValeurs(ff, r, [categorieRapport(it.id), it.titre, it.max]);
+      ff.getCell(r, 2).font = { name: "Arial", size: 10, bold: true };
+      ff.getCell(r, 2).alignment = { horizontal: "left", vertical: "middle" };
+      const l = j0 ? j0.scores[it.id] : [], lA = surAnnee(l), l30 = sur30(l);
+      const g30 = sur30([].concat(...donnees.map((x) => x.scores[it.id])));
+      const rec = maxDe(lA);
+      const dRec = rec === null ? "" : lA.filter(([, v]) => v === rec).map(([d]) => d).sort()[0];
+      const dernier = l.length ? l[l.length - 1][0] : "";
+      const moyJour = dernier ? moyenneDe(l.filter(([d]) => d === dernier)) : null;
+      const m30 = l30.length ? moyenneDe(l30) : null, mg = g30.length ? moyenneDe(g30) : null;
+      formule(ff.getCell(r, 4), `COUNTIFS(${SB},${P},${SD},${K},${SA},">="&${Y0})`, lA.length);
+      formule(ff.getCell(r, 5), `IFERROR(AVERAGEIFS(${SE},${SB},${P},${SD},${K},${SA},">="&(${REF}-30)),"")`, ar(m30), "0.0");
+      formule(ff.getCell(r, 6), `IFERROR(AVERAGEIFS(${SE},${SB},${P},${SD},${K},${SA},">="&${Y0}),"")`, lA.length ? arrondi1(moyenneDe(lA)) : "", "0.0");
+      formule(ff.getCell(r, 7), `IF(D${r}=0,"",_xlfn.MAXIFS(${SE},${SB},${P},${SD},${K},${SA},">="&${Y0}))`, rec === null ? "" : rec, "0.0;-0.0;0");
+      formule(ff.getCell(r, 8), `IF(G${r}="","",_xlfn.MINIFS(${SA},${SB},${P},${SD},${K},${SE},G${r},${SA},">="&${Y0}))`, dRec ? dateExcel(dRec) : "", "dd/mm/yyyy");
+      formule(ff.getCell(r, 10), `IF(COUNTIFS(${SB},${P},${SD},${K})=0,"",_xlfn.MAXIFS(${SA},${SB},${P},${SD},${K}))`, dernier ? dateExcel(dernier) : "", "dd/mm/yyyy");
+      formule(ff.getCell(r, 9), `IF(J${r}="","",AVERAGEIFS(${SE},${SB},${P},${SD},${K},${SA},J${r}))`, ar(moyJour), "0.0;-0.0;0");
+      formule(ff.getCell(r, 11), `IFERROR(AVERAGEIFS(${SE},${SD},${K},${SA},">="&(${REF}-30)),"")`, ar(mg), "0.0");
+      formule(ff.getCell(r, 12), `IF(OR(E${r}="",K${r}=""),"",E${r}-K${r})`, m30 !== null && mg !== null ? arrondi1(m30 - mg) : "", "+0.0;-0.0;0.0");
+      for (let c = 4; c <= 12; c++) { const cc = ff.getCell(r, c); cc.border = bordXL; cc.alignment = { horizontal: "center" }; cc.font = { name: "Arial", size: 10 }; }
+    });
+    const F1 = 6 + items.length - 1;
+    ff.addConditionalFormatting({ ref: `L6:L${F1}`, rules: [
+      { type: "cellIs", operator: "greaterThanOrEqual", formulae: ["0"], priority: 1, style: { fill: { type: "pattern", pattern: "solid", bgColor: { argb: XL.bleuClair } }, font: { color: { argb: XL.bleuFonce }, bold: true } } },
+      { type: "cellIs", operator: "lessThan", formulae: ["0"], priority: 2, style: { fill: { type: "pattern", pattern: "solid", bgColor: { argb: XL.orangeClair } }, font: { color: { argb: "FFB4410C" }, bold: true } } },
+    ] });
+    ff.addConditionalFormatting({ ref: `A6:L${F1}`, rules: [{ type: "expression", formulae: [`COUNTIFS(${SB},$B$3,${SD},$B6)=0`], priority: 3, style: { font: { color: { argb: "FFA6AEB6" } } } }] });
+    // Pelz semaine par semaine (dernier jour joué de chaque situation dans la semaine)
+    let premier = lundi;
+    donnees.forEach((x) => PELZ_SITUATIONS.forEach((s) => { const l = x.scores["pelz-" + s.id]; if (l.length && l[0][0] < premier) premier = l[0][0]; }));
+    const semaines = [];
+    for (let s = lundiDe(texteEnDate(premier)); s <= lundi; s = dateEnTexte(ajouterJours(texteEnDate(s), 7))) semaines.push(s);
+    const PZ = F1 + 3;
+    sousTitreBloc(ff, PZ, "Test de Pelz semaine par semaine");
+    // Tableau en colonnes B (semaine) à L (total), sous le tableau des exos
+    ligneEnTete(ff, PZ + 1, ["Semaine du", ...PELZ_SITUATIONS.map((s) => s.id.toUpperCase()), "Faites", `Total /${PELZ_MAX_TOTAL}`], 2);
+    const nS = PELZ_SITUATIONS.length;
+    [...semaines].reverse().forEach((sem, k) => {
+      const r = PZ + 2 + k;
+      const p = j0 ? pelzDeLaSemaine(j0.scores, sem) : { pts: {}, n: 0, total: null };
+      ligneValeurs(ff, r, [dateExcel(sem)], 2);
+      PELZ_SITUATIONS.forEach((s, q) => {
+        const K = `"${itemDe("pelz-" + s.id).titre}"`;
+        const maxD = `_xlfn.MAXIFS(${SA},${SB},$B$3,${SD},${K},${SA},">="&$B${r},${SA},"<"&($B${r}+7))`;
+        formule(ff.getCell(r, 3 + q), `IFERROR(AVERAGEIFS(${SE},${SB},$B$3,${SD},${K},${SA},${maxD}),"")`, p.pts[s.id] !== undefined ? p.pts[s.id] : "", "0;-0;0");
+      });
+      const cA = lettreCol(3), cZ = lettreCol(2 + nS);
+      formule(ff.getCell(r, 3 + nS), `COUNT(${cA}${r}:${cZ}${r})&"/${nS}"`, `${p.n}/${nS}`);
+      formule(ff.getCell(r, 4 + nS), `IF(COUNT(${cA}${r}:${cZ}${r})=${nS},SUM(${cA}${r}:${cZ}${r}),"")`, p.total === null ? "" : p.total);
+      for (let c = 2; c <= 4 + nS; c++) { const cc = ff.getCell(r, c); cc.border = bordXL; cc.alignment = { horizontal: "center" }; cc.font = { name: "Arial", size: 10 }; }
+      ff.getCell(r, 2).numFmt = "dd/mm/yyyy";
+    });
+    const PZ1 = PZ + 1 + semaines.length;
+    if (semaines.length) {
+      ff.addConditionalFormatting({ ref: `C${PZ + 2}:${lettreCol(2 + nS)}${PZ1}`, rules: [{ type: "expression", formulae: [`C${PZ + 2}<>""`], priority: 4,
+        style: { fill: { type: "pattern", pattern: "solid", bgColor: { argb: XL.bleuClair } } } }] });
+      ff.addConditionalFormatting({ ref: `${lettreCol(4 + nS)}${PZ + 2}:${lettreCol(4 + nS)}${PZ1}`, rules: [{ type: "expression", formulae: [`${lettreCol(4 + nS)}${PZ + 2}<>""`], priority: 5,
+        style: { fill: { type: "pattern", pattern: "solid", bgColor: { argb: XL.bleuFonce } }, font: { color: { argb: XL.blanc }, bold: true } } }] });
+    }
+    ff.getCell(PZ1 + 1, 2).value = "Si une situation est faite plusieurs fois dans la semaine, c'est le dernier jour joué qui compte.";
+    ff.getCell(PZ1 + 1, 2).font = { name: "Arial", size: 8, italic: true, color: { argb: XL.grisTexte } };
+    [12, 44, 8, 10, 9, 9, 11, 12, 9, 12, 11, 11].forEach((w, k) => { ff.getColumn(k + 1).width = w; });
+    figer(ff, 0, 5);
+
+    // ---------- Classements : 30 derniers jours ET année ----------
     titreFeuille(fc, "Classements", `30 derniers jours : 2 scores minimum. Année ${annee} : 3 scores minimum (comme sur le site). Pelz complet : 1 suffit. Record = meilleur score isolé de l'année.`);
     ligneEnTete(fc, 4, ["Catégorie", "Exo", "Sur", "Moy. groupe 30 j", "🥇 30 jours", "🥈 30 jours", "🥉 30 jours", "Moy. groupe année", "🥇 année", "🥈 année", "🥉 année", "⭐ Record de l'année"]);
     items.forEach((it, i) => {
-      const parJ30 = donnees.map((x) => ({ prenom: x.j.prenom, l: sur30(x.scores[it.id]) }));
-      const parJA = donnees.map((x) => ({ prenom: x.j.prenom, l: surAnnee(x.scores[it.id]) }));
+      const parJ30 = donnees.map((x) => ({ prenom: x.nom, l: sur30(x.scores[it.id]) }));
+      const parJA = donnees.map((x) => ({ prenom: x.nom, l: surAnnee(x.scores[it.id]) }));
       const tout30 = [].concat(...parJ30.map((p) => p.l)), toutA = [].concat(...parJA.map((p) => p.l));
       const min30 = it.id === "pelz-total" ? 1 : 2, minA = it.id === "pelz-total" ? 1 : 3;
       const p30 = podium(parJ30, min30), pA = podium(parJA, minA);
@@ -628,19 +838,14 @@ async function telechargerRapport() {
     fc.getRow(4).height = 32;
     figer(fc, 2, 4);
 
-    // ---------- 4. Pelz : total de chaque semaine ----------
-    const fp = classeur.addWorksheet("Pelz");
+    // ---------- Pelz : total de chaque semaine ----------
     titreFeuille(fp, `Pelz semaine par semaine (total /${PELZ_MAX_TOTAL})`, `Total affiché quand les ${PELZ_SITUATIONS.length} situations sont faites dans la même semaine (dernier score de chaque situation) ; sinon, nombre de situations faites.`);
-    let premier = lundi;
-    donnees.forEach((x) => PELZ_SITUATIONS.forEach((s) => { const l = x.scores["pelz-" + s.id]; if (l.length && l[0][0] < premier) premier = l[0][0]; }));
-    const semaines = [];
-    for (let s = lundiDe(texteEnDate(premier)); s <= lundi; s = dateEnTexte(ajouterJours(texteEnDate(s), 7))) semaines.push(s);
     ligneEnTete(fp, 4, ["Joueur", ...semaines.map((s) => "Sem. du " + dateRapport(s).slice(0, 5)), "Meilleur total"]);
     donnees.forEach((x, i) => {
       const r = 5 + i;
       const pzs = semaines.map((s) => pelzDeLaSemaine(x.scores, s));
       const totaux = pzs.map((p) => p.total).filter((t) => t !== null);
-      ligneValeurs(fp, r, [x.j.prenom, ...pzs.map((p) => (p.total !== null ? p.total : p.n ? `${p.n}/${PELZ_SITUATIONS.length}` : "")), totaux.length ? Math.max(...totaux) : ""]);
+      ligneValeurs(fp, r, [x.nom, ...pzs.map((p) => (p.total !== null ? p.total : p.n ? `${p.n}/${PELZ_SITUATIONS.length}` : "")), totaux.length ? Math.max(...totaux) : ""]);
       fp.getCell(r, 1).font = { name: "Arial", size: 10, bold: true };
       pzs.forEach((p, k) => {
         const c = fp.getCell(r, 2 + k);
@@ -654,95 +859,83 @@ async function telechargerRapport() {
     fp.getRow(4).height = 30;
     figer(fp, 1, 4);
 
-    // ---------- 5. Une page par joueur ----------
-    const moyGroupe30 = {};
-    items.forEach((it) => { const l = [].concat(...donnees.map((x) => sur30(x.scores[it.id]))); moyGroupe30[it.id] = l.length ? moyenneDe(l) : null; });
-    donnees.forEach((x) => {
-      const j = x.j;
-      const fj = classeur.addWorksheet(nomDeFeuille(j.prenom, pris));
-      const nbScores = items.reduce((t, it) => t + x.scores[it.id].length, 0);
-      titreFeuille(fj, `${j.prenom}${j.source === "classeur" ? " (historique du classeur)" : ""}`,
-        `Rapport du ${dateRapport(aujourdhui)} · mis à jour le ${dateRapport(j.maj)} · ${nbScores} scores${x.complet ? "" : " · seulement les 30 derniers scores par exo (la sauvegarde complète arrivera quand le joueur ouvrira le site)"}`);
-      ligneEnTete(fj, 4, ["Catégorie", "Exo", "Sur", `Scores ${annee}`, "Moy. 30 j", `Moy. ${annee}`, "Moy. groupe 30 j", "Écart au groupe", "Record", "Date du record", "Dernier score", "Date"]);
-      items.forEach((it, i) => {
-        const l = x.scores[it.id], lA = surAnnee(l), l30 = sur30(l);
-        const m30 = l30.length ? moyenneDe(l30) : null, g = moyGroupe30[it.id];
-        let rec = null;
-        lA.forEach(([d, v]) => { if (!rec || v > rec.v) rec = { d, v }; });
-        const dernier = l[l.length - 1];
-        const ecart = m30 !== null && g !== null ? arrondi1(m30 - g) : "";
-        const r = 5 + i;
-        ligneValeurs(fj, r, [categorieRapport(it.id), it.titre, it.unite, lA.length || "", m30 !== null ? arrondi1(m30) : "", lA.length ? arrondi1(moyenneDe(lA)) : "",
-          g !== null ? arrondi1(g) : "", ecart, rec ? rec.v : "", rec ? dateExcel(rec.d) : "", dernier ? dernier[1] : "", dernier ? dateExcel(dernier[0]) : ""]);
-        if (!l.length) fj.getRow(r).eachCell((c) => { c.font = { name: "Arial", size: 10, color: { argb: "FFA6AEB6" } }; });
-        else fj.getCell(r, 2).font = { name: "Arial", size: 10, bold: true };
-        if (ecart !== "") {
-          const c = fj.getCell(r, 8);
-          c.numFmt = '+0.0;-0.0;0.0';
-          c.font = { name: "Arial", size: 10, bold: true, color: { argb: ecart >= 0 ? XL.bleuFonce : "FFB4410C" } };
-          c.fill = fondXL(ecart >= 0 ? XL.bleuClair : XL.orangeClair);
-        }
-      });
-      fj.getRow(4).height = 30;
-      let r = 5 + items.length + 2;
-      // Pelz semaine par semaine
-      const sems = semaines.filter((s) => pelzDeLaSemaine(x.scores, s).n);
-      if (sems.length) {
-        sousTitreBloc(fj, r, "Test de Pelz semaine par semaine");
-        ligneEnTete(fj, r + 1, ["Semaine du", ...PELZ_SITUATIONS.map((s) => s.id.toUpperCase()), "Faites", `Total /${PELZ_MAX_TOTAL}`]);
-        sems.forEach((s, k) => {
-          const p = pelzDeLaSemaine(x.scores, s);
-          ligneValeurs(fj, r + 2 + k, [dateExcel(s), ...PELZ_SITUATIONS.map((q) => (p.pts[q.id] !== undefined ? p.pts[q.id] : "")), `${p.n}/${PELZ_SITUATIONS.length}`, p.total]);
-          if (p.total !== null) { const c = fj.getCell(r + 2 + k, 3 + PELZ_SITUATIONS.length); c.fill = fondXL(XL.bleuClair); c.font = { name: "Arial", size: 10, bold: true }; }
-        });
-        r += sems.length + 4;
-      }
-      // Réussite par distance (exos interactifs, année en cours)
-      const dist = Object.entries(j.dist || {}).filter(([exo]) => EXOS_POINTS[exo]);
-      if (dist.length) {
-        sousTitreBloc(fj, r, `Réussite par distance ${annee} (exos interactifs)`);
-        ligneEnTete(fj, r + 1, ["Exo", "Distance", "Réussis", "Tentés", "%"]);
-        r += 2;
-        dist.forEach(([exo, parD]) => {
-          const config = EXOS_POINTS[exo];
-          Object.entries(parD).sort((a, b) => Number(a[0]) - Number(b[0])).forEach(([d, [ok, tentes]]) => {
-            ligneValeurs(fj, r, [config.nom, config.libelle ? config.libelle(Number(d)) : d, ok, tentes, tentes ? ok / tentes : ""]);
-            fj.getCell(r, 5).numFmt = "0%";
-            r++;
-          });
-        });
-        r += 2;
-      }
-      // Technique : ressentis écrits par le joueur (consignes du coach)
-      const consignes = groupeDonnees.consignes[j.uid];
-      if (consignes && consignes.ressentis.length) {
-        sousTitreBloc(fj, r, "Technique : ressentis");
-        ligneEnTete(fj, r + 1, ["Date", "Exo", "Ressenti"]);
-        consignes.ressentis.forEach((x2, k) => {
-          ligneValeurs(fj, r + 2 + k, [dateExcel(x2.d), (ficheDe(x2.id) || { titre: x2.id }).titre, x2.texte]);
-          fj.getCell(r + 2 + k, 3).alignment = { wrapText: true, vertical: "top" };
-        });
-      }
-      [12, 34, 8, 10, 10, 10, 12, 11, 9, 12, 10, 12].forEach((w, k) => { fj.getColumn(k + 1).width = w; });
-      figer(fj, 2, 4);
+    // ---------- Réussite par distance : groupe (formules) + détail par joueur ----------
+    titreFeuille(fdi, `Réussite par distance ${annee}`, "Exos interactifs du site. À gauche le groupe, à droite le détail par joueur (filtres).");
+    const lignesDist = [];
+    donnees.forEach((x) => Object.entries(x.j.dist || {}).filter(([exo]) => EXOS_POINTS[exo]).forEach(([exo, parD]) => {
+      const config = EXOS_POINTS[exo];
+      Object.entries(parD).forEach(([d, [ok, tentes]]) => lignesDist.push({ joueur: x.nom, exo: config.nom, d: Number(d), dist: config.libelle ? config.libelle(Number(d)) : d, ok, tentes }));
+    }));
+    lignesDist.sort((a, b) => a.exo.localeCompare(b.exo, "fr") || a.d - b.d || a.joueur.localeCompare(b.joueur, "fr"));
+    ligneEnTete(fdi, 4, ["Joueur", "Exo", "Distance", "Réussis", "Tentés", "%"], 9);
+    lignesDist.forEach((x, i) => {
+      const r = 5 + i;
+      ligneValeurs(fdi, r, [x.joueur, x.exo, x.dist, x.ok, x.tentes], 9);
+      formule(fdi.getCell(r, 14), `IF(M${r}=0,"",L${r}/M${r})`, x.tentes ? x.ok / x.tentes : "", "0%");
+      fdi.getCell(r, 14).border = bordXL; fdi.getCell(r, 14).alignment = { horizontal: "center" };
     });
+    const DL = 4 + Math.max(1, lignesDist.length);
+    ligneEnTete(fdi, 4, ["Exo", "Distance", "Joueurs", "Réussis", "Tentés", "% groupe"]);
+    const uniques = [];
+    lignesDist.forEach((x) => { if (!uniques.some((u) => u.exo === x.exo && u.dist === x.dist)) uniques.push(x); });
+    uniques.forEach((u, i) => {
+      const r = 5 + i;
+      const mm = lignesDist.filter((x) => x.exo === u.exo && x.dist === u.dist);
+      const ok = mm.reduce((t, x) => t + x.ok, 0), te = mm.reduce((t, x) => t + x.tentes, 0);
+      ligneValeurs(fdi, r, [u.exo, u.dist]);
+      fdi.getCell(r, 1).font = { name: "Arial", size: 10, bold: true };
+      const crit = `$J$5:$J$${DL},A${r},$K$5:$K$${DL},B${r}`;
+      formule(fdi.getCell(r, 3), `COUNTIFS(${crit})`, mm.length);
+      formule(fdi.getCell(r, 4), `SUMIFS($L$5:$L$${DL},${crit})`, ok);
+      formule(fdi.getCell(r, 5), `SUMIFS($M$5:$M$${DL},${crit})`, te);
+      formule(fdi.getCell(r, 6), `IF(E${r}=0,"",D${r}/E${r})`, te ? ok / te : "", "0%");
+      for (let c = 3; c <= 6; c++) { const cc = fdi.getCell(r, c); cc.border = bordXL; cc.alignment = { horizontal: "center" }; }
+    });
+    if (uniques.length) fdi.addConditionalFormatting({ ref: `F5:F${4 + uniques.length}`, rules: [{ type: "colorScale", priority: 1,
+      cfvo: [{ type: "num", value: 0.3 }, { type: "num", value: 0.9 }], color: [{ argb: "FFFBE0CC" }, { argb: "FF8DB3D6" }] }] });
+    if (lignesDist.length) fdi.addConditionalFormatting({ ref: `N5:N${DL}`, rules: [{ type: "colorScale", priority: 2,
+      cfvo: [{ type: "num", value: 0.3 }, { type: "num", value: 0.9 }], color: [{ argb: "FFFBE0CC" }, { argb: "FF8DB3D6" }] }] });
+    if (lignesDist.length) fdi.autoFilter = { from: { row: 4, column: 9 }, to: { row: DL, column: 14 } };
+    [18, 12, 9, 9, 9, 10, 3, 3, 14, 18, 12, 9, 9, 8].forEach((w, k) => { fdi.getColumn(k + 1).width = w; });
+    figer(fdi, 0, 4);
 
-    // ---------- 6. Données : tous les scores, une ligne par score ----------
-    const fd = classeur.addWorksheet("Données");
-    titreFeuille(fd, "Toutes les données", "Une ligne par score. Filtres sur la ligne de titres.");
-    ligneEnTete(fd, 4, ["Date", "Joueur", "Catégorie", "Exercice", "Score", "Sur", "Origine"]);
-    const toutes = [];
-    donnees.forEach((x) => items.forEach((it) => x.scores[it.id].forEach(([d, v]) => toutes.push([d, x.j.prenom, categorieRapport(it.id), it.titre, v, it.unite, x.origine]))));
-    toutes.sort((a, b) => b[0].localeCompare(a[0]) || a[1].localeCompare(b[1], "fr"));
-    toutes.forEach((t, i) => {
-      const ligneD = fd.getRow(5 + i);
-      ligneD.values = [dateExcel(t[0]), ...t.slice(1)];
-      ligneD.getCell(1).numFmt = "dd/mm/yyyy";
-      ligneD.font = { name: "Arial", size: 10 };
+    // ---------- À vérifier : erreurs de saisie et manques ----------
+    titreFeuille(fv, "À vérifier", `Repéré automatiquement par le site. Les lignes concernées sont en orange dans l'onglet Saisie. Corrections : espace coachs > progrès du joueur > ✏️ Effacer / ➕ Ajouter un score.`);
+    ligneEnTete(fv, 4, ["Point", "Nombre", "Détail"]);
+    const parJoueur = (liste) => {
+      const g = {};
+      liste.forEach((s) => { (g[s.j] = g[s.j] || []).push(s); });
+      // 10 scores maximum par joueur (une case Excel ne peut pas contenir un texte trop long)
+      return Object.entries(g).map(([j, l]) => `${j} : ${l.slice(0, 10).map((s) => `${s.it.titre} du ${dateRapport(s.d)} (${texteNote(s.v)})`).join(", ")}${l.length > 10 ? ` … et ${l.length - 10} autres (voir l'onglet Saisie)` : ""}`).join("\n");
+    };
+    const avant = toutes.filter((s) => s.d < DEBUT_SAISON), futur = toutes.filter((s) => s.d > aujourdhui);
+    const impossibles = toutes.filter((s) => s.v > s.it.max || (!s.it.id.startsWith("tc-") && !Number.isInteger(s.v)));
+    const doublons = toutes.filter((s, i) => vus[`${s.j}|${s.it.id}|${s.d}|${s.v}`] > 1 && toutes.findIndex((t) => t.j === s.j && t.it.id === s.it.id && t.d === s.d && t.v === s.v) === i);
+    const partiels = donnees.filter((x) => !x.complet).map((x) => x.nom);
+    const sansScore = donnees.filter((x) => !items.some((it) => x.scores[it.id].length)).map((x) => x.nom);
+    const importes = donnees.filter((x) => x.j.source === "classeur").map((x) => x.nom);
+    const points = [
+      [`Dates avant le début de saison (${dateRapport(DEBUT_SAISON)})`, avant.length, parJoueur(avant) || "Aucune"],
+      ["Dates dans le futur", futur.length, parJoueur(futur) || "Aucune"],
+      ["Scores impossibles (au-dessus du maximum ou à virgule)", impossibles.length, parJoueur(impossibles) || "Aucun"],
+      ["Doublons possibles (même exo, même jour, même score)", doublons.length, parJoueur(doublons) || "Aucun"],
+      ["Historique incomplet (30 derniers scores par exo)", partiels.length, partiels.length ? `${partiels.join(", ")} : la sauvegarde complète arrivera quand le joueur ouvrira le site.` : "Aucun"],
+      ["Joueurs sans aucun score", sansScore.length, sansScore.join(", ") || "Aucun"],
+      ["Historique du classeur pas encore repris", importes.length, importes.length ? `${importes.join(", ")} : pas encore inscrits sur le site.` : "Aucun"],
+    ];
+    points.forEach((p, i) => {
+      const r = 5 + i;
+      ligneValeurs(fv, r, p);
+      fv.getCell(r, 1).font = { name: "Arial", size: 10, bold: true };
+      fv.getCell(r, 3).alignment = { wrapText: true, vertical: "top" };
+      fv.getCell(r, 1).alignment = { wrapText: true, vertical: "top" };
+      const cn = fv.getCell(r, 2);
+      cn.fill = fondXL(p[1] ? XL.orangeClair : XL.bleuClair);
+      cn.font = { name: "Arial", size: 11, bold: true, color: { argb: p[1] ? XL.orangeTexte : XL.bleuFonce } };
+      fv.getRow(r).height = Math.min(300, Math.max(30, 15 * (String(p[2]).split("\n").length + Math.floor(String(p[2]).length / 110))));
     });
-    [12, 16, 12, 34, 8, 8, 24].forEach((w, k) => { fd.getColumn(k + 1).width = w; });
-    fd.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4 + toutes.length, column: 7 } };
-    figer(fd, 0, 4);
+    [34, 10, 110].forEach((w, k) => { fv.getColumn(k + 1).width = w; });
+    figer(fv, 0, 4);
 
     // Téléchargement (sans fenêtre native)
     const buffer = await classeur.xlsx.writeBuffer();
