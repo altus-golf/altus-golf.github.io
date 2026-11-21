@@ -90,3 +90,8 @@
 - v62 : « Putts rentrés par distance » : le détail des anciens Trèfle en série est effacé aussi (téléphones + espace coachs).
 - v63 : Maxime et Franck (coachs) toujours dans la liste des prénoms de l'accueil, jamais dans le flemmard de la semaine (`PRENOMS_COACHS`, app.js).
 - v64 : changer de prénom avec le même compte Google = repartir de zéro (avertissement) ; l'historique du classeur repris redevient libre (cas de Maxime sur le profil de Kelii).
+
+## 21/11/2026 — v65 : rapport Excel lisible
+- 📊 Rapport Excel refait avec ExcelJS (couleurs, volets figés, vraies dates, impression en paysage), à la demande du coach : l'appli doit remplacer son classeur de suivi.
+- Onglets : Semaine, Équipe, Classements (30 derniers jours ET année), Pelz (total par semaine), une page par joueur, Données.
+- Testé en mode démo (Playwright, téléchargement + lecture du fichier) ; ExcelJS servi en local pendant le test.
