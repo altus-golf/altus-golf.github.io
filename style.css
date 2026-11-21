@@ -781,6 +781,30 @@ h1, h2, h3, .bloc-titre, .carte-titre, .pr-categorie-titre, .kpi strong, .resume
 .note-hooper.haute { background: var(--alerte-fond); color: var(--alerte-texte); }
 .ligne-attente td { color: var(--texte-doux); }
 
+/* ---------- 🗓️ Calendrier (calendrier.js, 21/11/2026) ---------- */
+.cal-mois { margin: 16px 0 6px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--texte-doux); }
+.cal-evenement { display: flex; flex-direction: column; gap: 3px; padding: 12px 14px; margin-bottom: 8px; border: 1px solid var(--bord); border-radius: 12px; background: var(--champ); }
+.cal-tete { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.cal-titre { font-family: var(--police-titres); font-size: 1rem; }
+.cal-note { font-size: 0.85rem; }
+.cal-bientot { font-size: 0.75rem; font-weight: 700; color: var(--corail-texte); }
+.pastille-type { display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem; font-weight: 700; color: var(--texte); }
+.pastille-type::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--couleur-type); flex: none; }
+.cal-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.cal-actions .bouton { min-height: 40px; }
+.cal-joueurs { border: 1px solid var(--bord); border-radius: 12px; padding: 8px 12px 10px; margin: 10px 0; display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.cal-joueurs legend { font-size: 0.85rem; color: var(--texte-doux); padding: 0 4px; }
+.cal-case { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; }
+.cal-case input { width: 20px; height: 20px; accent-color: var(--accent); }
+.prepa-saisie.cal-saisie { max-width: 640px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+
+/* ---------- 📐 Mesures tous les 3 mois (mesures.js, 21/11/2026) ---------- */
+.mesures-grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; margin: 10px 0 12px; }
+.mesure-case { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px solid var(--bord); border-radius: 12px; background: var(--champ); }
+.mesure-case span { font-size: 0.75rem; color: var(--texte-doux); }
+.mesure-case strong { font-family: var(--police-titres); font-size: 1.1rem; }
+.bloc-mesures h3 { margin: 16px 0 6px; font-size: 0.95rem; }
+
 /* ---------- 🏋️ Prépa physique (prepa.js, 21/11/2026) ---------- */
 .prepa-champ { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--texte-doux); margin: 8px 0; }
 .prepa-champ input, .prepa-menu, .prepa-select { font: inherit; font-size: 1rem; padding: 9px 10px; border: 1px solid var(--bord); border-radius: 8px; background: var(--carte); color: var(--texte); min-width: 0; }
