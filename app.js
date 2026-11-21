@@ -862,6 +862,8 @@ function afficherVue() {
     ? ONGLETS.map(([id, nom]) => `<button type="button" class="onglet ${vue === id ? "actif" : ""}" data-a="vue" data-vue="${id}" aria-pressed="${vue === id}">${nom}</button>`).join("")
     : enCoach ? (coachConnecte() ? ongletsCoach() : `<button type="button" class="onglet" data-a="vue" data-vue="seance">← Retour</button>`) : "";   // coach.js
   document.getElementById("onglets").classList.toggle("onglets-coach", enCoach && coachConnecte());
+  // Version ordinateur (style.css, écrans ≥ 1100 px) : la mise en page dépend de la vue affichée
+  document.body.dataset.vue = enCoach ? (coachConnecte() ? ongletCoach : "coach") : m ? vue : "accueil";
   // Thème perso (demandé par la joueuse) : seulement sur SON téléphone, d'après son prénom
   const theme = m ? THEMES_JOUEURS[slugPrenom(m.prenom)] : null;
   document.body.classList.toggle("theme-rose-renard", theme === "rose-renard");
