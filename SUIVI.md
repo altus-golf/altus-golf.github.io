@@ -157,3 +157,4 @@
 - Le logo officiel fourni par le coach (bouclier + « ALTUS ») remplace le logo redessiné : en-tête du téléphone, barre de gauche de l'ordinateur (version à lettres blanches en mode sombre), avec « PERFORMANCE » en petites capitales dessous.
 - Le bouclier seul sert d'icône de l'onglet du navigateur et d'icône de l'écran d'accueil (iPhone et Android, refaites).
 - Testé en mode démo : téléphone et ordinateur, clair et sombre, thèmes de Clara et Stan.
+- v76 (21/11/2026) : « Mes 1RM » = Squat, RDL, Hip thrust, Biceps, Rowing, Bûcheron, Développé couché (Bûcheron ajouté aux exos de prépa).
