@@ -421,7 +421,7 @@ function chargerExcelJS() {
 /* --- Petits outils de calcul --- */
 const moyenneDe = (l) => (l.length ? l.reduce((t, [, v]) => t + v, 0) / l.length : null);
 // « 2026-11-20 » -> vraie date Excel (sinon Excel ne sait ni trier ni filtrer)
-function dateExcel(d) {
+function versDateExcel(d) {
   const [a, m, j] = d.split("-").map(Number);
   return new Date(Date.UTC(a, m - 1, j));
 }
@@ -446,7 +446,7 @@ function scoresDuRapport(joueurs, sauvegardes) {
 }
 
 // Pelz d'un joueur pour la semaine du lundi donné : dernier score de chaque situation
-function pelzDeLaSemaine(scores, lundi) {
+function pelzSemaineRapport(scores, lundi) {
   const fin = dateEnTexte(ajouterJours(texteEnDate(lundi), 6));
   const pts = {};
   PELZ_SITUATIONS.forEach((s) => {
@@ -592,7 +592,7 @@ async function telechargerRapport() {
     ligneEnTete(fsa, 4, ["Date", "Joueur", "Catégorie", "Exercice", "Score", "Sur", "Origine", "À vérifier"]);
     toutes.forEach((s, i) => {
       const r = fsa.getRow(5 + i);
-      r.values = [dateExcel(s.d), s.j, categorieRapport(s.it.id), s.it.titre, s.v, s.it.max, s.origine, s.alerte];
+      r.values = [versDateExcel(s.d), s.j, categorieRapport(s.it.id), s.it.titre, s.v, s.it.max, s.origine, s.alerte];
       r.font = { name: "Arial", size: 10 };
       r.getCell(1).numFmt = "dd/mm/yyyy";
       if (s.alerte) {
@@ -614,7 +614,7 @@ async function telechargerRapport() {
     ligneEnTete(fpa, 4, ["Joueurs"], 6);
     donnees.forEach((x, i) => ligneValeurs(fpa, 5 + i, [x.nom], 6));
     ligneEnTete(fpa, 4, ["Date du rapport", "Début de l'année", "Début de saison"], 8);
-    ligneValeurs(fpa, 5, [dateExcel(aujourdhui), dateExcel(debutAnnee), dateExcel(DEBUT_SAISON)], 8);
+    ligneValeurs(fpa, 5, [versDateExcel(aujourdhui), versDateExcel(debutAnnee), versDateExcel(DEBUT_SAISON)], 8);
     [12, 36, 22, 7, 3, 16, 3, 15, 15, 15].forEach((w, k) => { fpa.getColumn(k + 1).width = w; });
     figer(fpa, 0, 4);
     const REF = "Paramètres!$H$5", Y0 = "Paramètres!$I$5";
@@ -628,7 +628,7 @@ async function telechargerRapport() {
       const semaine = [];
       items.forEach((it) => x.scores[it.id].forEach(([d]) => { if (d >= lundi && d <= dimanche) semaine.push(it); }));
       const fiches = new Set(semaine.filter((it) => it.id !== "pelz-total").map((it) => it.fiche));
-      const pz = pelzDeLaSemaine(x.scores, lundi);
+      const pz = pelzSemaineRapport(x.scores, lundi);
       let derniere = "";
       items.forEach((it) => { const l = x.scores[it.id]; if (l.length && l[l.length - 1][0] > derniere) derniere = l[l.length - 1][0]; });
       const statut = x.j.source === "classeur" ? "Pas encore inscrit sur le site" : !semaine.length ? "Rien cette semaine" : pz.total !== null ? "Pelz complet" : "Actif";
@@ -637,7 +637,7 @@ async function telechargerRapport() {
     lignesSem.forEach((s, i) => {
       const r = 5 + i;
       ligneValeurs(fs, r, [s.x.nom, s.n, s.fiches, ...PELZ_SITUATIONS.map((p) => (s.pz.pts[p.id] !== undefined ? s.pz.pts[p.id] : "")),
-        `${s.pz.n}/${PELZ_SITUATIONS.length}`, s.pz.total, s.derniere ? dateExcel(s.derniere) : "", s.statut]);
+        `${s.pz.n}/${PELZ_SITUATIONS.length}`, s.pz.total, s.derniere ? versDateExcel(s.derniere) : "", s.statut]);
       fs.getCell(r, 1).font = { name: "Arial", size: 10, bold: true };
       PELZ_SITUATIONS.forEach((p, k) => { if (s.pz.pts[p.id] !== undefined) fs.getCell(r, 4 + k).fill = fondXL(XL.bleuClair); });
       const cs = fs.getCell(r, entSem.length);
@@ -700,7 +700,7 @@ async function telechargerRapport() {
       const tousJ = [].concat(...items.map((it) => x.scores[it.id]));
       formule(fe.getCell(r, 2), `COUNTIFS(${SB},${cJ},${SA},">="&${Y0})`, surAnnee(tousJ).length);
       const derniere = tousJ.reduce((m, [d]) => (d > m ? d : m), "");
-      formule(fe.getCell(r, 3), `IF(COUNTIFS(${SB},${cJ})=0,"",_xlfn.MAXIFS(${SA},${SB},${cJ}))`, derniere ? dateExcel(derniere) : "", "dd/mm/yyyy");
+      formule(fe.getCell(r, 3), `IF(COUNTIFS(${SB},${cJ})=0,"",_xlfn.MAXIFS(${SA},${SB},${cJ}))`, derniere ? versDateExcel(derniere) : "", "dd/mm/yyyy");
       const depuis7 = dateEnTexte(ajouterJours(new Date(), -6));
       formule(fe.getCell(r, 4), `COUNTIFS(${SB},${cJ},${SA},">="&(${REF}-6))`, tousJ.filter(([d]) => d >= depuis7).length);
       items.forEach((it, k) => {
@@ -745,7 +745,7 @@ async function telechargerRapport() {
     ff.getCell("D3").value = "Scores :"; ff.getCell("G3").value = "Dernière saisie :";
     ff.mergeCells("G3:H3");
     formule(ff.getCell("E3"), `COUNTIFS(${SB},$B$3)`, nbJ0);
-    formule(ff.getCell("I3"), `IF(COUNTIFS(${SB},$B$3)=0,"",_xlfn.MAXIFS(${SA},${SB},$B$3))`, derJ0 ? dateExcel(derJ0) : "", "dd/mm/yyyy");
+    formule(ff.getCell("I3"), `IF(COUNTIFS(${SB},$B$3)=0,"",_xlfn.MAXIFS(${SA},${SB},$B$3))`, derJ0 ? versDateExcel(derJ0) : "", "dd/mm/yyyy");
     ["D3", "G3"].forEach((a) => { ff.getCell(a).font = { name: "Arial", size: 10, color: { argb: XL.grisTexte } }; ff.getCell(a).alignment = { horizontal: "right" }; });
     ["E3", "I3"].forEach((a) => { ff.getCell(a).font = { name: "Arial", size: 10, bold: true }; ff.getCell(a).alignment = { horizontal: "left" }; });
     ff.mergeCells("I3:J3");
@@ -767,8 +767,8 @@ async function telechargerRapport() {
       formule(ff.getCell(r, 5), `IFERROR(AVERAGEIFS(${SE},${SB},${P},${SD},${K},${SA},">="&(${REF}-30)),"")`, ar(m30), "0.0");
       formule(ff.getCell(r, 6), `IFERROR(AVERAGEIFS(${SE},${SB},${P},${SD},${K},${SA},">="&${Y0}),"")`, lA.length ? arrondi1(moyenneDe(lA)) : "", "0.0");
       formule(ff.getCell(r, 7), `IF(D${r}=0,"",_xlfn.MAXIFS(${SE},${SB},${P},${SD},${K},${SA},">="&${Y0}))`, rec === null ? "" : rec, "0.0;-0.0;0");
-      formule(ff.getCell(r, 8), `IF(G${r}="","",_xlfn.MINIFS(${SA},${SB},${P},${SD},${K},${SE},G${r},${SA},">="&${Y0}))`, dRec ? dateExcel(dRec) : "", "dd/mm/yyyy");
-      formule(ff.getCell(r, 10), `IF(COUNTIFS(${SB},${P},${SD},${K})=0,"",_xlfn.MAXIFS(${SA},${SB},${P},${SD},${K}))`, dernier ? dateExcel(dernier) : "", "dd/mm/yyyy");
+      formule(ff.getCell(r, 8), `IF(G${r}="","",_xlfn.MINIFS(${SA},${SB},${P},${SD},${K},${SE},G${r},${SA},">="&${Y0}))`, dRec ? versDateExcel(dRec) : "", "dd/mm/yyyy");
+      formule(ff.getCell(r, 10), `IF(COUNTIFS(${SB},${P},${SD},${K})=0,"",_xlfn.MAXIFS(${SA},${SB},${P},${SD},${K}))`, dernier ? versDateExcel(dernier) : "", "dd/mm/yyyy");
       formule(ff.getCell(r, 9), `IF(J${r}="","",AVERAGEIFS(${SE},${SB},${P},${SD},${K},${SA},J${r}))`, ar(moyJour), "0.0;-0.0;0");
       formule(ff.getCell(r, 11), `IFERROR(AVERAGEIFS(${SE},${SD},${K},${SA},">="&(${REF}-30)),"")`, ar(mg), "0.0");
       formule(ff.getCell(r, 12), `IF(OR(E${r}="",K${r}=""),"",E${r}-K${r})`, m30 !== null && mg !== null ? arrondi1(m30 - mg) : "", "+0.0;-0.0;0.0");
@@ -792,8 +792,8 @@ async function telechargerRapport() {
     const nS = PELZ_SITUATIONS.length;
     [...semaines].reverse().forEach((sem, k) => {
       const r = PZ + 2 + k;
-      const p = j0 ? pelzDeLaSemaine(j0.scores, sem) : { pts: {}, n: 0, total: null };
-      ligneValeurs(ff, r, [dateExcel(sem)], 2);
+      const p = j0 ? pelzSemaineRapport(j0.scores, sem) : { pts: {}, n: 0, total: null };
+      ligneValeurs(ff, r, [versDateExcel(sem)], 2);
       PELZ_SITUATIONS.forEach((s, q) => {
         const K = `"${itemDe("pelz-" + s.id).titre}"`;
         const maxD = `_xlfn.MAXIFS(${SA},${SB},$B$3,${SD},${K},${SA},">="&$B${r},${SA},"<"&($B${r}+7))`;
@@ -843,7 +843,7 @@ async function telechargerRapport() {
     ligneEnTete(fp, 4, ["Joueur", ...semaines.map((s) => "Sem. du " + dateRapport(s).slice(0, 5)), "Meilleur total"]);
     donnees.forEach((x, i) => {
       const r = 5 + i;
-      const pzs = semaines.map((s) => pelzDeLaSemaine(x.scores, s));
+      const pzs = semaines.map((s) => pelzSemaineRapport(x.scores, s));
       const totaux = pzs.map((p) => p.total).filter((t) => t !== null);
       ligneValeurs(fp, r, [x.nom, ...pzs.map((p) => (p.total !== null ? p.total : p.n ? `${p.n}/${PELZ_SITUATIONS.length}` : "")), totaux.length ? Math.max(...totaux) : ""]);
       fp.getCell(r, 1).font = { name: "Arial", size: 10, bold: true };
