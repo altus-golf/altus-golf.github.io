@@ -13,7 +13,7 @@
    à taper (choix de l'utilisateur, 19/11/2026) :
      groupes/G                      { nom }  (ouvert par un coach à sa première connexion)
      groupes/G/bilans/<uid>         bilan d'un joueur, écrit par lui seul (voir calculerBilan, app.js)
-     groupes/G/reglages/defi        { fiches, fiche, lundi, message }  défis de la semaine (coachs ; « fiche » = le 1er, pour les anciennes versions)
+     groupes/G/reglages/defi        { fiches, fiche, lundi, message, planning }  défis de la semaine (coachs ; « fiche » = le 1er, pour les anciennes versions ; planning = semaines à venir)
      groupes/G/consignes/<uid>      { exos, message, faits }   exos donnés par un coach
    Un bilan par joueur (et pas un document par score) : ouvrir les
    classements ne lit qu'un document par joueur.
@@ -525,6 +525,19 @@ async function verifierCoach() {
   }
 }
 
+// Défis : changements = { lundi: { fiches, message } } (une ou plusieurs semaines, en UNE écriture).
+// On réécrit tout le document : planning + semaine en cours en clair (pour les téléphones restés sur une
+// ancienne version). Les semaines de plus de 10 semaines sont oubliées.
+async function ecrireDefiSemaines(actuel, changements) {
+  const planning = { ...((actuel && actuel.planning) || {}) };
+  // L'ancien format (sans planning) : la semaine qu'il contient entre dans le planning
+  if (actuel && actuel.lundi && !(actuel.lundi in planning)) planning[actuel.lundi] = { fiches: actuel.fiches, message: actuel.message };
+  Object.entries(changements || {}).forEach(([l, sem]) => { planning[l] = { fiches: sem.fiches.slice(0, MAX_DEFIS), message: (sem.message || "").slice(0, 200) }; });
+  const limite = dateEnTexte(ajouterJours(texteEnDate(lundiDe()), -70));
+  Object.keys(planning).forEach((l) => { if (l < limite) delete planning[l]; });
+  const cetteSemaine = planning[lundiDe()] || { fiches: [], message: "" };
+  return ecrireDefi({ fiches: cetteSemaine.fiches, lundi: lundiDe(), message: cetteSemaine.message, planning });
+}
 async function ecrireDefi(defi) {
   defi = { ...defi, fiche: defi.fiches[0] || "" };   // « fiche » : pour les téléphones encore sur l'ancienne version
   if (modeDemo()) { const db = baseDemo(); db.defi = defi; ecrireStockage("demo", db); return ""; }
@@ -640,12 +653,26 @@ function normaliserDist(dist) {
   return res;
 }
 
+// Défis : { fiches, lundi, message } = semaine en cours (lu aussi par les anciennes versions du site)
+// + planning { "AAAA-MM-JJ" (lundi) : { fiches, message } } = semaines planifiées à l'avance par les coachs
+// (22/11/2026). Une semaine présente dans planning passe avant le reste, même vide (défis retirés ou décalés).
+function normaliserSemaineDefi(x) {
+  if (!x || typeof x !== "object") return null;
+  return {
+    fiches: [...new Set((Array.isArray(x.fiches) ? x.fiches : []).filter(idFicheValide))].slice(0, MAX_DEFIS),
+    message: typeof x.message === "string" ? x.message.slice(0, 200) : "",
+  };
+}
 function normaliserDefi(d) {
-  if (!d || typeof d !== "object" || !jourValide(d.lundi)) return null;
+  if (!d || typeof d !== "object") return null;
+  const planning = {};
+  if (d.planning && typeof d.planning === "object") {
+    Object.entries(d.planning).forEach(([l, x]) => { const sem = normaliserSemaineDefi(x); if (jourValide(l) && sem) planning[l] = sem; });
+  }
   const liste = Array.isArray(d.fiches) ? d.fiches : [d.fiche];
-  const fiches = [...new Set(liste.filter(idFicheValide))].slice(0, MAX_DEFIS);
-  if (!fiches.length) return null;
-  return { fiches, lundi: d.lundi, message: typeof d.message === "string" ? d.message.slice(0, 200) : "" };
+  const actuelle = jourValide(d.lundi) ? normaliserSemaineDefi({ fiches: liste, message: d.message }) : null;
+  if (!actuelle && !Object.keys(planning).length) return null;
+  return { fiches: actuelle ? actuelle.fiches : [], lundi: jourValide(d.lundi) ? d.lundi : "", message: actuelle ? actuelle.message : "", planning };
 }
 const MAX_DEFIS = 40;   // pas de vraie limite : le coach peut mettre tous les exos (choix de l’utilisateur, 20/11/2026)
 

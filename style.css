@@ -804,6 +804,19 @@ h1, h2, h3, .bloc-titre, .carte-titre, .pr-categorie-titre, .kpi strong, .resume
 .mesure-case span { font-size: 0.75rem; color: var(--texte-doux); }
 .mesure-case strong { font-family: var(--police-titres); font-size: 1.1rem; }
 .bloc-mesures h3 { margin: 16px 0 6px; font-size: 0.95rem; }
+/* Bilan morphologique et mobilité (mesures.js, 22/11/2026) */
+.bloc-mesures h4 { margin: 14px 0 4px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--texte-doux); }
+.bilan-mobilite { margin-top: 4px; }
+.tableau-mobilite { max-width: 440px; }
+.tableau-mobilite th[scope="row"] { text-align: left; font-weight: 500; text-transform: none; letter-spacing: 0; font-size: 0.9rem; white-space: normal; }
+.tableau-mobilite th, .tableau-mobilite td { padding: 8px 10px; }
+.tableau-mobilite td small { display: block; color: var(--texte-doux); }
+.tableau-mobilite.saisie input { width: 90px; box-sizing: border-box; font: inherit; font-size: 1rem; padding: 8px 10px; border: 1px solid var(--bord); border-radius: 8px; background: var(--carte); color: var(--texte); }
+.saisie-mobilite { margin: 14px 0 6px; padding: 10px 14px; border: 1px solid var(--bord); border-radius: 12px; background: var(--champ); }
+.saisie-mobilite > summary { cursor: pointer; font-weight: 600; min-height: 32px; display: flex; align-items: center; gap: 6px; }
+.saisie-morpho { max-width: 640px; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+.prepa-zone { font: inherit; font-size: 1rem; padding: 9px 10px; border: 1px solid var(--bord); border-radius: 8px; background: var(--carte); color: var(--texte); width: 100%; box-sizing: border-box; resize: vertical; }
+.bilan-synthese { white-space: pre-line; }
 
 /* ---------- 🏋️ Prépa physique (prepa.js, 21/11/2026) ---------- */
 .prepa-champ { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--texte-doux); margin: 8px 0; }
@@ -1365,3 +1378,9 @@ body.rapport-ouvert { overflow: hidden; }
   body[data-vue="c-classements"] #contenu { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .prepa-saisie { max-width: 560px; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
 }
+
+/* ⚙️ Gestion : planning des défis (22/11/2026) */
+.planning-defis { margin: 8px 0 12px; }
+.planning-defis small { opacity: 0.75; }
+.boutons-ligne { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
