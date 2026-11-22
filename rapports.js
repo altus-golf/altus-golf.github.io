@@ -359,17 +359,24 @@ async function rapportJoueur() {
   if (conf) {
     const f = formePeriode(j, du, au);
     const m = mesuresDe(j);   // mesures.js
-    const der = [...m.mesures].reverse().find((x2) => x2.d <= au);
-    const avantDer = der ? m.mesures.filter((x2) => x2.d <= der.d) : [];
+    const der = [...mesuresCroissance(m)].reverse().find((x2) => x2.d <= au);   // mesures.js
+    const bilanMob = [...bilansMobilite(m)].reverse().find((x2) => x2.d <= au);
+    const avantDer = der ? mesuresCroissance(m).filter((x2) => x2.d <= der.d) : [];
     const v = vitesseCroissance(avantDer);
     const dec = der ? decalageMaturite(m, der) : null;
     corps += `<section class="rapport-confidentiel-bloc"><h2>Forme et sommeil <small>(confidentiel)</small></h2>
       <div class="rapport-kpis">${kpi("Questionnaires", `${f.n} / ${f.jours}`)}${kpi("Hooper moyen", unChiffre(f.hooper))}${kpi("Jours orange / rouge", `${f.oranges} / ${f.rouges}`)}${kpi("Sommeil moyen", f.sommeil === null ? "—" : `${unChiffre(f.sommeil)} h`)}${kpi(`Nuits &lt; ${SEUIL_SOMMEIL} h`, f.n ? f.nuitsCourtes : "—")}${kpi("Charge (UA)", f.charge || "—")}${kpi("Balles tapées", f.balles ?? "—")}</div>
       ${f.commentaires.length ? `<h3>Commentaires</h3><ul class="rapport-liste">${f.commentaires.map((x2) => `<li>${echapperRapport(dateLisible(x2.d))} : ${echapperRapport(x2.com)}</li>`).join("")}</ul>` : ""}
       <h2>Mesures</h2>
-      ${der ? `<p class="rapport-petit">Mesure du ${echapperRapport(dateLisible(der.d))} : ${CHAMPS_MESURES.filter((ch) => der.valeurs[ch.id] !== undefined).map((ch) => `${echapperRapport(ch.libelle)} ${virguleA(der.valeurs[ch.id])} ${ch.unite}`).join(" · ")}${longueurJambes(der) !== null ? ` · jambes ${virguleA(Math.round(longueurJambes(der) * 10) / 10)} cm` : ""}</p>
+      ${der ? `<p class="rapport-petit">Mesure du ${echapperRapport(dateLisible(der.d))} : ${CHAMPS_CROISSANCE.filter((ch) => der.valeurs[ch.id] !== undefined).map((ch) => `${echapperRapport(ch.libelle)} ${virguleA(der.valeurs[ch.id])} ${ch.unite}`).join(" · ")}${longueurJambes(der) !== null ? ` · jambes ${virguleA(Math.round(longueurJambes(der) * 10) / 10)} cm` : ""}</p>
         ${v !== null ? `<p class="rapport-petit">Croissance : ${virguleA(Math.round(v * 100) / 100)} cm / mois${v > SEUIL_POUSSEE_CM_MOIS ? " (poussée de croissance)" : ""}.</p>` : ""}
         ${dec !== null ? `<p class="rapport-petit">Maturité : ${echapperRapport(texteMaturite(dec))}. <small>${echapperRapport(PHRASE_ESTIMATION)}</small></p>` : ""}` : `<p class="rapport-vide">Pas encore de mesure.</p>`}
+      ${bilanMob ? `<p class="rapport-petit">Bilan de mobilité du ${echapperRapport(dateLisible(bilanMob.d))} : ${[
+        ...CHAMPS_MORPHO.filter((ch) => bilanMob.valeurs[ch.id] !== undefined).map((ch) => `${echapperRapport(ch.libelle)} ${virguleA(bilanMob.valeurs[ch.id])} cm`),
+        ...["D", "G"].filter((c) => totalRotation(bilanMob, c) !== null).map((c) => `hanche ${c === "D" ? "droite" : "gauche"} RI ${bilanMob.valeurs["hancheRi" + c]}° / RE ${bilanMob.valeurs["hancheRe" + c]}° (total ${totalRotation(bilanMob, c)}°)`),
+        ...(totalRotation(bilanMob, "epaule") !== null ? [`épaule arrière RI ${bilanMob.valeurs.epauleRi}° / RE ${bilanMob.valeurs.epauleRe}° (total ${totalRotation(bilanMob, "epaule")}°)`] : []),
+        ...(bilanMob.profil ? [`profil ${echapperRapport(nomProfil(bilanMob.profil))}`] : []),
+      ].join(" · ")}</p>${bilanMob.synthese ? `<p class="rapport-petit">Points forts / à travailler : ${echapperRapport(bilanMob.synthese)}</p>` : ""}` : ""}
     </section>`;
   }
   corps += `<h2>À venir <small>30 jours</small></h2>` + (evts.length

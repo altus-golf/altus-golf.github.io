@@ -173,3 +173,10 @@
 - Testé en mode démo (Playwright) : aperçu ordinateur et téléphone (sombre), PDF A4 des deux rapports, avec et sans la partie confidentielle.
 - 📊 Rapport d'un joueur : synthèse en tableau de bord avant le détail (exos joués / repère 15 par semaine, régularité par semaine, niveau par famille en % du max comparé à la période d'avant, points forts / à travailler, dernier Pelz). Le Pelz d'une semaine à cheval sur le début de la période ne prend plus les jours d'avant.
 - Rapports épurés : plus aucun émoji, présentation sobre (titres en petites capitales avec un trait corail, filets fins, chiffres clés sans cadres).
+
+## 22/11/2026 — v79 : bilan morphologique et mobilité (Prépa > Mes mesures)
+- 📐 Fiche « Bilan morphologique et mobilité » du coach ajoutée aux mesures (coachs : 🏋️ Prépa > joueur > Nouvelle mesure, partie repliable) : longueur du bras et de l'avant-bras, largeur de stance avant / après, rotations interne et externe des hanches (droite / gauche), épaule arrière, profil Glide / Spin / Launch, points forts / à travailler. Tout est facultatif.
+- Calculés tout seuls : total RI + RE de chaque hanche et de l'épaule, niveau L / I / B / A de chaque rotation de hanche (repères indicatifs de la fiche).
+- Une fiche par jour : un bilan saisi un jour où les mesures de croissance existent déjà complète la fiche du jour. Taille, taille assis et poids restent obligatoires ensemble, mais seulement si on saisit l'un des trois.
+- Joueur : « Mon dernier bilan » sous « Mes mesures ». Coach : colonne « Bilan mobilité » dans le tableau du groupe, historiques croissance / bilans séparés. Rapport d'un joueur (partie confidentielle) : une ligne bilan.
+- Règles Firestore inchangées (rien à recoller). Testé en mode démo (Playwright) : saisie, erreur si croissance incomplète, fiche complétée le même jour, affichage joueur 390 px.

@@ -32,13 +32,35 @@
    - prochaine mesure = dernière + 90 jours ; en retard → listé dans ⚠️ À vérifier (coach).
    ========================================================= */
 
-// Champs d'une mesure : id, libellé, unité, décimales, facultatif, bornes acceptées
+// Champs d'une mesure : id, libellé, unité, décimales, facultatif, bornes acceptées.
+// groupe « croissance » = les mesures des 3 mois (taille, poids…, pour la maturité) ;
+// groupe « bilan » = « Bilan morphologique et mobilité » (fiche du coach, 22/11/2026), tout facultatif.
 const CHAMPS_MESURES = [
-  { id: "tailleDebout", libelle: "Taille debout", unite: "cm", decimales: 1, facultatif: false, min: 80, max: 230 },
-  { id: "tailleAssis", libelle: "Taille assis", aide: "assis sur un banc, hauteur du banc déjà retirée", unite: "cm", decimales: 1, facultatif: false, min: 40, max: 130 },
-  { id: "poids", libelle: "Poids", unite: "kg", decimales: 1, facultatif: false, min: 20, max: 200 },
-  { id: "envergure", libelle: "Envergure", unite: "cm", decimales: 1, facultatif: true, min: 80, max: 250 },
+  { id: "tailleDebout", groupe: "croissance", libelle: "Taille debout", unite: "cm", decimales: 1, facultatif: false, min: 80, max: 230 },
+  { id: "tailleAssis", groupe: "croissance", libelle: "Taille assis", aide: "assis sur un banc, hauteur du banc déjà retirée", unite: "cm", decimales: 1, facultatif: false, min: 40, max: 130 },
+  { id: "poids", groupe: "croissance", libelle: "Poids", unite: "kg", decimales: 1, facultatif: false, min: 20, max: 200 },
+  { id: "envergure", groupe: "croissance", libelle: "Envergure", unite: "cm", decimales: 1, facultatif: true, min: 80, max: 250 },
+  // Bilan morphologique et mobilité
+  { id: "longueurBras", groupe: "bilan", libelle: "Longueur du bras", unite: "cm", decimales: 1, facultatif: true, min: 15, max: 60 },
+  { id: "longueurAvantBras", groupe: "bilan", libelle: "Longueur de l'avant-bras", unite: "cm", decimales: 1, facultatif: true, min: 10, max: 45 },
+  { id: "stanceAvant", groupe: "bilan", libelle: "Largeur de stance · avant", unite: "cm", decimales: 1, facultatif: true, min: 10, max: 120 },
+  { id: "stanceApres", groupe: "bilan", libelle: "Largeur de stance · après", unite: "cm", decimales: 1, facultatif: true, min: 10, max: 120 },
+  { id: "hancheRiD", groupe: "bilan", libelle: "Hanche droite · rotation interne", court: "RI", cote: "D", unite: "°", decimales: 0, facultatif: true, min: 0, max: 90 },
+  { id: "hancheReD", groupe: "bilan", libelle: "Hanche droite · rotation externe", court: "RE", cote: "D", unite: "°", decimales: 0, facultatif: true, min: 0, max: 90 },
+  { id: "hancheRiG", groupe: "bilan", libelle: "Hanche gauche · rotation interne", court: "RI", cote: "G", unite: "°", decimales: 0, facultatif: true, min: 0, max: 90 },
+  { id: "hancheReG", groupe: "bilan", libelle: "Hanche gauche · rotation externe", court: "RE", cote: "G", unite: "°", decimales: 0, facultatif: true, min: 0, max: 90 },
+  { id: "epauleRi", groupe: "bilan", libelle: "Épaule arrière · rotation interne", unite: "°", decimales: 0, facultatif: true, min: 0, max: 150 },
+  { id: "epauleRe", groupe: "bilan", libelle: "Épaule arrière · rotation externe", unite: "°", decimales: 0, facultatif: true, min: 0, max: 150 },
 ];
+const CHAMPS_CROISSANCE = CHAMPS_MESURES.filter((c) => c.groupe === "croissance");
+const CHAMPS_MORPHO = ["longueurBras", "longueurAvantBras", "stanceAvant", "stanceApres"].map((id) => CHAMPS_MESURES.find((c) => c.id === id));
+// Profil du joueur (synthèse de la fiche) ; une seule case cochée
+const PROFILS_MOBILITE = [["glide", "Glide"], ["spin", "Spin"], ["launch", "Launch"]];
+// Niveaux de rotation de hanche (repères INDICATIFS de la fiche du coach, pas des seuils diagnostiques) :
+// RI : limitée < 20° · intermédiaire 20–30° · bonne 30–40° · ample > 40° ; RE : < 25° · 25–35° · 35–45° · > 45°
+const SEUILS_HANCHE = { RI: [20, 30, 40], RE: [25, 35, 45] };
+const NIVEAUX_HANCHE = [["L", "limitée"], ["I", "intermédiaire"], ["B", "bonne"], ["A", "ample"]];
+const PHRASE_NIVEAUX = "Niveaux (RI / RE) : L = limitée < 20° / < 25° · I = intermédiaire 20–30° / 25–35° · B = bonne 30–40° / 35–45° · A = ample > 40° / > 45°. Repères indicatifs, pas des seuils diagnostiques.";
 const DELAI_MESURES_JOURS = 90;          // une série de mesures tous les 3 mois
 const SEUIL_POUSSEE_CM_MOIS = 0.6;       // au-dessus : « poussée de croissance »
 const MAX_MESURES = 100;
@@ -60,8 +82,10 @@ function normaliserUneMesure(m) {
     const v = m.valeurs && m.valeurs[c.id];
     if (typeof v === "number" && Number.isFinite(v) && v >= c.min && v <= c.max) valeurs[c.id] = v;
   });
-  if (!Object.keys(valeurs).length) return null;
-  return { d: m.d, valeurs, rem: typeof m.rem === "string" ? m.rem.slice(0, 200) : "" };
+  const profil = PROFILS_MOBILITE.some(([id]) => id === m.profil) ? m.profil : "";
+  const synthese = typeof m.synthese === "string" ? m.synthese.slice(0, 500) : "";
+  if (!Object.keys(valeurs).length && !profil && !synthese) return null;
+  return { d: m.d, valeurs, rem: typeof m.rem === "string" ? m.rem.slice(0, 200) : "", profil, synthese };
 }
 function normaliserMesures(x) {
   const d = x && typeof x === "object" ? x : {};
@@ -81,6 +105,24 @@ function ageDecimal(naissance, d) {
   return (texteEnDate(d) - n) / (365.25 * 864e5);
 }
 const longueurJambes = (m) => (m && m.valeurs.tailleDebout && m.valeurs.tailleAssis ? m.valeurs.tailleDebout - m.valeurs.tailleAssis : null);
+// Mesures « croissance » (taille debout saisie) et bilans de mobilité, chacun dans l'ordre des dates
+const mesuresCroissance = (doc) => doc.mesures.filter((m) => typeof m.valeurs.tailleDebout === "number");
+const estBilanMobilite = (m) => !!(m.profil || m.synthese || CHAMPS_MESURES.some((c) => c.groupe === "bilan" && typeof m.valeurs[c.id] === "number"));
+const bilansMobilite = (doc) => doc.mesures.filter(estBilanMobilite);
+const derniereDe = (l) => (l.length ? l[l.length - 1] : null);
+// Total RI + RE d'une hanche (« D » ou « G ») ou de l'épaule ; null s'il manque une des deux
+function totalRotation(m, cote) {
+  const [ri, re] = cote === "epaule" ? [m.valeurs.epauleRi, m.valeurs.epauleRe] : [m.valeurs["hancheRi" + cote], m.valeurs["hancheRe" + cote]];
+  return typeof ri === "number" && typeof re === "number" ? ri + re : null;
+}
+// Niveau L / I / B / A d'une rotation de hanche (type « RI » ou « RE »)
+function niveauHanche(type, v) {
+  if (typeof v !== "number") return null;
+  const s = SEUILS_HANCHE[type];
+  return NIVEAUX_HANCHE[v < s[0] ? 0 : v < s[1] ? 1 : v <= s[2] ? 2 : 3];
+}
+const texteNiveau = (n) => (n ? `${n[0]} <small>(${n[1]})</small>` : "—");
+const nomProfil = (id) => (PROFILS_MOBILITE.find(([p]) => p === id) || [, ""])[1];
 // Vitesse de croissance (taille debout) entre les deux dernières mesures, en cm / mois
 function vitesseCroissance(mesures) {
   const l = mesures.filter((m) => m.valeurs.tailleDebout);
@@ -115,7 +157,8 @@ function decalageCourt(dec) {
   if (Math.abs(dec) < 0.25) return "≈ pic";
   return `${dec < 0 ? "−" : "+"}${virguleA(Math.round(Math.abs(dec) * 10) / 10)} an`;
 }
-const prochaineMesure = (doc) => (doc.mesures.length ? dateEnTexte(ajouterJours(texteEnDate(doc.mesures[doc.mesures.length - 1].d), DELAI_MESURES_JOURS)) : null);
+// Prochaine mesure de croissance (un bilan de mobilité seul ne repousse pas l'échéance)
+const prochaineMesure = (doc) => { const l = mesuresCroissance(doc); return l.length ? dateEnTexte(ajouterJours(texteEnDate(l[l.length - 1].d), DELAI_MESURES_JOURS)) : null; };
 const texteValeur = (c, v) => (v === undefined || v === null ? "—" : `${virguleA(v)} ${c.unite}`);
 const PHRASE_ESTIMATION = "Estimation (formule de Mirwald et al., 2002) : marge d'environ ± 1 an, moins fiable chez les joueurs très en avance ou très en retard.";
 
@@ -196,16 +239,60 @@ function mesuresDemo(db) {
       mesures.push({ d, rem: "", valeurs: { tailleDebout: Math.round(taille * 10) / 10, tailleAssis: Math.round((taille * 0.52) * 10) / 10,
         poids: Math.round((47 + k * 2.5 - i * 1.2) * 10) / 10, ...(k % 2 ? {} : { envergure: Math.round((taille + 2) * 10) / 10 }) } });
     }
+    // Bilan morphologique et mobilité fictif pour un joueur sur deux (le même jour qu'une mesure, ou un autre jour)
+    if (k % 2 === 0) {
+      const bilan = { longueurBras: 30 + k, longueurAvantBras: 25 + k / 2, stanceAvant: 38 + k, stanceApres: 42 + k,
+        hancheRiD: 28 + k * 3, hancheReD: 36 - k, hancheRiG: 22 + k * 2, hancheReG: 41 - k, epauleRi: 55 + k * 2, epauleRe: 95 - k };
+      const extra = { profil: PROFILS_MOBILITE[k % 3][0], synthese: "Rotation interne de hanche gauche à travailler. Bonne mobilité d'épaule." };
+      if (k === 0) Object.assign(mesures[mesures.length - 1], extra, { valeurs: { ...mesures[mesures.length - 1].valeurs, ...bilan } });
+      else mesures.push({ d: dateEnTexte(ajouterJours(new Date(), -3)), rem: "", valeurs: bilan, ...extra });
+    }
     res[b.uid] = { uid: b.uid, prenom: b.prenom, maj: dateEnTexte(new Date()), naissance, sexe, mesures };
   });
   return res;
+}
+
+/* ---------- Bilan morphologique et mobilité : affichage (joueur ET coach) ---------- */
+// m = une mesure qui contient un bilan (estBilanMobilite). Lecture seule, sans couleur d'alerte.
+function blocBilanMobilite(m) {
+  const v = (id) => m.valeurs[id];
+  const deg = (x) => (typeof x === "number" ? `${x}°` : "—");
+  const morpho = CHAMPS_MORPHO.filter((c) => typeof v(c.id) === "number");
+  const aHanches = ["hancheRiD", "hancheReD", "hancheRiG", "hancheReG"].some((id) => typeof v(id) === "number");
+  const aEpaule = typeof v("epauleRi") === "number" || typeof v("epauleRe") === "number";
+  const ligne = (titre, d, g) => `<tr><th scope="row">${titre}</th><td class="nombre">${d}</td><td class="nombre">${g}</td></tr>`;
+  return `<div class="bilan-mobilite">
+    ${morpho.length ? `<h4>Morphologie</h4><div class="mesures-grille">${morpho.map((c) => `<div class="mesure-case"><span>${echapper(c.libelle)}</span><strong>${texteValeur(c, v(c.id))}</strong></div>`).join("")}</div>` : ""}
+    ${aHanches ? `<h4>Mobilité des hanches <small>(assis, genou fléchi à 90°)</small></h4>
+      <div class="tableau-defilant"><table class="tableau-admin tableau-mobilite">
+        <thead><tr><th>Mesure</th><th>Droite</th><th>Gauche</th></tr></thead>
+        <tbody>
+          ${ligne("Rotation interne", deg(v("hancheRiD")), deg(v("hancheRiG")))}
+          ${ligne("Rotation externe", deg(v("hancheReD")), deg(v("hancheReG")))}
+          ${ligne("<strong>Total RI + RE</strong>", deg(totalRotation(m, "D")), deg(totalRotation(m, "G")))}
+          ${ligne("Niveau RI", texteNiveau(niveauHanche("RI", v("hancheRiD"))), texteNiveau(niveauHanche("RI", v("hancheRiG"))))}
+          ${ligne("Niveau RE", texteNiveau(niveauHanche("RE", v("hancheReD"))), texteNiveau(niveauHanche("RE", v("hancheReG"))))}
+        </tbody>
+      </table></div>
+      <p class="petit">${echapper(PHRASE_NIVEAUX)}</p>` : ""}
+    ${aEpaule ? `<h4>Épaule arrière <small>(bras à 90° d'abduction, coude fléchi à 90°)</small></h4>
+      <div class="mesures-grille">
+        <div class="mesure-case"><span>Rotation interne</span><strong>${deg(v("epauleRi"))}</strong></div>
+        <div class="mesure-case"><span>Rotation externe</span><strong>${deg(v("epauleRe"))}</strong></div>
+        <div class="mesure-case"><span>Amplitude totale</span><strong>${deg(totalRotation(m, "epaule"))}</strong></div>
+      </div>` : ""}
+    ${m.profil || m.synthese ? `<h4>Synthèse</h4>
+      ${m.profil ? `<p>Profil : <strong>${echapper(nomProfil(m.profil))}</strong></p>` : ""}
+      ${m.synthese ? `<p class="bilan-synthese"><span class="petit">Points forts / à travailler</span><br>${echapper(m.synthese)}</p>` : ""}` : ""}
+  </div>`;
 }
 
 /* ---------- Joueur : bloc « 📐 Mes mesures » (onglet 🏋️ Prépa) ---------- */
 function blocMesMesures() {
   if (!mesMesures) { Promise.resolve().then(chargerMesMesures); }
   const doc = mesMesures || normaliserMesures(lireStockage("mesures", null));
-  const derniere = doc.mesures[doc.mesures.length - 1];
+  const derniere = derniereDe(mesuresCroissance(doc));
+  const bilan = derniereDe(bilansMobilite(doc));
   const v = vitesseCroissance(doc.mesures);
   const dec = decalageMaturite(doc, derniere);
   // Courbe (app.js) + première et dernière valeur sous la courbe
@@ -219,15 +306,16 @@ function blocMesMesures() {
     ${!derniere ? `<p class="petit">Pas encore de mesure : tes coachs les prennent tous les 3 mois (taille, taille assis, poids, envergure).</p>` : `
       <p class="bloc-info">Dernière mesure le ${echapper(dateLisible(derniere.d))} · prochaine vers le ${echapper(dateLisible(prochaineMesure(doc)))}</p>
       <div class="mesures-grille">
-        ${CHAMPS_MESURES.map((c) => `<div class="mesure-case"><span>${echapper(c.libelle)}</span><strong>${texteValeur(c, derniere.valeurs[c.id])}</strong></div>`).join("")}
+        ${CHAMPS_CROISSANCE.map((c) => `<div class="mesure-case"><span>${echapper(c.libelle)}</span><strong>${texteValeur(c, derniere.valeurs[c.id])}</strong></div>`).join("")}
         <div class="mesure-case"><span>Longueur de jambes</span><strong>${longueurJambes(derniere) === null ? "—" : `${virguleA(longueurJambes(derniere))} cm`}</strong></div>
       </div>
       ${v !== null ? `<p>Croissance : <strong>${virguleA(Math.round(v * 100) / 100)} cm / mois</strong> depuis la mesure précédente.</p>` : ""}
       ${dec !== null ? `<p>Maturité : <strong>${texteMaturite(dec)}</strong>.<br><small class="petit">${PHRASE_ESTIMATION}</small></p>` : ""}
-      ${doc.mesures.length >= 2 ? `<div class="deux-colonnes">
+      ${mesuresCroissance(doc).length >= 2 ? `<div class="deux-colonnes">
         <div><h3>Taille (cm)</h3>${courbeDe("tailleDebout")}</div>
         <div><h3>Poids (kg)</h3>${courbeDe("poids")}</div>
       </div>` : ""}`}
+    ${bilan ? `<h3>Bilan morphologique et mobilité <small>du ${echapper(dateLisible(bilan.d))}</small></h3>${blocBilanMobilite(bilan)}` : ""}
     <p class="petit">🔒 Visible seulement par toi et tes coachs.</p>
   </section>`;
 }
@@ -240,13 +328,13 @@ function blocMesuresCoach(joueurs, j) {
   const aujourdhui = dateEnTexte(new Date());
   const lignes = joueurs.map((x) => {
     const doc = mesuresDe(x);
-    const der = doc.mesures[doc.mesures.length - 1];
-    return { x, doc, der, v: vitesseCroissance(doc.mesures), dec: decalageMaturite(doc, der), proch: prochaineMesure(doc) };
+    const der = derniereDe(mesuresCroissance(doc));
+    return { x, doc, der, bilan: derniereDe(bilansMobilite(doc)), v: vitesseCroissance(doc.mesures), dec: decalageMaturite(doc, der), proch: prochaineMesure(doc) };
   });
   const groupe = `<section class="bloc pr-bloc">
     <h2 class="bloc-titre">📐 Mesures du groupe <small>(tous les 3 mois)</small></h2>
     <div class="tableau-defilant"><table class="tableau-admin tableau-coach">
-      <thead><tr><th>Joueur</th><th>Dernière mesure</th><th>Taille</th><th>Poids</th><th>Croissance</th><th>Maturité</th><th>Prochaine mesure</th></tr></thead>
+      <thead><tr><th>Joueur</th><th>Dernière mesure</th><th>Taille</th><th>Poids</th><th>Croissance</th><th>Maturité</th><th>Prochaine mesure</th><th>Bilan mobilité</th></tr></thead>
       <tbody>${lignes.map((l) => `<tr>
         <td><button type="button" class="lien-bouton lien-joueur" data-a="prepa-coach-joueur" data-uid="${echapper(l.x.uid)}">${echapper(l.x.prenom)}</button></td>
         <td class="nombre">${l.der ? echapper(dateLisible(l.der.d)) : `<span class="statut statut-attente">aucune</span>`}</td>
@@ -255,15 +343,26 @@ function blocMesuresCoach(joueurs, j) {
         <td class="nombre">${l.v === null ? "—" : `${virguleA(Math.round(l.v * 100) / 100)} cm/mois${l.v > SEUIL_POUSSEE_CM_MOIS ? ` <span class="statut statut-forme-orange">poussée</span>` : ""}`}</td>
         <td>${l.dec === null ? `<small>${l.der && !l.doc.sexe ? "naissance / sexe à saisir" : "—"}</small>` : `${decalageCourt(l.dec)}${Math.abs(l.dec) >= 0.25 ? ` <small>(${l.dec < 0 ? "avant" : "après"} le pic)</small>` : ""}`}</td>
         <td class="nombre">${l.proch ? (l.proch < aujourdhui ? `<span class="statut statut-forme-orange">en retard · ${echapper(dateLisible(l.proch))}</span>` : echapper(dateLisible(l.proch))) : "—"}</td>
+        <td class="nombre">${l.bilan ? `${echapper(dateLisible(l.bilan.d))}${l.bilan.profil ? ` · ${echapper(nomProfil(l.bilan.profil))}` : ""}` : "—"}</td>
       </tr>`).join("")}</tbody>
     </table></div>
     <p class="petit">Croissance = taille debout entre les deux dernières mesures ; « poussée » au-dessus de ${virguleA(SEUIL_POUSSEE_CM_MOIS)} cm/mois. Maturité = années avant (−) ou après (+) le pic de croissance. ${PHRASE_ESTIMATION} 🔒 Coachs et joueur seulement.</p>
   </section>`;
   if (!j) return groupe;
   const doc = mesuresDe(j);
-  const der = doc.mesures[doc.mesures.length - 1];
-  const champ = (c) => `<label class="prepa-champ"><span>${echapper(c.libelle)} (${c.unite})${c.facultatif ? " <small>facultatif</small>" : ""}${c.aide ? `<br><small>${echapper(c.aide)}</small>` : ""}</span>
-    <input id="mes-v-${c.id}" inputmode="decimal" placeholder="${der && der.valeurs[c.id] ? echapper(virguleA(der.valeurs[c.id])) : c.unite}"></label>`;
+  const croiss = mesuresCroissance(doc);
+  const bilans = bilansMobilite(doc);
+  const der = derniereDe(croiss);
+  const derBilan = derniereDe(bilans);
+  // Champ de saisie ; l'ancienne valeur (dernière mesure ou dernier bilan) sert d'exemple grisé
+  const champ = (c, avecLibelle = true) => {
+    const ref = c.groupe === "bilan" ? derBilan : der;
+    const ancien = ref && typeof ref.valeurs[c.id] === "number" ? echapper(virguleA(ref.valeurs[c.id])) : c.unite;
+    const input = `<input id="mes-v-${c.id}" inputmode="decimal" placeholder="${ancien}" aria-label="${echapper(c.libelle)} (${c.unite})">`;
+    if (!avecLibelle) return input;
+    return `<label class="prepa-champ"><span>${echapper(c.libelle)} (${c.unite})${c.facultatif && c.groupe === "croissance" ? " <small>facultatif</small>" : ""}${c.aide ? `<br><small>${echapper(c.aide)}</small>` : ""}</span>${input}</label>`;
+  };
+  const deg = (x) => (typeof x === "number" ? `${x}°` : "—");
   return groupe + `<section class="bloc pr-bloc bloc-mesures">
     <h2 class="bloc-titre">📐 Mesures de ${echapper(j.prenom)}</h2>
     <h3>Infos fixes</h3>
@@ -275,21 +374,58 @@ function blocMesuresCoach(joueurs, j) {
     <button type="button" class="bouton" data-a="prepa-mes-infos">Enregistrer naissance et sexe</button>
     <h3>Nouvelle mesure</h3>
     <label class="prepa-champ"><span>Date</span><input id="mes-d" type="date" value="${aujourdhui}" max="${aujourdhui}"></label>
-    <div class="prepa-saisie">${CHAMPS_MESURES.map(champ).join("")}</div>
+    <h4>Croissance <small>(tous les 3 mois ; taille, taille assis et poids ensemble)</small></h4>
+    <div class="prepa-saisie">${CHAMPS_CROISSANCE.map((c) => champ(c)).join("")}</div>
+    <details class="saisie-mobilite"${derBilan ? "" : " open"}>
+      <summary>Bilan morphologique et mobilité <small>(facultatif)</small></summary>
+      <h4>Morphologie</h4>
+      <div class="prepa-saisie saisie-morpho">${CHAMPS_MORPHO.map((c) => champ(c)).join("")}</div>
+      <h4>Mobilité des hanches <small>(assis, genou fléchi à 90°)</small></h4>
+      <div class="tableau-defilant"><table class="tableau-admin tableau-mobilite saisie">
+        <thead><tr><th>Mesure (°)</th><th>Droite</th><th>Gauche</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Rotation interne</th><td>${champ(champMesure("hancheRiD"), false)}</td><td>${champ(champMesure("hancheRiG"), false)}</td></tr>
+          <tr><th scope="row">Rotation externe</th><td>${champ(champMesure("hancheReD"), false)}</td><td>${champ(champMesure("hancheReG"), false)}</td></tr>
+        </tbody>
+      </table></div>
+      <p class="petit">Total RI + RE et niveaux L / I / B / A calculés automatiquement. ${echapper(PHRASE_NIVEAUX)}</p>
+      <h4>Épaule arrière <small>(bras à 90° d'abduction, coude fléchi à 90°)</small></h4>
+      <div class="prepa-saisie">${champ(champMesure("epauleRi"))}${champ(champMesure("epauleRe"))}</div>
+      <h4>Synthèse</h4>
+      <label class="prepa-champ"><span>Profil</span><select id="mes-profil" class="prepa-select">
+        <option value="">—</option>${PROFILS_MOBILITE.map(([id, nom]) => `<option value="${id}">${nom}</option>`).join("")}</select></label>
+      <label class="prepa-champ prepa-champ-large"><span>Points forts / à travailler</span><textarea id="mes-synthese" class="prepa-zone" rows="3" maxlength="500"></textarea></label>
+    </details>
     <label class="prepa-champ prepa-champ-large"><span>Remarque</span><input id="mes-rem" maxlength="200"></label>
     ${messageMesures ? `<p class="${messageMesures.startsWith("✅") ? "bloc-info" : "erreur"}">${echapper(messageMesures)}</p>` : ""}
-    <button type="button" class="bouton principal" data-a="prepa-mes-ajouter">Ajouter la mesure</button>
-    ${doc.mesures.length ? `<div class="tableau-defilant"><table class="tableau-admin tableau-coach">
-      <thead><tr><th>Date</th>${CHAMPS_MESURES.map((c) => `<th>${echapper(c.libelle)}</th>`).join("")}<th>Jambes</th><th>Maturité</th><th>Remarque</th><th></th></tr></thead>
-      <tbody>${[...doc.mesures].reverse().map((m) => { const dec = decalageMaturite(doc, m); return `<tr>
+    <button type="button" class="bouton principal" data-a="prepa-mes-ajouter">Enregistrer</button>
+    <p class="petit">Une seule fiche par jour : ce qui est saisi un jour déjà rempli complète la fiche de ce jour (les cases vides ne changent rien).</p>
+    <h3>Historique · croissance</h3>
+    ${croiss.length ? `<div class="tableau-defilant"><table class="tableau-admin tableau-coach">
+      <thead><tr><th>Date</th>${CHAMPS_CROISSANCE.map((c) => `<th>${echapper(c.libelle)}</th>`).join("")}<th>Jambes</th><th>Maturité</th><th>Remarque</th><th></th></tr></thead>
+      <tbody>${[...croiss].reverse().map((m) => { const dec = decalageMaturite(doc, m); return `<tr>
         <td class="nombre">${echapper(dateLisible(m.d))}</td>
-        ${CHAMPS_MESURES.map((c) => `<td class="nombre">${texteValeur(c, m.valeurs[c.id])}</td>`).join("")}
+        ${CHAMPS_CROISSANCE.map((c) => `<td class="nombre">${texteValeur(c, m.valeurs[c.id])}</td>`).join("")}
         <td class="nombre">${longueurJambes(m) === null ? "—" : `${virguleA(Math.round(longueurJambes(m) * 10) / 10)} cm`}</td>
         <td class="nombre">${decalageCourt(dec)}</td>
         <td>${echapper(m.rem)}</td>
-        <td><button type="button" class="bouton danger" data-a="prepa-mes-effacer" data-d="${echapper(m.d)}" aria-label="Effacer la mesure du ${echapper(dateLisible(m.d))}">✕</button></td>
+        <td><button type="button" class="bouton danger" data-a="prepa-mes-effacer" data-d="${echapper(m.d)}" aria-label="Effacer la fiche du ${echapper(dateLisible(m.d))}">✕</button></td>
       </tr>`; }).join("")}</tbody>
-    </table></div>` : `<p class="petit">Aucune mesure pour l'instant.</p>`}
+    </table></div>` : `<p class="petit">Aucune mesure de croissance pour l'instant.</p>`}
+    <h3>Historique · bilans morphologie et mobilité</h3>
+    ${bilans.length ? `<div class="tableau-defilant"><table class="tableau-admin tableau-coach">
+      <thead><tr><th>Date</th><th>Bras</th><th>Avant-bras</th><th>Stance av.</th><th>Stance ap.</th><th>Hanche D<br><small>RI / RE · total</small></th><th>Hanche G<br><small>RI / RE · total</small></th><th>Épaule<br><small>RI / RE · total</small></th><th>Profil</th><th></th></tr></thead>
+      <tbody>${[...bilans].reverse().map((m) => `<tr>
+        <td class="nombre">${echapper(dateLisible(m.d))}</td>
+        ${CHAMPS_MORPHO.map((c) => `<td class="nombre">${texteValeur(c, m.valeurs[c.id])}</td>`).join("")}
+        <td class="nombre">${deg(m.valeurs.hancheRiD)} / ${deg(m.valeurs.hancheReD)} · <strong>${deg(totalRotation(m, "D"))}</strong></td>
+        <td class="nombre">${deg(m.valeurs.hancheRiG)} / ${deg(m.valeurs.hancheReG)} · <strong>${deg(totalRotation(m, "G"))}</strong></td>
+        <td class="nombre">${deg(m.valeurs.epauleRi)} / ${deg(m.valeurs.epauleRe)} · <strong>${deg(totalRotation(m, "epaule"))}</strong></td>
+        <td>${m.profil ? echapper(nomProfil(m.profil)) : "—"}</td>
+        <td><button type="button" class="bouton danger" data-a="prepa-mes-effacer" data-d="${echapper(m.d)}" aria-label="Effacer la fiche du ${echapper(dateLisible(m.d))}">✕</button></td>
+      </tr>`).join("")}</tbody>
+    </table></div>
+    <h4>Dernier bilan <small>du ${echapper(dateLisible(derBilan.d))}</small></h4>${blocBilanMobilite(derBilan)}` : `<p class="petit">Aucun bilan de mobilité pour l'instant.</p>`}
   </section>`;
 }
 
@@ -313,21 +449,34 @@ async function actionMesures(a, bouton) {
     CHAMPS_MESURES.forEach((c) => {
       const t = document.getElementById(`mes-v-${c.id}`).value;
       const n = nombreForme(t);   // forme.js : accepte « 162,5 »
-      if (n === null) { if (!c.facultatif) erreurs.push(`${c.libelle} manquant`); return; }
+      if (n === null) return;
       if (Number.isNaN(n) || n < c.min || n > c.max) { erreurs.push(`${c.libelle} : entre ${c.min} et ${c.max} ${c.unite}`); return; }
       valeurs[c.id] = Math.round(n * 10 ** c.decimales) / 10 ** c.decimales;
     });
+    // Croissance : taille debout, taille assis et poids vont ensemble (calcul de la maturité)
+    const obligatoires = CHAMPS_CROISSANCE.filter((c) => !c.facultatif);
+    if (obligatoires.some((c) => c.id in valeurs)) obligatoires.filter((c) => !(c.id in valeurs)).forEach((c) => erreurs.push(`${c.libelle} manquant`));
+    const profilChoisi = document.getElementById("mes-profil").value;
+    const profil = PROFILS_MOBILITE.some(([id]) => id === profilChoisi) ? profilChoisi : "";
+    const synthese = document.getElementById("mes-synthese").value.trim().slice(0, 500);
+    const rem = document.getElementById("mes-rem").value.trim().slice(0, 200);
     if (!jourValide(d)) erreurs.unshift("date manquante");
+    if (!Object.keys(valeurs).length && !profil && !synthese) erreurs.push("aucune valeur saisie");
     if (valeurs.tailleDebout && valeurs.tailleAssis && valeurs.tailleAssis >= valeurs.tailleDebout) erreurs.push("la taille assis doit être plus petite que la taille debout");
     if (erreurs.length) { messageMesures = `À corriger : ${erreurs.join(" ; ")}.`; return afficherVue(); }
-    const m = { d, valeurs, rem: document.getElementById("mes-rem").value.trim().slice(0, 200) };
-    messageMesures = (await ecrireMesuresDe(j, { ...doc, mesures: doc.mesures.filter((x) => x.d !== d).concat([m]) })) || `✅ Mesure du ${dateLisible(d)} enregistrée.`;
+    // Un jour déjà rempli : on complète la fiche de ce jour (les cases vides ne changent rien)
+    const ancienne = doc.mesures.find((x) => x.d === d);
+    const m = ancienne
+      ? { d, valeurs: { ...ancienne.valeurs, ...valeurs }, rem: rem || ancienne.rem, profil: profil || ancienne.profil, synthese: synthese || ancienne.synthese }
+      : { d, valeurs, rem, profil, synthese };
+    messageMesures = (await ecrireMesuresDe(j, { ...doc, mesures: doc.mesures.filter((x) => x.d !== d).concat([m]) }))
+      || `✅ Fiche du ${dateLisible(d)} ${ancienne ? "complétée" : "enregistrée"}.`;
     return afficherVue();
   }
   if (a === "prepa-mes-effacer") {
     const d = bouton.dataset.d;
-    if (!(await demanderConfirmation(`Effacer la mesure du ${dateLisible(d)} de ${j.prenom} ?`, "Oui, effacer"))) return;   // base.js
-    messageMesures = (await ecrireMesuresDe(j, { ...doc, mesures: doc.mesures.filter((x) => x.d !== d) })) || "✅ Mesure effacée.";
+    if (!(await demanderConfirmation(`Effacer toute la fiche du ${dateLisible(d)} de ${j.prenom} (mesures et bilan de ce jour) ?`, "Oui, effacer"))) return;   // base.js
+    messageMesures = (await ecrireMesuresDe(j, { ...doc, mesures: doc.mesures.filter((x) => x.d !== d) })) || "✅ Fiche effacée.";
     return afficherVue();
   }
 }
@@ -338,6 +487,6 @@ function alertesMesuresVerifier() {
   if (mesuresCoach.erreur) return [];
   const aujourdhui = dateEnTexte(new Date());
   return joueursForme().map((j) => ({ j, doc: mesuresDe(j) }))
-    .filter((x) => x.doc.mesures.length && prochaineMesure(x.doc) < aujourdhui)
-    .map((x) => ({ j: x.j, texte: `📐 mesures en retard <small>(dernière le ${echapper(dateLisible(x.doc.mesures[x.doc.mesures.length - 1].d))}, prévue le ${echapper(dateLisible(prochaineMesure(x.doc)))})</small>` }));
+    .filter((x) => mesuresCroissance(x.doc).length && prochaineMesure(x.doc) < aujourdhui)
+    .map((x) => ({ j: x.j, texte: `📐 mesures en retard <small>(dernière le ${echapper(dateLisible(derniereDe(mesuresCroissance(x.doc)).d))}, prévue le ${echapper(dateLisible(prochaineMesure(x.doc)))})</small>` }));
 }
