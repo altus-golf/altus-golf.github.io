@@ -220,6 +220,89 @@ async function rapportSemaine() {
 }
 
 /* ---------- 👤 Rapport d'un joueur sur une période ---------- */
+/* ---------- 📊 Synthèse du rapport d'un joueur (tableau de bord avant le détail) ---------- */
+// Repères (à régler ici)
+const EXOS_ATTENDUS_SEMAINE = 15;   // engagement ALTUS : environ 15 exos par semaine (≈ 60 par mois)
+const SEUIL_EVOLUTION_POINTS = 5;   // écart de niveau (en points de %) en dessous duquel on dit « stable »
+
+// Niveau d'un exo = moyenne des scores en % du score maximum (pour comparer des exos notés /6, /40, /100…)
+const niveauPct = (it, l) => (l.length ? (moyenneRapport(l) / it.max) * 100 : null);
+// Flèche + mot (jamais la couleur seule)
+function evolutionRapport(ecart) {
+  if (ecart === null || ecart === undefined) return `<span class="rap-evo">pas de comparaison</span>`;
+  const pts = `${ecart > 0 ? "+" : ""}${unChiffre(ecart)} pt${Math.abs(ecart) >= 2 ? "s" : ""}`;
+  if (ecart >= SEUIL_EVOLUTION_POINTS) return `<span class="rap-evo rap-hausse">▲ en progrès (${pts})</span>`;
+  if (ecart <= -SEUIL_EVOLUTION_POINTS) return `<span class="rap-evo rap-baisse">▼ en baisse (${pts})</span>`;
+  return `<span class="rap-evo rap-stable">● stable (${pts})</span>`;
+}
+// Petite barre horizontale (valeur / objectif), imprimable
+const barreRapport = (v, objectif, maxi) => `<span class="rap-barre"><span class="rap-barre-plein${v >= objectif ? " rap-atteint" : ""}" style="width:${Math.min(100, (v / maxi) * 100)}%"></span>${objectif ? `<span class="rap-barre-objectif" style="left:${Math.min(100, (objectif / maxi) * 100)}%"></span>` : ""}</span>`;
+
+function syntheseJoueurRapport(o) {
+  const { j, x, items, dans, duAvant, auAvant, du, au, lundis, pelz, seances, conf } = o;
+  const kpi = (t, v, sous = "") => `<div class="rapport-kpi"><span>${t}</span><strong>${v}</strong>${sous ? `<small>${sous}</small>` : ""}</div>`;
+  // Chaque exo joué : niveau sur la période et sur la période d'avant
+  const exos = items.map((it) => {
+    const l = x.scores[it.id].filter(([d]) => dans(d)).map(([, v]) => v);
+    if (!l.length) return null;
+    const avant = x.scores[it.id].filter(([d]) => d >= duAvant && d <= auAvant).map(([, v]) => v);
+    const pct = niveauPct(it, l), pctAvant = niveauPct(it, avant);
+    const an = statsAnnee(j, it.id);   // coach.js
+    return { it, n: l.length, pct, ecart: pctAvant === null ? null : pct - pctAvant,
+      record: !!(an && dans(an.recordD) && l.includes(an.record)), cat: CATEGORIES_PROGRES.find((c) => c.contient(it.id)) };
+  }).filter(Boolean);
+  const compares = exos.filter((e) => e.ecart !== null);
+  const enProgres = compares.filter((e) => e.ecart >= SEUIL_EVOLUTION_POINTS).length;
+  const enBaisse = compares.filter((e) => e.ecart <= -SEUIL_EVOLUTION_POINTS).length;
+  // Régularité : exos joués par semaine, objectif proportionnel aux jours de la semaine compris dans la période
+  const semaines = lundis.map((l) => {
+    const debut = l < du ? du : l, fin = plusJours(l, 6) > au ? au : plusJours(l, 6);
+    const jours = Math.round((texteEnDate(fin) - texteEnDate(debut)) / 864e5) + 1;
+    const n = items.reduce((t, it) => t + x.scores[it.id].filter(([d]) => d >= debut && d <= fin).length, 0);
+    return { l, n, objectif: Math.round((EXOS_ATTENDUS_SEMAINE * jours) / 7), complete: jours === 7 };
+  });
+  const joues = semaines.reduce((t, s) => t + s.n, 0);
+  const attendus = semaines.reduce((t, s) => t + s.objectif, 0);
+  const maxiSem = Math.max(EXOS_ATTENDUS_SEMAINE, ...semaines.map((s) => s.n)) * 1.1;
+  // Pelz : dernier total complet de la période, comparé au précédent
+  const complets = pelz.filter((p) => p.pz.total !== null);
+  const dernierPelz = complets[complets.length - 1];
+  let pelzAvant = complets.length > 1 ? complets[complets.length - 2].pz.total : null;
+  if (dernierPelz && pelzAvant === null) {   // sinon : le dernier Pelz complet avant la période (8 semaines max)
+    for (let l = plusJours(dernierPelz.l, -7), k = 0; k < 8 && pelzAvant === null; l = plusJours(l, -7), k++) pelzAvant = pelzSemaineRapport(x.scores, l).total;   // classeur.js
+  }
+  const ecartPelz = dernierPelz && pelzAvant !== null ? dernierPelz.pz.total - pelzAvant : null;
+  let h = `<section class="rapport-synthese"><h2>📊 Synthèse</h2><div class="rapport-kpis">`
+    + kpi("Exos joués", `${joues}${attendus ? ` <small>/ ${attendus}</small>` : ""}`, `${barreRapport(joues, attendus, Math.max(attendus, joues) || 1)}repère : ${EXOS_ATTENDUS_SEMAINE} par semaine`)
+    + kpi("Jours d'entraînement noté", new Set(items.flatMap((it) => x.scores[it.id].filter(([d]) => dans(d)).map(([d]) => d))).size)
+    + kpi("Exos en progrès", compares.length ? `${enProgres} <small>/ ${compares.length}</small>` : "—", compares.length ? `${enBaisse} en baisse` : "rien à comparer")
+    + kpi(`Pelz <small>/ ${PELZ_MAX_TOTAL}</small>`, dernierPelz ? dernierPelz.pz.total : "—", dernierPelz ? (ecartPelz === null ? `semaine du ${echapperRapport(dateLisible(dernierPelz.l))}` : (ecartPelz > 0 ? `▲ +${ecartPelz}` : ecartPelz < 0 ? `▼ −${-ecartPelz}` : "= identique") + " au Pelz précédent") : "pas de Pelz complet")
+    + kpi("Séances de prépa", seances.length);
+  if (conf) { const f = formePeriode(j, du, au); h += kpi("Questionnaires forme", `${f.n} <small>/ ${f.jours}</small>`, "confidentiel"); }
+  h += `</div><div class="rapport-2col">`;
+  // Colonne gauche : régularité semaine par semaine
+  h += `<div><h3>📅 Régularité (exos par semaine)</h3><table class="rap-semaines">${semaines.map((s) => `<tr><td>${echapperRapport(dateLisible(s.l))}${s.complete ? "" : " <small>(partielle)</small>"}</td><td class="rap-col-barre">${barreRapport(s.n, s.objectif, maxiSem)}</td><td><strong>${s.n}</strong> <small>/ ${s.objectif}</small></td></tr>`).join("")}</table>
+    <p class="rap-legende">Trait vertical = repère de la semaine (${EXOS_ATTENDUS_SEMAINE} exos, moins pour une semaine partielle).</p></div>`;
+  // Colonne droite : niveau par famille
+  h += `<div><h3>📈 Niveau par famille</h3><table class="rap-familles">${CATEGORIES_PROGRES.map((cat) => {
+    const e = exos.filter((z) => z.cat === cat);
+    if (!e.length) return `<tr><td>${echapperRapport(cat.nom)}</td><td colspan="2"><small>pas joué sur la période</small></td></tr>`;
+    const c = e.filter((z) => z.ecart !== null);
+    const niveau = moyenneRapport(e.map((z) => z.pct));
+    return `<tr><td>${echapperRapport(cat.nom)}<br><small>${e.length} exo${e.length > 1 ? "s" : ""} joué${e.length > 1 ? "s" : ""}</small></td><td class="rap-col-barre">${barreRapport(niveau, 0, 100)}<small>niveau ${Math.round(niveau)} %</small></td><td>${evolutionRapport(c.length ? moyenneRapport(c.map((z) => z.ecart)) : null)}</td></tr>`;
+  }).join("")}</table>
+    <p class="rap-legende">Niveau = moyenne des scores en % du maximum de chaque exo, comparée à la période d'avant (${echapperRapport(dateLisible(duAvant))} – ${echapperRapport(dateLisible(auAvant))}). Moins de ${SEUIL_EVOLUTION_POINTS} points d'écart = stable.</p></div></div>`;
+  // Points forts / à travailler
+  const forts = compares.filter((e) => e.ecart >= SEUIL_EVOLUTION_POINTS).sort((a, b) => b.ecart - a.ecart).slice(0, 3);
+  const baisses = compares.filter((e) => e.ecart <= -SEUIL_EVOLUTION_POINTS).sort((a, b) => a.ecart - b.ecart).slice(0, 3);
+  const records = exos.filter((e) => e.record);
+  const ligne = (e) => `<li><strong>${echapperRapport(e.it.titre)}</strong> ${evolutionRapport(e.ecart)}</li>`;
+  h += `<div class="rapport-2col"><div><h3>👍 Points forts</h3><ul class="rapport-liste">${forts.map(ligne).join("")}${records.length ? `<li>⭐ Record de l'année battu sur ${records.length} exo${records.length > 1 ? "s" : ""} : ${records.slice(0, 3).map((e) => echapperRapport(e.it.titre)).join(", ")}${records.length > 3 ? "…" : ""}</li>` : ""}</ul>${forts.length || records.length ? "" : `<p class="rapport-vide">Pas de progression nette sur la période.</p>`}</div>
+    <div><h3>🎯 À travailler</h3>${baisses.length ? `<ul class="rapport-liste">${baisses.map(ligne).join("")}</ul>` : `<p class="rapport-vide">Aucune baisse nette par rapport à la période d'avant.</p>`}</div></div></section>
+    <p class="rapport-detail">Détail</p>`;
+  return h;
+}
+
 async function rapportJoueur() {
   const c = rapportChoix;
   const j = joueursForme().find((x) => x.uid === c.joueur);
@@ -242,11 +325,12 @@ async function rapportJoueur() {
       avant.length ? unChiffre(moyenneRapport(avant)) : "—", an ? unChiffre(an.moy) : "—", an ? echapperRapport(texteScore(it.id, an.record)) : "—"];
   }).filter(Boolean);
   const joues = items.reduce((t, it) => t + x.scores[it.id].filter(([d]) => dans(d)).length, 0);
-  const joursActifs = new Set(items.flatMap((it) => x.scores[it.id].filter(([d]) => dans(d)).map(([d]) => d))).size;
   // Pelz : un total par semaine de la période
   const lundis = [];
   for (let l = lundiDe(texteEnDate(du)); l <= au; l = plusJours(l, 7)) lundis.push(l);
-  const pelz = lundis.map((l) => ({ l, pz: pelzSemaineRapport(x.scores, l) })).filter((p) => p.pz.n);
+  // (seulement les scores DANS la période : une semaine à cheval ne prend pas les jours d'avant)
+  const scoresPeriode = Object.fromEntries(Object.entries(x.scores).map(([id, l]) => [id, l.filter(([d]) => dans(d))]));
+  const pelz = lundis.map((l) => ({ l, pz: pelzSemaineRapport(scoresPeriode, l) })).filter((p) => p.pz.n);
   const prepa = prepaDe(j);
   const seances = prepa.seances.filter((s) => dans(s.d));
   const ressentis = (((groupeDonnees && groupeDonnees.consignes[j.uid]) || {}).ressentis || []).filter((r) => dans(r.d));
@@ -255,7 +339,7 @@ async function rapportJoueur() {
   const evts = evenementsEntre(plusJours(au, 1), plusJours(au, 30)).filter((e) => concerne(e, j.prenom));   // calendrier.js
   const kpi = (t, v) => `<div class="rapport-kpi"><span>${t}</span><strong>${v}</strong></div>`;
   let corps = enteteRapport(`Rapport de ${j.prenom}`, `Du ${dateLongue(du)} au ${dateLongue(au)}`, conf)
-    + `<div class="rapport-kpis">${kpi("Scores saisis", joues)}${kpi("Jours d'entraînement noté", joursActifs)}${kpi("Pelz complets", pelz.filter((p) => p.pz.total !== null).length)}${kpi("Séances de prépa", seances.length)}</div>`;
+    + syntheseJoueurRapport({ j, x, items, dans, duAvant, auAvant, du, au, lundis, pelz, seances, conf });
   CATEGORIES_PROGRES.forEach((cat) => {   // app.js : ⛳ Putting, 🏌️ Chipping, 📡 Test Center
     const l = lignesExo(cat);
     if (l.length) corps += `<h2>${echapperRapport(cat.nom)}</h2>` + tableRapport(["Exo", "Fois", "Moyenne", "Meilleur", "Période d'avant", "Moy. année", "Record année"], l);

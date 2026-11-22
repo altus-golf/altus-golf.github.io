@@ -1214,6 +1214,28 @@ body.theme-noir-orange .choix-bouton.actif { color: #111111; }
 .rapport-confidentiel-bloc { margin-top: 18px; padding-left: 12px; border-left: 3px solid #E85040; }
 .rapport-pied { margin-top: 24px; padding-top: 8px; border-top: 1px solid #E3E6EC; font-size: 11px; color: #5A6275; }
 .bloc-rapports h3 { margin: 18px 0 6px; font-size: 0.95rem; }
+/* 📊 Synthèse du rapport d'un joueur */
+.rapport-synthese { padding: 2px 14px 10px; margin-top: 14px; background: #F7F8FA; border: 1px solid #E3E6EC; border-radius: 10px; break-inside: avoid; }
+.rapport-synthese h2 { margin-top: 12px; }
+.rapport-synthese .rapport-kpi { background: #FFFFFF; }
+.rapport-kpi small { font-size: 11px; font-weight: 500; color: #5A6275; }
+.rapport-kpi > small { margin-top: 3px; }
+.rapport-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.rapport-2col h3 { margin-top: 8px; }
+.rap-semaines, .rap-familles { width: 100%; border-collapse: collapse; font-size: 12px; }
+.rap-semaines td, .rap-familles td { padding: 5px 4px; border-bottom: 1px solid #ECEEF2; vertical-align: middle; white-space: nowrap; }
+.rap-col-barre { width: 45%; }
+.rap-familles .rap-col-barre { width: 34%; }
+.rap-barre { position: relative; display: block; height: 8px; margin: 3px 0; border-radius: 4px; background: #E3E6EC; }
+.rap-barre-plein { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: #313F5B; }
+.rap-barre-plein.rap-atteint { background: #2E7D4F; }
+.rap-barre-objectif { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: #E85040; }
+.rap-evo { font-size: 11.5px; font-weight: 600; white-space: nowrap; color: #5A6275; }
+.rap-hausse { color: #1F6B42; }
+.rap-baisse { color: #A8321F; }
+.rap-legende { margin: 4px 0 0; font-size: 10.5px; color: #5A6275; }
+.rapport-detail { margin: 22px 0 0; font-family: Montserrat, Inter, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #5A6275; }
+@media (max-width: 600px) { .rapport-2col { grid-template-columns: 1fr; gap: 4px; } .rap-semaines td, .rap-familles td { white-space: normal; } }
 .prepa-saisie.rap-saisie { max-width: 560px; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
 .bloc-rapports .cal-case { display: block; margin: 8px 0; line-height: 1.4; }
 .bloc-rapports .cal-case input { vertical-align: -4px; margin-right: 6px; }
