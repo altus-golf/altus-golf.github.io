@@ -166,3 +166,10 @@
 - 🗓️ Calendrier (calendrier.js) : onglet coach pour créer / modifier / supprimer (compétition, stage / voyage, scolaire / examens, tests, autre ; format, tours, niveau pour les compétitions ; résultats prévus plus tard). Joueurs : « À venir » en bas de la Séance.
 - 🔒 Règles Firestore : 2 nouveaux blocs `mesures` (coachs seulement en écriture) et `calendrier`. À recoller dans la console Firebase AVANT la mise en ligne.
 - Testé en mode démo (Playwright), données fictives pour chaque nouveauté ; aucun calcul existant changé.
+
+## 22/11/2026 — v78 : rapports à imprimer / PDF
+- 🖨️ Espace coachs > ⚙️ Gestion > « Rapports à imprimer (PDF) » : rapport de la semaine (tous les joueurs) et rapport d'un joueur (cette semaine, semaine dernière, ce mois, mois dernier ou dates au choix). Aperçu dans la page, puis « Imprimer / PDF » → « Enregistrer en PDF ».
+- Case « Inclure forme, sommeil et mesures (confidentiel) » : à cocher pour un rapport interne, à décocher pour un rapport à envoyer (parents, joueur).
+- Testé en mode démo (Playwright) : aperçu ordinateur et téléphone (sombre), PDF A4 des deux rapports, avec et sans la partie confidentielle.
+- 📊 Rapport d'un joueur : synthèse en tableau de bord avant le détail (exos joués / repère 15 par semaine, régularité par semaine, niveau par famille en % du max comparé à la période d'avant, points forts / à travailler, dernier Pelz). Le Pelz d'une semaine à cheval sur le début de la période ne prend plus les jours d'avant.
+- Rapports épurés : plus aucun émoji, présentation sobre (titres en petites capitales avec un trait corail, filets fins, chiffres clés sans cadres).
