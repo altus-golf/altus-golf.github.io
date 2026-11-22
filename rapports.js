@@ -123,7 +123,10 @@ function texteMatchRapport(m) {
 }
 
 /* ---------- Aperçu par-dessus la page + impression ---------- */
+// Rapport sobre : aucun émoji dans le document (ceux des textes repris ailleurs, ex. « 📐 mesures en retard », sont enlevés ici)
+const sansEmojiRapport = (t) => t.replace(/\p{Extended_Pictographic}\uFE0F?|\uFE0F|\u200D/gu, "").replace(/ {2,}/g, " ");
 function ouvrirApercuRapport(titre, corps) {
+  corps = sansEmojiRapport(corps);
   fermerApercuRapport();
   const div = document.createElement("div");
   div.id = "rapport-apercu";
@@ -136,7 +139,7 @@ function ouvrirApercuRapport(titre, corps) {
       </span>
     </div>
     <article class="rapport-page">${corps}
-      <footer class="rapport-pied">Altus Performance · édité le ${echapperRapport(dateLongue(dateEnTexte(new Date())))}${corps.includes("rapport-confidentiel") ? " · 🔒 document confidentiel, réservé aux coachs" : ""}</footer>
+      <footer class="rapport-pied">Altus Performance · édité le ${echapperRapport(dateLongue(dateEnTexte(new Date())))}${corps.includes("rapport-confidentiel") ? " · document confidentiel, réservé aux coachs" : ""}</footer>
     </article>`;
   document.body.appendChild(div);
   document.body.classList.add("rapport-ouvert");
@@ -153,7 +156,7 @@ function fermerApercuRapport() {
 const enteteRapport = (titre, sousTitre, confidentiel) => `<header class="rapport-entete">
     <img src="images/logo-altus.png" alt="Altus" class="rapport-logo">
     <div><h1>${echapperRapport(titre)}</h1><p>${echapperRapport(sousTitre)}</p></div>
-    ${confidentiel ? `<span class="rapport-confidentiel">🔒 Confidentiel</span>` : ""}
+    ${confidentiel ? `<span class="rapport-confidentiel">Confidentiel</span>` : ""}
   </header>`;
 const tableRapport = (titres, lignes, classe = "") => lignes.length
   ? `<table class="rapport-table ${classe}"><thead><tr>${titres.map((t) => `<th>${t}</th>`).join("")}</tr></thead><tbody>${lignes.map((l) => `<tr>${l.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>`
@@ -199,7 +202,7 @@ async function rapportSemaine() {
         l.pz.n ? `${l.pz.n} / ${PELZ_SITUATIONS.length}${l.pz.total !== null ? ` · <strong>${l.pz.total}</strong>` : ""}` : "—",
         l.seances.length ? `${l.seances.length} / 3` : "—"]));
   if (conf) {
-    corps += `<section class="rapport-confidentiel-bloc"><h2>💪 Forme et sommeil <small>(confidentiel)</small></h2>`
+    corps += `<section class="rapport-confidentiel-bloc"><h2>Forme et sommeil <small>(confidentiel)</small></h2>`
       + tableRapport(["Joueur", "Questionnaires", "Hooper moyen", "Jours orange / rouge", "Sommeil moyen", `Nuits &lt; ${SEUIL_SOMMEIL} h`, "Charge (UA)", "Balles"],
         lignes.map((l) => [echapperRapport(l.x.j.prenom), `${l.f.n} / 7`, unChiffre(l.f.hooper),
           l.f.oranges || l.f.rouges ? `<strong>${l.f.oranges} / ${l.f.rouges}</strong>` : "—", l.f.sommeil === null ? "—" : `${unChiffre(l.f.sommeil)} h`,
@@ -207,13 +210,13 @@ async function rapportSemaine() {
     const coms = lignes.flatMap((l) => l.f.commentaires.map((x) => ({ prenom: l.x.j.prenom, ...x }))).sort((a, b) => a.d.localeCompare(b.d));
     if (coms.length) corps += `<h3>Commentaires de la semaine</h3><ul class="rapport-liste">${coms.map((x) => `<li><strong>${echapperRapport(x.prenom)}</strong> (${echapperRapport(dateLisible(x.d))}) : ${echapperRapport(x.com)}</li>`).join("")}</ul>`;
     const retards = alertesMesuresVerifier();   // mesures.js
-    if (retards.length) corps += `<h3>📐 Mesures en retard</h3><ul class="rapport-liste">${retards.map((r) => `<li><strong>${echapperRapport(r.j.prenom)}</strong> : ${r.texte}</li>`).join("")}</ul>`;
+    if (retards.length) corps += `<h3>Mesures en retard</h3><ul class="rapport-liste">${retards.map((r) => `<li><strong>${echapperRapport(r.j.prenom)}</strong> : ${r.texte}</li>`).join("")}</ul>`;
     corps += `</section>`;
   }
-  corps += `<h2>🏆 Meilleurs de la semaine</h2>` + tableRapport(["Exo", "1er", "2e", "3e"],
+  corps += `<h2>Meilleurs de la semaine</h2>` + tableRapport(["Exo", "1er", "2e", "3e"],
     podiums.map((p) => [echapperRapport(p.it.titre), ...[0, 1, 2].map((k) => p.l[k] ? `${echapperRapport(p.l[k].prenom)} <small>${echapperRapport(texteScore(p.it.id, p.l[k].v))}</small>` : "—")]));
-  if (matchs.length) corps += `<h2>⚔️ Matchs de la semaine</h2><ul class="rapport-liste">${matchs.map((m) => `<li>${echapperRapport(texteMatchRapport(m))}</li>`).join("")}</ul>`;
-  corps += `<h2>🗓️ Semaine prochaine</h2>` + (evts.length
+  if (matchs.length) corps += `<h2>Matchs de la semaine</h2><ul class="rapport-liste">${matchs.map((m) => `<li>${echapperRapport(texteMatchRapport(m))}</li>`).join("")}</ul>`;
+  corps += `<h2>Semaine prochaine</h2>` + (evts.length
     ? `<ul class="rapport-liste">${evts.map((e) => `<li><strong>${echapperRapport(e.titre)}</strong> · ${echapperRapport(typeEvenement(e.type).nom)} · ${echapperRapport(datesEvenement(e))}${e.lieu ? ` · ${echapperRapport(e.lieu)}` : ""} <small>(${e.joueurs === "tous" ? "tout le groupe" : echapperRapport(e.joueurs.join(", "))})</small></li>`).join("")}</ul>`
     : `<p class="rapport-vide">Aucun événement au calendrier.</p>`);
   ouvrirApercuRapport(`Rapport semaine du ${dateCourteAn(lundi)}`, corps);
@@ -233,7 +236,7 @@ function evolutionRapport(ecart) {
   const pts = `${ecart > 0 ? "+" : ""}${unChiffre(ecart)} pt${Math.abs(ecart) >= 2 ? "s" : ""}`;
   if (ecart >= SEUIL_EVOLUTION_POINTS) return `<span class="rap-evo rap-hausse">▲ en progrès (${pts})</span>`;
   if (ecart <= -SEUIL_EVOLUTION_POINTS) return `<span class="rap-evo rap-baisse">▼ en baisse (${pts})</span>`;
-  return `<span class="rap-evo rap-stable">● stable (${pts})</span>`;
+  return `<span class="rap-evo rap-stable">→ stable (${pts})</span>`;
 }
 // Petite barre horizontale (valeur / objectif), imprimable
 const barreRapport = (v, objectif, maxi) => `<span class="rap-barre"><span class="rap-barre-plein${v >= objectif ? " rap-atteint" : ""}" style="width:${Math.min(100, (v / maxi) * 100)}%"></span>${objectif ? `<span class="rap-barre-objectif" style="left:${Math.min(100, (objectif / maxi) * 100)}%"></span>` : ""}</span>`;
@@ -272,7 +275,7 @@ function syntheseJoueurRapport(o) {
     for (let l = plusJours(dernierPelz.l, -7), k = 0; k < 8 && pelzAvant === null; l = plusJours(l, -7), k++) pelzAvant = pelzSemaineRapport(x.scores, l).total;   // classeur.js
   }
   const ecartPelz = dernierPelz && pelzAvant !== null ? dernierPelz.pz.total - pelzAvant : null;
-  let h = `<section class="rapport-synthese"><h2>📊 Synthèse</h2><div class="rapport-kpis">`
+  let h = `<section class="rapport-synthese"><h2>Synthèse</h2><div class="rapport-kpis">`
     + kpi("Exos joués", `${joues}${attendus ? ` <small>/ ${attendus}</small>` : ""}`, `${barreRapport(joues, attendus, Math.max(attendus, joues) || 1)}repère : ${EXOS_ATTENDUS_SEMAINE} par semaine`)
     + kpi("Jours d'entraînement noté", new Set(items.flatMap((it) => x.scores[it.id].filter(([d]) => dans(d)).map(([d]) => d))).size)
     + kpi("Exos en progrès", compares.length ? `${enProgres} <small>/ ${compares.length}</small>` : "—", compares.length ? `${enBaisse} en baisse` : "rien à comparer")
@@ -281,15 +284,15 @@ function syntheseJoueurRapport(o) {
   if (conf) { const f = formePeriode(j, du, au); h += kpi("Questionnaires forme", `${f.n} <small>/ ${f.jours}</small>`, "confidentiel"); }
   h += `</div><div class="rapport-2col">`;
   // Colonne gauche : régularité semaine par semaine
-  h += `<div><h3>📅 Régularité (exos par semaine)</h3><table class="rap-semaines">${semaines.map((s) => `<tr><td>${echapperRapport(dateLisible(s.l))}${s.complete ? "" : " <small>(partielle)</small>"}</td><td class="rap-col-barre">${barreRapport(s.n, s.objectif, maxiSem)}</td><td><strong>${s.n}</strong> <small>/ ${s.objectif}</small></td></tr>`).join("")}</table>
+  h += `<div><h3>Régularité <small>exos par semaine</small></h3><table class="rap-semaines">${semaines.map((s) => `<tr><td>${echapperRapport(dateLisible(s.l))}${s.complete ? "" : " <small>(partielle)</small>"}</td><td class="rap-col-barre">${barreRapport(s.n, s.objectif, maxiSem)}</td><td><strong>${s.n}</strong> <small>/ ${s.objectif}</small></td></tr>`).join("")}</table>
     <p class="rap-legende">Trait vertical = repère de la semaine (${EXOS_ATTENDUS_SEMAINE} exos, moins pour une semaine partielle).</p></div>`;
   // Colonne droite : niveau par famille
-  h += `<div><h3>📈 Niveau par famille</h3><table class="rap-familles">${CATEGORIES_PROGRES.map((cat) => {
+  h += `<div><h3>Niveau par famille</h3><table class="rap-familles">${CATEGORIES_PROGRES.map((cat) => {
     const e = exos.filter((z) => z.cat === cat);
-    if (!e.length) return `<tr><td>${echapperRapport(cat.nom)}</td><td colspan="2"><small>pas joué sur la période</small></td></tr>`;
+    if (!e.length) return `<tr><td>${echapperRapport(nomCategorie(cat))}</td><td colspan="2"><small>pas joué sur la période</small></td></tr>`;
     const c = e.filter((z) => z.ecart !== null);
     const niveau = moyenneRapport(e.map((z) => z.pct));
-    return `<tr><td>${echapperRapport(cat.nom)}<br><small>${e.length} exo${e.length > 1 ? "s" : ""} joué${e.length > 1 ? "s" : ""}</small></td><td class="rap-col-barre">${barreRapport(niveau, 0, 100)}<small>niveau ${Math.round(niveau)} %</small></td><td>${evolutionRapport(c.length ? moyenneRapport(c.map((z) => z.ecart)) : null)}</td></tr>`;
+    return `<tr><td>${echapperRapport(nomCategorie(cat))}<br><small>${e.length} exo${e.length > 1 ? "s" : ""} joué${e.length > 1 ? "s" : ""}</small></td><td class="rap-col-barre">${barreRapport(niveau, 0, 100)}<small>niveau ${Math.round(niveau)} %</small></td><td>${evolutionRapport(c.length ? moyenneRapport(c.map((z) => z.ecart)) : null)}</td></tr>`;
   }).join("")}</table>
     <p class="rap-legende">Niveau = moyenne des scores en % du maximum de chaque exo, comparée à la période d'avant (${echapperRapport(dateLisible(duAvant))} – ${echapperRapport(dateLisible(auAvant))}). Moins de ${SEUIL_EVOLUTION_POINTS} points d'écart = stable.</p></div></div>`;
   // Points forts / à travailler
@@ -297,8 +300,8 @@ function syntheseJoueurRapport(o) {
   const baisses = compares.filter((e) => e.ecart <= -SEUIL_EVOLUTION_POINTS).sort((a, b) => a.ecart - b.ecart).slice(0, 3);
   const records = exos.filter((e) => e.record);
   const ligne = (e) => `<li><strong>${echapperRapport(e.it.titre)}</strong> ${evolutionRapport(e.ecart)}</li>`;
-  h += `<div class="rapport-2col"><div><h3>👍 Points forts</h3><ul class="rapport-liste">${forts.map(ligne).join("")}${records.length ? `<li>⭐ Record de l'année battu sur ${records.length} exo${records.length > 1 ? "s" : ""} : ${records.slice(0, 3).map((e) => echapperRapport(e.it.titre)).join(", ")}${records.length > 3 ? "…" : ""}</li>` : ""}</ul>${forts.length || records.length ? "" : `<p class="rapport-vide">Pas de progression nette sur la période.</p>`}</div>
-    <div><h3>🎯 À travailler</h3>${baisses.length ? `<ul class="rapport-liste">${baisses.map(ligne).join("")}</ul>` : `<p class="rapport-vide">Aucune baisse nette par rapport à la période d'avant.</p>`}</div></div></section>
+  h += `<div class="rapport-2col"><div><h3>Points forts</h3><ul class="rapport-liste">${forts.map(ligne).join("")}${records.length ? `<li>Record de l'année battu sur ${records.length} exo${records.length > 1 ? "s" : ""} : ${records.slice(0, 3).map((e) => echapperRapport(e.it.titre)).join(", ")}${records.length > 3 ? "…" : ""}</li>` : ""}</ul>${forts.length || records.length ? "" : `<p class="rapport-vide">Pas de progression nette sur la période.</p>`}</div>
+    <div><h3>À travailler</h3>${baisses.length ? `<ul class="rapport-liste">${baisses.map(ligne).join("")}</ul>` : `<p class="rapport-vide">Aucune baisse nette par rapport à la période d'avant.</p>`}</div></div></section>
     <p class="rapport-detail">Détail</p>`;
   return h;
 }
@@ -342,17 +345,17 @@ async function rapportJoueur() {
     + syntheseJoueurRapport({ j, x, items, dans, duAvant, auAvant, du, au, lundis, pelz, seances, conf });
   CATEGORIES_PROGRES.forEach((cat) => {   // app.js : ⛳ Putting, 🏌️ Chipping, 📡 Test Center
     const l = lignesExo(cat);
-    if (l.length) corps += `<h2>${echapperRapport(cat.nom)}</h2>` + tableRapport(["Exo", "Fois", "Moyenne", "Meilleur", "Période d'avant", "Moy. année", "Record année"], l);
+    if (l.length) corps += `<h2>${echapperRapport(nomCategorie(cat))}</h2>` + tableRapport(["Exo", "Fois", "Moyenne", "Meilleur", "Période d'avant", "Moy. année", "Record année"], l);
   });
   if (!joues) corps += `<p class="rapport-vide">Aucun score sur cette période.</p>`;
-  if (pelz.length) corps += `<h2>🏌️ Test de Pelz</h2>` + tableRapport(["Semaine du", "Situations", `Total /${PELZ_MAX_TOTAL}`],
+  if (pelz.length) corps += `<h2>Test de Pelz</h2>` + tableRapport(["Semaine du", "Situations", `Total /${PELZ_MAX_TOTAL}`],
     pelz.map((p) => [echapperRapport(dateLisible(p.l)), `${p.pz.n} / ${PELZ_SITUATIONS.length}`, p.pz.total === null ? "incomplet" : `<strong>${p.pz.total}</strong>`]));
-  if (matchs.length) corps += `<h2>⚔️ Matchs</h2><ul class="rapport-liste">${matchs.map((m) => `<li>${echapperRapport(texteMatchRapport(m))}</li>`).join("")}</ul>`;
-  corps += `<h2>🏋️ Préparation physique</h2>` + tableRapport(["Date", "Séance", "RPE", "Durée", "Volume"],
-    seances.map((s) => { const p = planDe(s.cle); return [echapperRapport(dateLisible(s.d)), p ? `Sem. ${p.sem} · séance ${p.seance}${prescAdaptee(s) ? " ✏️" : ""}` : "Séance libre", s.rpe ?? "—", s.duree ? `${s.duree} min` : "—", tonnageSeance(s) ? `${Math.round(tonnageSeance(s))} kg` : "—"]; }));   // prepa.js
+  if (matchs.length) corps += `<h2>Matchs</h2><ul class="rapport-liste">${matchs.map((m) => `<li>${echapperRapport(texteMatchRapport(m))}</li>`).join("")}</ul>`;
+  corps += `<h2>Préparation physique</h2>` + tableRapport(["Date", "Séance", "RPE", "Durée", "Volume"],
+    seances.map((s) => { const p = planDe(s.cle); return [echapperRapport(dateLisible(s.d)), p ? `Sem. ${p.sem} · séance ${p.seance}${prescAdaptee(s) ? " <small>(adaptée)</small>" : ""}` : "Séance libre", s.rpe ?? "—", s.duree ? `${s.duree} min` : "—", tonnageSeance(s) ? `${Math.round(tonnageSeance(s))} kg` : "—"]; }));   // prepa.js
   const rm = EXOS_1RM_PRINCIPAUX.filter(([n]) => prepa.rm[n]);
   if (rm.length) corps += `<p class="rapport-petit"><strong>1RM :</strong> ${rm.map(([n, court]) => `${echapperRapport(court)} ${virguleA(prepa.rm[n].kg)} kg`).join(" · ")}</p>`;
-  if (ressentis.length) corps += `<h2>🎯 Technique : ressentis du joueur</h2><ul class="rapport-liste">${ressentis.map((r) => `<li><strong>${echapperRapport(nomTechnique(r.id))}</strong> (${echapperRapport(dateLisible(r.d))}) : ${echapperRapport(r.texte)}</li>`).join("")}</ul>`;
+  if (ressentis.length) corps += `<h2>Technique : ressentis du joueur</h2><ul class="rapport-liste">${ressentis.map((r) => `<li><strong>${echapperRapport(nomTechnique(r.id))}</strong> (${echapperRapport(dateLisible(r.d))}) : ${echapperRapport(r.texte)}</li>`).join("")}</ul>`;
   if (conf) {
     const f = formePeriode(j, du, au);
     const m = mesuresDe(j);   // mesures.js
@@ -360,16 +363,16 @@ async function rapportJoueur() {
     const avantDer = der ? m.mesures.filter((x2) => x2.d <= der.d) : [];
     const v = vitesseCroissance(avantDer);
     const dec = der ? decalageMaturite(m, der) : null;
-    corps += `<section class="rapport-confidentiel-bloc"><h2>💪 Forme et sommeil <small>(confidentiel)</small></h2>
+    corps += `<section class="rapport-confidentiel-bloc"><h2>Forme et sommeil <small>(confidentiel)</small></h2>
       <div class="rapport-kpis">${kpi("Questionnaires", `${f.n} / ${f.jours}`)}${kpi("Hooper moyen", unChiffre(f.hooper))}${kpi("Jours orange / rouge", `${f.oranges} / ${f.rouges}`)}${kpi("Sommeil moyen", f.sommeil === null ? "—" : `${unChiffre(f.sommeil)} h`)}${kpi(`Nuits &lt; ${SEUIL_SOMMEIL} h`, f.n ? f.nuitsCourtes : "—")}${kpi("Charge (UA)", f.charge || "—")}${kpi("Balles tapées", f.balles ?? "—")}</div>
       ${f.commentaires.length ? `<h3>Commentaires</h3><ul class="rapport-liste">${f.commentaires.map((x2) => `<li>${echapperRapport(dateLisible(x2.d))} : ${echapperRapport(x2.com)}</li>`).join("")}</ul>` : ""}
-      <h2>📐 Mesures</h2>
+      <h2>Mesures</h2>
       ${der ? `<p class="rapport-petit">Mesure du ${echapperRapport(dateLisible(der.d))} : ${CHAMPS_MESURES.filter((ch) => der.valeurs[ch.id] !== undefined).map((ch) => `${echapperRapport(ch.libelle)} ${virguleA(der.valeurs[ch.id])} ${ch.unite}`).join(" · ")}${longueurJambes(der) !== null ? ` · jambes ${virguleA(Math.round(longueurJambes(der) * 10) / 10)} cm` : ""}</p>
         ${v !== null ? `<p class="rapport-petit">Croissance : ${virguleA(Math.round(v * 100) / 100)} cm / mois${v > SEUIL_POUSSEE_CM_MOIS ? " (poussée de croissance)" : ""}.</p>` : ""}
         ${dec !== null ? `<p class="rapport-petit">Maturité : ${echapperRapport(texteMaturite(dec))}. <small>${echapperRapport(PHRASE_ESTIMATION)}</small></p>` : ""}` : `<p class="rapport-vide">Pas encore de mesure.</p>`}
     </section>`;
   }
-  corps += `<h2>🗓️ À venir (30 jours)</h2>` + (evts.length
+  corps += `<h2>À venir <small>30 jours</small></h2>` + (evts.length
     ? `<ul class="rapport-liste">${evts.map((e) => `<li><strong>${echapperRapport(e.titre)}</strong> · ${echapperRapport(typeEvenement(e.type).nom)} · ${echapperRapport(datesEvenement(e))}${e.lieu ? ` · ${echapperRapport(e.lieu)}` : ""}</li>`).join("")}</ul>`
     : `<p class="rapport-vide">Aucun événement au calendrier.</p>`);
   ouvrirApercuRapport(`Rapport ${j.prenom} du ${dateCourteAn(du)} au ${dateCourteAn(au)}`, corps);

@@ -172,3 +172,4 @@
 - Case « Inclure forme, sommeil et mesures (confidentiel) » : à cocher pour un rapport interne, à décocher pour un rapport à envoyer (parents, joueur).
 - Testé en mode démo (Playwright) : aperçu ordinateur et téléphone (sombre), PDF A4 des deux rapports, avec et sans la partie confidentielle.
 - 📊 Rapport d'un joueur : synthèse en tableau de bord avant le détail (exos joués / repère 15 par semaine, régularité par semaine, niveau par famille en % du max comparé à la période d'avant, points forts / à travailler, dernier Pelz). Le Pelz d'une semaine à cheval sur le début de la période ne prend plus les jours d'avant.
+- Rapports épurés : plus aucun émoji, présentation sobre (titres en petites capitales avec un trait corail, filets fins, chiffres clés sans cadres).
