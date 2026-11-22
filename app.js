@@ -21,6 +21,8 @@ let erreurGroupe = false;    // la base n'a pas répondu
 let exoClassement = null;    // exo choisi dans « Classements »
 let joueurCoach = null;      // uid du joueur choisi dans l'espace coach
 let messageCoach = "";       // erreur à afficher dans l'espace coach
+let semaineDefis = null;      // ⚙️ Gestion : lundi de la semaine de défis affichée (null = cette semaine)
+const SEMAINES_PLANNING = 12;  // semaines proposées pour planifier les défis (cette semaine + 11)
 let messageConnexion = "";   // erreur de connexion Google (page de connexion)
 
 // Exos à jouer et scores classés : exos-altus.js (FICHES_ALTUS, ITEMS_ALTUS, ficheDe, itemDe)
@@ -242,6 +244,22 @@ async function chargerGroupe() {
   }
   // Coach : anciens Trèfle « en série » des historiques importés (classeur.js)
   if (donnees && vue === "coach" && coachConnecte()) nettoyerTrefleSerieClasseur();
+  // Coach, UNE SEULE FOIS (demande du coach le 22/11/2026) : les défis de la semaine du 16/11, encore à l'ancien
+  // format (sans planning), sont décalés à la semaine du 23/11. Dès que le planning existe, ne se refait plus.
+  if (donnees && vue === "coach" && coachConnecte() && donnees.defi && donnees.defi.lundi === "2026-11-16"
+      && !Object.keys(donnees.defi.planning).length && donnees.defi.fiches.length) {
+    const d = donnees.defi;
+    const erreur = await ecrireDefiSemaines(d, { "2026-11-23": { fiches: d.fiches, message: d.message }, "2026-11-16": { fiches: [], message: "" } });
+    if (!erreur) {
+      donnees.defi = normaliserDefi({ ...d, planning: { "2026-11-23": { fiches: d.fiches, message: d.message }, "2026-11-16": { fiches: [], message: "" } } });
+      afficherMessage("✅ Les défis de la semaine du 16 nov. ont été décalés à la semaine du 23 nov. (Gestion > Défis).");
+    }
+  }
+  // Coach : une semaine planifiée vient de commencer → on la recopie « en clair » pour les anciennes versions du site
+  if (donnees && vue === "coach" && coachConnecte() && donnees.defi && donnees.defi.planning[lundiDe()] && donnees.defi.lundi !== lundiDe()) {
+    await ecrireDefiSemaines(donnees.defi, {});
+    groupeDonnees = (await lireGroupe(true)) || groupeDonnees;
+  }
   // ☀️ Forme du matin : récupère les réponses en ligne / renvoie celle restée sur le téléphone (forme.js)
   if (donnees && moi() && vue !== "coach") await synchroFormeAuChargement();
   // 🏋️ Prépa : séances et 1RM en ligne ⇄ téléphone (prepa.js)
@@ -602,9 +620,16 @@ function vueAccueil() {
 }
 
 // Défis de la semaine en cours : { fiches, message } ou null
-function defisDeLaSemaine() {
+// Défis d'une semaine (lundi « AAAA-MM-JJ ») : le planning des coachs d'abord, sinon l'ancien format
+function defisDe(lundi) {
   const d = groupeDonnees && groupeDonnees.defi;
-  return d && d.lundi === lundiDe() && d.fiches.some(itemDe) ? { ...d, fiches: d.fiches.filter(itemDe) } : null;
+  if (!d) return null;
+  const sem = d.planning[lundi] || (d.lundi === lundi ? { fiches: d.fiches, message: d.message } : null);
+  return sem ? { lundi, fiches: sem.fiches.filter(itemDe), message: sem.message } : null;
+}
+function defisDeLaSemaine() {
+  const d = defisDe(lundiDe());
+  return d && d.fiches.length ? d : null;
 }
 // Meilleur score d'un joueur depuis lundi sur un exo (null = pas joué)
 function meilleurCetteSemaine(b, id) {
@@ -768,16 +793,22 @@ function vueCoachGestion() {
   let html = `<section class="bloc pr-bloc"><h2 class="bloc-titre">⚙️ Gestion du groupe</h2>
     <p class="petit">Le groupe est ouvert : les joueurs entrent avec leur compte Google.</p></section>`;
 
-  // --- Défi de la semaine ---
+  // --- Défis : semaine en cours ou semaines à venir (planning, 22/11/2026) ---
   const lundi = lundiDe();
-  const defi = defisDeLaSemaine();
+  if (!semaineDefis || semaineDefis < lundi) semaineDefis = lundi;
+  const defi = defisDe(semaineDefis);
   const fichesDefi = defi ? defi.fiches : [];
+  const semaines = Array.from({ length: SEMAINES_PLANNING }, (_, k) => dateEnTexte(ajouterJours(texteEnDate(lundi), 7 * k)));
+  const suivante = dateEnTexte(ajouterJours(texteEnDate(semaineDefis), 7));
+  const nomSemaine = (l) => (l === lundi ? "cette semaine" : `semaine du ${dateLisible(l)}`);
   html += `<section class="bloc pr-bloc consignes-admin">
-    <h2 class="bloc-titre">🎯 Défis de la semaine du ${echapper(dateLisible(lundi))}</h2>
+    <h2 class="bloc-titre">🎯 Défis · ${echapper(semaineDefis === lundi ? `cette semaine (du ${dateLisible(lundi)})` : `semaine du ${dateLisible(semaineDefis)}`)}</h2>
+    <p class="petit">Choisis la semaine à préparer : les joueurs voient les défis de chaque semaine à partir de son lundi.</p>
+    <div class="filtres planning-defis">${semaines.map((l) => { const n = (defisDe(l) || { fiches: [] }).fiches.length; return `<button type="button" class="filtre ${l === semaineDefis ? "actif" : ""}" data-a="coach-defi-semaine" data-l="${l}">${echapper(l === lundi ? "Cette semaine" : dateLisible(l))}<small> · ${n}</small></button>`; }).join("")}</div>
     ${fichesDefi.length ? `<ul class="liste-consignes">${fichesDefi.map((id) => `<li class="consigne">
       <span><strong>${echapper(itemDe(id).titre)}</strong></span>
       <button type="button" class="bouton danger" data-a="coach-defi-retirer" data-id="${echapper(id)}" aria-label="Retirer ce défi">✕</button>
-    </li>`).join("")}</ul>` : `<p class="petit">Pas encore de défi cette semaine.</p>`}
+    </li>`).join("")}</ul>` : `<p class="petit">Pas encore de défi pour ${echapper(nomSemaine(semaineDefis))}.</p>`}
     ${fichesDefi.length < MAX_DEFIS && ITEMS_ALTUS.some((f) => !fichesDefi.includes(f.id)) ? `<div class="ajout-consigne">
       <select id="choix-defi" class="choix" aria-label="Exo du défi">
         ${ITEMS_ALTUS.filter((f) => !fichesDefi.includes(f.id)).map((f) => `<option value="${echapper(f.id)}">${echapper(f.titre)}</option>`).join("")}
@@ -786,6 +817,10 @@ function vueCoachGestion() {
     <label for="message-defi">💬 Message pour tout le groupe (facultatif)</label>
     <input id="message-defi" maxlength="200" value="${echapper(defi ? defi.message : "")}">
     <button type="button" class="bouton" data-a="coach-defi-message">Enregistrer le message</button>
+    ${fichesDefi.length || (defi && defi.message) ? `<div class="boutons-ligne">
+      <button type="button" class="bouton" data-a="coach-defi-decaler">⏭ Décaler à la semaine du ${echapper(dateLisible(suivante))}</button>
+      <button type="button" class="bouton" data-a="coach-defi-copier">📋 Copier sur la semaine du ${echapper(dateLisible(suivante))}</button>
+    </div>` : ""}
   </section>`;
 
   // --- Import de l'historique du classeur (classeur.js) ---
@@ -1078,13 +1113,26 @@ async function actionCoach(a, bouton) {
     return chargerGroupe();
   }
   if (a.startsWith("coach-defi-")) {
-    const actuel = defisDeLaSemaine() || { fiches: [], message: "" };
+    if (a === "coach-defi-semaine") { semaineDefis = bouton.dataset.l; return afficherVue(); }
+    const lundi = semaineDefis && semaineDefis >= lundiDe() ? semaineDefis : lundiDe();
+    const suivante = dateEnTexte(ajouterJours(texteEnDate(lundi), 7));
+    const actuel = defisDe(lundi) || { fiches: [], message: "" };
     let fiches = [...actuel.fiches];
     let message = actuel.message;
     if (a === "coach-defi-ajouter") { const id = document.getElementById("choix-defi").value; if (id && !fiches.includes(id)) fiches.push(id); }
     if (a === "coach-defi-retirer") fiches = fiches.filter((id) => id !== bouton.dataset.id);
     if (a === "coach-defi-message") message = document.getElementById("message-defi").value.trim().slice(0, 200);
-    messageCoach = await ecrireDefi({ fiches: fiches.slice(0, MAX_DEFIS), lundi: lundiDe(), message });
+    if (a === "coach-defi-decaler" || a === "coach-defi-copier") {
+      const deja = defisDe(suivante);
+      if (deja && deja.fiches.length && !(await demanderConfirmation(`La semaine du ${dateLisible(suivante)} a déjà ${deja.fiches.length} défi${deja.fiches.length > 1 ? "s" : ""}. Les remplacer ?`, "Oui, remplacer"))) return;
+      const changements = { [suivante]: { fiches, message } };
+      if (a === "coach-defi-decaler") changements[lundi] = { fiches: [], message: "" };
+      messageCoach = await ecrireDefiSemaines(groupeDonnees.defi, changements);   // base.js
+      if (!messageCoach) { semaineDefis = suivante; messageCoach = `✅ Défis ${a === "coach-defi-decaler" ? "décalés" : "copiés"} sur la semaine du ${dateLisible(suivante)}.`; }
+      afficherMessage(messageCoach);
+      return chargerGroupe();
+    }
+    messageCoach = await ecrireDefiSemaines(groupeDonnees.defi, { [lundi]: { fiches: fiches.slice(0, MAX_DEFIS), message } });
     return chargerGroupe();
   }
   // Exos donnés au joueur choisi

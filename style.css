@@ -1378,3 +1378,9 @@ body.rapport-ouvert { overflow: hidden; }
   body[data-vue="c-classements"] #contenu { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .prepa-saisie { max-width: 560px; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
 }
+
+/* ⚙️ Gestion : planning des défis (22/11/2026) */
+.planning-defis { margin: 8px 0 12px; }
+.planning-defis small { opacity: 0.75; }
+.boutons-ligne { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
