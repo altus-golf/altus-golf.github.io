@@ -789,6 +789,7 @@ function vueCoachGestion() {
   </section>`;
 
   // --- Import de l'historique du classeur (classeur.js) ---
+  html += blocRapportsImprimables();   // rapports.js : semaine de tous les joueurs / un joueur, en PDF
   html += blocRapportExcel();   // classeur.js
   html += blocImportClasseur();
   return html;
@@ -1141,6 +1142,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (a.startsWith("forme-")) actionForme(a, bouton);   // forme.js
     if (a.startsWith("prepa-")) actionPrepa(a, bouton);   // prepa.js
     if (a.startsWith("cal-")) actionCalendrier(a, bouton);   // calendrier.js
+    if (a.startsWith("rap-")) actionRapports(a);   // rapports.js
     if (a === "choisir-prenom") { prenomChoisi = bouton.dataset.prenom; messageAccueil = ""; afficherVue(); window.scrollTo(0, 0); }
     if (a === "confirmer-prenom" && prenomChoisi && !entreeEnCours) { messageAccueil = ""; entrerAvecPrenom(prenomChoisi); }
     if (a === "autre-prenom" || a === "liste-prenoms") { accueilAutrePrenom = a === "autre-prenom"; prenomChoisi = null; messageAccueil = ""; afficherVue(); }

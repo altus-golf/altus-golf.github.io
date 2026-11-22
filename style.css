@@ -1181,6 +1181,56 @@ body.theme-noir-orange .choix-bouton.actif { color: #111111; }
   body.theme-noir-orange .bandeau-haut { border-bottom: none; border-right: 2px solid #ff7a00; }
 }
 
+
+/* ---------- 🖨️ Rapports imprimables (rapports.js, 22/11/2026) ----------
+   Aperçu par-dessus la page ; à l'impression, SEUL le rapport sort (page A4, couleurs claires). */
+.rapport-apercu { position: fixed; inset: 0; z-index: 40; overflow-y: auto; background: #E9ECF1; padding: 0 12px 40px; }
+.rapport-barre { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin: 0 -12px 16px; padding: max(10px, env(safe-area-inset-top)) 16px 10px; background: #1E2638; color: #FFFFFF; font-family: var(--police-titres); }
+.rapport-barre-boutons { display: flex; gap: 8px; }
+.rapport-barre .bouton { min-height: 40px; }
+.rapport-page { max-width: 820px; margin: 0 auto; overflow-x: auto; background: #FFFFFF; color: #1A1F2B; padding: 28px 32px; border-radius: 8px; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12); font-family: Inter, system-ui, sans-serif; font-size: 13px; line-height: 1.45; }
+.rapport-page h1 { margin: 0; font-family: Montserrat, Inter, sans-serif; font-size: 22px; color: #1A1F2B; }
+.rapport-page h2 { margin: 20px 0 8px; padding-bottom: 3px; border-bottom: 2px solid #E85040; font-family: Montserrat, Inter, sans-serif; font-size: 15px; color: #313F5B; break-after: avoid; }
+.rapport-page h2 small { font-weight: 500; }
+.rapport-page h3 { margin: 14px 0 6px; font-size: 13px; color: #1A1F2B; }
+.rapport-page small { color: #5A6275; }
+.rapport-entete { display: flex; align-items: center; gap: 16px; padding-bottom: 12px; border-bottom: 1px solid #E3E6EC; }
+.rapport-logo { height: 40px; width: auto; }
+.rapport-entete p { margin: 2px 0 0; color: #5A6275; }
+.rapport-entete p::first-letter { text-transform: uppercase; }
+.rapport-confidentiel { margin-left: auto; padding: 4px 10px; border-radius: 999px; background: #FCE9E6; color: #A8321F; font-weight: 700; font-size: 12px; white-space: nowrap; }
+.rapport-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin: 14px 0; }
+.rapport-kpi { display: flex; flex-direction: column; padding: 8px 10px; border: 1px solid #E3E6EC; border-radius: 8px; break-inside: avoid; }
+.rapport-kpi span { font-size: 11px; color: #5A6275; }
+.rapport-kpi strong { font-family: Montserrat, Inter, sans-serif; font-size: 18px; }
+.rapport-table { width: 100%; margin: 6px 0 4px; border-collapse: collapse; font-size: 12px; }
+.rapport-table th { padding: 6px 8px; background: #F3F4F7; color: #5A6275; text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.03em; border-bottom: 1px solid #E3E6EC; }
+.rapport-table td { padding: 6px 8px; border-bottom: 1px solid #ECEEF2; vertical-align: top; }
+.rapport-table tr { break-inside: avoid; }
+.rapport-liste { margin: 4px 0; padding-left: 18px; }
+.rapport-liste li { margin: 3px 0; break-inside: avoid; }
+.rapport-vide { margin: 4px 0; color: #5A6275; }
+.rapport-petit { margin: 4px 0; }
+.rapport-confidentiel-bloc { margin-top: 18px; padding-left: 12px; border-left: 3px solid #E85040; }
+.rapport-pied { margin-top: 24px; padding-top: 8px; border-top: 1px solid #E3E6EC; font-size: 11px; color: #5A6275; }
+.bloc-rapports h3 { margin: 18px 0 6px; font-size: 0.95rem; }
+.prepa-saisie.rap-saisie { max-width: 560px; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+.bloc-rapports .cal-case { display: block; margin: 8px 0; line-height: 1.4; }
+.bloc-rapports .cal-case input { vertical-align: -4px; margin-right: 6px; }
+.rapport-entete { flex-wrap: wrap; }
+.bloc-rapports .bouton.principal { margin-top: 8px; }
+body.rapport-ouvert { overflow: hidden; }
+@media (max-width: 600px) { .rapport-page { padding: 18px 14px; } .rapport-table { font-size: 11px; } .rapport-logo { height: 28px; } .rapport-page h1 { font-size: 19px; } .rapport-confidentiel { margin-left: 0; } }
+@media print {
+  @page { size: A4; margin: 12mm; }
+  body.rapport-ouvert { padding: 0 !important; background: #FFFFFF !important; overflow: visible; }
+  body.rapport-ouvert > *:not(#rapport-apercu) { display: none !important; }
+  .rapport-apercu { position: static; overflow: visible; padding: 0; background: #FFFFFF; }
+  .rapport-barre { display: none; }
+  .rapport-page { max-width: none; overflow: visible; padding: 0; border-radius: 0; box-shadow: none; }
+  .rapport-page * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
 /* =========================================================
    💻 Version ORDINATEUR (21/11/2026, demande du coach) : écrans ≥ 1100 px.
    Le téléphone ne change pas. Sur ordinateur :
