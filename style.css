@@ -1079,6 +1079,19 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .statut-forme-vert { background: var(--vert-fond); color: var(--vert-texte); }
 .statut-forme-orange { background: var(--orange-fond); color: var(--orange-texte); }
 .statut-forme-rouge { background: var(--rouge-fond); color: var(--rouge-texte); }
+/* RPE en couleurs (forme.js, 23/11/2026) : 0-4 vert, 5-6 orange, 7-10 rouge (SEUILS_RPE) */
+.rpe-vert { background: var(--vert-fond); color: var(--vert-texte); }
+.rpe-orange { background: var(--orange-fond); color: var(--orange-texte); }
+.rpe-rouge { background: var(--rouge-fond); color: var(--rouge-texte); }
+.choix-bouton.rpe-bouton { background: var(--carte); color: var(--texte); border-bottom-width: 5px; }
+.choix-bouton.rpe-vert { border-bottom-color: #2E8B57; }
+.choix-bouton.rpe-orange { border-bottom-color: #E08A1E; }
+.choix-bouton.rpe-rouge { border-bottom-color: #C62F25; }
+.choix-bouton.rpe-bouton.actif { color: #FFFFFF; }
+.choix-bouton.rpe-vert.actif { background: #2E7D4F; border-color: #2E7D4F; }
+.choix-bouton.rpe-orange.actif { background: #B85C0A; border-color: #B85C0A; }
+.choix-bouton.rpe-rouge.actif { background: #B3261E; border-color: #B3261E; }
+.pr-categorie-titre .statut { margin-left: 6px; font-size: 0.72rem; vertical-align: 1px; }
 .statut-top { background: var(--accent); color: #FFFFFF; }
 .statut-ok { background: var(--accent-doux); color: var(--lien); }
 .statut-alerte { background: var(--corail-fond); color: var(--corail-texte); }
@@ -1297,6 +1310,10 @@ body.rapport-ouvert { overflow: hidden; }
 .rapport-kpi, .rapport-synthese .rapport-kpi { display: grid; grid-row: span 3; grid-template-rows: subgrid; row-gap: 2px; align-content: start; }   /* libellés, chiffres et sous-textes alignés d'une case à l'autre */
 .rapport-kpi strong { margin-top: 0; }
 @media (min-width: 601px) { .rapport-entete { flex-wrap: nowrap; } .rapport-entete > div { flex: 1; min-width: 0; } .rapport-confidentiel { align-self: flex-start; } }
+.rap-rpe { display: inline-flex; align-items: center; gap: 6px; }
+.rap-rpe::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #2E7D4F; }
+.rap-rpe-orange::before { background: #D9822B; }
+.rap-rpe-rouge::before { background: #B3261E; }
 .rapport-pied { margin-top: 36px; padding-top: 10px; border-top: 1px solid #D5D9E1; text-align: center; font-size: 10px; letter-spacing: 0.04em; color: #7A8193; }
 @media (max-width: 600px) { .rapport-page { padding: 18px 14px; } .rapport-table { font-size: 11px; } .rapport-logo { height: 28px; } .rapport-page h1 { font-size: 19px; } .rapport-confidentiel { margin-left: 0; } }
 @media print {

@@ -25,6 +25,13 @@ const CHAMPS_HOOPER = [
 ];
 // Échelle RPE 0-10 (CR-10 de Borg, utilisée pour la charge de Foster : minutes × RPE)
 const TEXTES_RPE = ["Repos", "Très, très facile", "Facile", "Modéré", "Un peu dur", "Dur", "Dur +", "Très dur", "Très dur +", "Très, très dur", "Maximal"];
+// Couleurs du RPE (demande du coach, 23/11/2026) : 0 à 4 vert (repos à un peu dur), 5-6 orange (dur),
+// 7 à 10 rouge (très dur à maximal). Changer les seuils ici. La couleur accompagne TOUJOURS le chiffre.
+const SEUILS_RPE = { orange: 5, rouge: 7 };
+const zoneRpe = (v) => (v >= SEUILS_RPE.rouge ? "rouge" : v >= SEUILS_RPE.orange ? "orange" : "vert");
+// Pastille pour le coach : « RPE 6 » sur fond vert / orange / rouge, le mot de l'échelle au survol
+const pastilleRpe = (v) => (v === null || v === undefined ? "—"
+  : `<span class="statut rpe-${zoneRpe(Math.round(v))}" title="${TEXTES_RPE[Math.round(v)]}">RPE ${texte1(v)}</span>`);
 const MAX_REPONSES_FORME = 400;
 const CALIBRAGE_FORME = 20;          // questionnaires avant d'utiliser la moyenne ± écart-type
 // Balles tapées la veille (21/11/2026) : facultatif, 0 à 1500
@@ -193,7 +200,9 @@ async function synchroFormeAuChargement() {
 function boutonsNote(champ, valeur, min, max, colonnes) {
   let html = `<div class="choix choix-forme" style="--colonnes:${colonnes}" role="group">`;
   for (let v = min; v <= max; v++) {
-    html += `<button type="button" class="choix-bouton ${valeur === v ? "actif" : ""}" data-a="forme-note" data-champ="${champ}" data-v="${v}" aria-pressed="${valeur === v}">${v}</button>`;
+    // Boutons du RPE : trait de couleur sous le chiffre (vert / orange / rouge), comme une échelle de Borg
+    const zone = /rpe/i.test(champ) ? ` rpe-bouton rpe-${zoneRpe(v)}` : "";
+    html += `<button type="button" class="choix-bouton${zone} ${valeur === v ? "actif" : ""}" data-a="forme-note" data-champ="${champ}" data-v="${v}" aria-pressed="${valeur === v}">${v}</button>`;
   }
   return html + `</div>`;
 }
@@ -443,7 +452,7 @@ function vueCoachForme() {
           <td colspan="10"><span class="statut statut-attente">Pas encore répondu</span> <small>${l.derniere ? `dernière réponse : ${echapper(dateLisible(l.derniere.d))}` : "aucune réponse"}</small>${["orange", "rouge"].includes(l.ss.code) ? ` · sommeil 7 j : ${celluleSommeil(l.ss)}` : ""}</td>
         </tr>`).join("")}</tbody>
       </table></div>
-      <p class="petit">Vert : dans sa norme · Orange : au-dessus de sa moyenne des 28 derniers jours + 1 écart-type · Rouge : + 2 écarts-types. * = ligne de base en construction (moins de ${CALIBRAGE_FORME} questionnaires) : orange si une note vaut 6 ou 7. Charge = minutes × RPE (golf + prépa de la veille), en UA. Sommeil 7 j : orange = ${SOMMEIL_NUITS_ORANGE} nuits ou plus sous ${SEUIL_SOMMEIL} h, ou moyenne sous ${SOMMEIL_MOY_ORANGE} h ; rouge = ${SOMMEIL_NUITS_ROUGE} nuits ou plus, ou moyenne sous ${SOMMEIL_MOY_ROUGE} h (recommandation 13-18 ans : 8 à 10 h) ; moins de ${SOMMEIL_MIN_REPONSES} réponses = pas assez de données. Balles : orange / rouge = au-dessus de SA moyenne des 28 jours précédents + 1 / + 2 écarts-types (au moins ${BALLES_MIN_JOURS} jours renseignés). 🔒 Ces réponses ne sont visibles que par les coachs et le joueur.</p>
+      <p class="petit">Vert : dans sa norme · Orange : au-dessus de sa moyenne des 28 derniers jours + 1 écart-type · Rouge : + 2 écarts-types. * = ligne de base en construction (moins de ${CALIBRAGE_FORME} questionnaires) : orange si une note vaut 6 ou 7. Charge = minutes × RPE (golf + prépa de la veille), en UA. Sommeil 7 j : orange = ${SOMMEIL_NUITS_ORANGE} nuits ou plus sous ${SEUIL_SOMMEIL} h, ou moyenne sous ${SOMMEIL_MOY_ORANGE} h ; rouge = ${SOMMEIL_NUITS_ROUGE} nuits ou plus, ou moyenne sous ${SOMMEIL_MOY_ROUGE} h (recommandation 13-18 ans : 8 à 10 h) ; moins de ${SOMMEIL_MIN_REPONSES} réponses = pas assez de données. Balles : orange / rouge = au-dessus de SA moyenne des 28 jours précédents + 1 / + 2 écarts-types (au moins ${BALLES_MIN_JOURS} jours renseignés). RPE : vert de 0 à ${SEUILS_RPE.orange - 1}, orange de ${SEUILS_RPE.orange} à ${SEUILS_RPE.rouge - 1}, rouge de ${SEUILS_RPE.rouge} à 10. 🔒 Ces réponses ne sont visibles que par les coachs et le joueur.</p>
       <button type="button" class="bouton" data-a="forme-coach-actualiser">↻ Actualiser</button>
     </section>
     ${commentaires.length ? `<section class="bloc pr-bloc bloc-commentaires"><h2 class="bloc-titre">💬 Commentaires du jour</h2>
@@ -459,9 +468,9 @@ function vueCoachForme() {
           <td class="nombre"><strong>${indiceHooper(r)}</strong></td>
           <td class="nombre">${CHAMPS_HOOPER.map(([c]) => `<span class="note-hooper ${r[c] >= 6 ? "haute" : ""}">${r[c]}</span>`).join("")}</td>
           <td class="nombre">${r.heures === null ? "—" : texte1(r.heures)}</td>
-          <td class="nombre">${r.golfMin ? `${texteDuree(r.golfMin)} · RPE ${r.golfRpe}` : "—"}</td>
+          <td class="nombre">${r.golfMin ? `${texteDuree(r.golfMin)} ${pastilleRpe(r.golfRpe)}` : "—"}</td>
           <td class="nombre">${celluleBalles(r, statutBalles(fh.reponses, r))}</td>
-          <td class="nombre">${r.prepaMin ? `${r.prepaMin} min · RPE ${r.prepaRpe}` : "—"}</td>
+          <td class="nombre">${r.prepaMin ? `${r.prepaMin} min ${pastilleRpe(r.prepaRpe)}` : "—"}</td>
           <td class="nombre">${chargeJour(r)}</td>
           <td>${echapper(r.com || "")}</td></tr>`; }).join("")}</tbody>
       </table></div>

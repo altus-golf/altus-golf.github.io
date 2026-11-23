@@ -352,7 +352,7 @@ async function rapportJoueur() {
     pelz.map((p) => [echapperRapport(dateLisible(p.l)), `${p.pz.n} / ${PELZ_SITUATIONS.length}`, p.pz.total === null ? "incomplet" : `<strong>${p.pz.total}</strong>`]));
   if (matchs.length) corps += `<h2>Matchs</h2><ul class="rapport-liste">${matchs.map((m) => `<li>${echapperRapport(texteMatchRapport(m))}</li>`).join("")}</ul>`;
   corps += `<h2>Préparation physique</h2>` + tableRapport(["Date", "Séance", "RPE", "Durée", "Volume"],
-    seances.map((s) => { const p = planDe(s.cle); return [echapperRapport(dateLisible(s.d)), p ? `Sem. ${p.sem} · séance ${p.seance}${prescAdaptee(s) ? " <small>(adaptée)</small>" : ""}` : "Séance libre", s.rpe ?? "—", s.duree ? `${s.duree} min` : "—", tonnageSeance(s) ? `${Math.round(tonnageSeance(s))} kg` : "—"]; }));   // prepa.js
+    seances.map((s) => { const p = planDe(s.cle); return [echapperRapport(dateLisible(s.d)), p ? `Sem. ${p.sem} · séance ${p.seance}${prescAdaptee(s) ? " <small>(adaptée)</small>" : ""}` : "Séance libre", (s.rpe === null || s.rpe === undefined ? "—" : `<span class="rap-rpe rap-rpe-${zoneRpe(s.rpe)}">${s.rpe}</span>`), s.duree ? `${s.duree} min` : "—", tonnageSeance(s) ? `${Math.round(tonnageSeance(s))} kg` : "—"]; }));   // prepa.js
   const rm = EXOS_1RM_PRINCIPAUX.filter(([n]) => prepa.rm[n]);
   if (rm.length) corps += `<p class="rapport-petit"><strong>1RM :</strong> ${rm.map(([n, court]) => `${echapperRapport(court)} ${virguleA(prepa.rm[n].kg)} kg`).join(" · ")}</p>`;
   if (ressentis.length) corps += `<h2>Technique : ressentis du joueur</h2><ul class="rapport-liste">${ressentis.map((r) => `<li><strong>${echapperRapport(nomTechnique(r.id))}</strong> (${echapperRapport(dateLisible(r.d))}) : ${echapperRapport(r.texte)}</li>`).join("")}</ul>`;

@@ -532,12 +532,12 @@ function vueCoachPrepa() {
           <td><button type="button" class="lien-bouton lien-joueur" data-a="prepa-coach-joueur" data-uid="${echapper(l.j.uid)}">${echapper(l.j.prenom)}</button></td>
           <td class="nombre">${l.semaine.length >= 3 ? `<span class="statut statut-top">${l.semaine.length} / 3</span>` : l.semaine.length ? `<strong>${l.semaine.length}</strong> / 3` : `<span class="statut statut-alerte">0 / 3</span>`}</td>
           <td class="nombre">${l.derniere ? `${echapper(dateLisible(l.derniere.d))} <small>${planDe(l.derniere.cle) ? `S${planDe(l.derniere.cle).sem}-${planDe(l.derniere.cle).seance}` : "libre"}</small>` : "—"}</td>
-          <td class="nombre">${l.derniere && l.derniere.rpe !== null ? l.derniere.rpe : "—"}</td>
+          <td class="nombre">${l.derniere ? pastilleRpe(l.derniere.rpe) : "—"}</td>
           <td class="nombre">${l.tonnage ? `${Math.round(l.tonnage)} kg` : "—"}</td>
           <td class="nombre">${Object.keys(l.f.rm).length || `<span class="statut statut-alerte">0</span>`}</td>
           <td class="nombre">${l.adaptees || "—"}</td></tr>`).join("")}</tbody>
       </table></div>
-      <p class="petit">Volume = charge × séries × reps (kg soulevés). « Adaptées » = séances dont la prescription a été modifiée (✏️). 🔒 Visible seulement par les coachs et le joueur.</p>
+      <p class="petit">RPE : vert de 0 à ${SEUILS_RPE.orange - 1}, orange de ${SEUILS_RPE.orange} à ${SEUILS_RPE.rouge - 1}, rouge de ${SEUILS_RPE.rouge} à 10. Volume = charge × séries × reps (kg soulevés). « Adaptées » = séances dont la prescription a été modifiée (✏️). 🔒 Visible seulement par les coachs et le joueur.</p>
       <button type="button" class="bouton" data-a="prepa-coach-actualiser">↻ Actualiser</button>
     </section>
     ${sel ? `<section class="bloc pr-bloc">
@@ -546,7 +546,7 @@ function vueCoachPrepa() {
       ${sel.f.seances.length ? [...sel.f.seances].reverse().slice(0, 15).map((s) => {
         const p = planDe(s.cle);
         return `<details class="pr-categorie">
-          <summary><h3 class="pr-categorie-titre">${echapper(dateLisible(s.d))} · ${p ? `Sem. ${p.sem} séance ${p.seance}` : "Séance libre"} <small>${echapper(texteSeance(s.presc))}${prescAdaptee(s) ? " · ✏️ adaptée" : ""}${s.rpe !== null ? ` · RPE ${s.rpe}` : ""}</small></h3></summary>
+          <summary><h3 class="pr-categorie-titre">${echapper(dateLisible(s.d))} · ${p ? `Sem. ${p.sem} séance ${p.seance}` : "Séance libre"} <small>${echapper(texteSeance(s.presc))}${prescAdaptee(s) ? " · ✏️ adaptée" : ""}</small>${s.rpe !== null ? ` ${pastilleRpe(s.rpe)}` : ""}</h3></summary>
           ${prescAdaptee(s) ? `<p class="petit">Plan : ${echapper(texteSeance(p.presc))}</p>` : ""}
           <div class="tableau-defilant"><table class="tableau-admin tableau-coach">
             <thead><tr><th>Exercice</th><th>Prévu</th><th>Réalisé</th><th>Séries × reps</th></tr></thead>
@@ -576,7 +576,7 @@ function blocPrepaDeclaree(joueurs) {
     <h2 class="bloc-titre">☀️ Prépa déclarée dans la Forme (7 jours)</h2>
     <div class="tableau-defilant"><table class="tableau-admin tableau-coach">
       <thead><tr><th>Joueur</th><th>Séances</th><th>Minutes</th><th>RPE moyen</th><th>Charge (UA)</th></tr></thead>
-      <tbody>${lignes.map((l) => `<tr><td><strong>${echapper(l.j.prenom)}</strong></td><td class="nombre">${l.n || "—"}</td><td class="nombre">${l.min || "—"}</td><td class="nombre">${l.rpe === null ? "—" : texte1(l.rpe)}</td><td class="nombre">${l.charge || "—"}</td></tr>`).join("")}</tbody>
+      <tbody>${lignes.map((l) => `<tr><td><strong>${echapper(l.j.prenom)}</strong></td><td class="nombre">${l.n || "—"}</td><td class="nombre">${l.min || "—"}</td><td class="nombre">${pastilleRpe(l.rpe)}</td><td class="nombre">${l.charge || "—"}</td></tr>`).join("")}</tbody>
     </table></div>
     <p class="petit">Charge = minutes × RPE de la prépa de la veille, déclarées chaque matin.</p>
   </section>`;
