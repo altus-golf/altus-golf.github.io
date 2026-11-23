@@ -1079,6 +1079,36 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .statut-forme-vert { background: var(--vert-fond); color: var(--vert-texte); }
 .statut-forme-orange { background: var(--orange-fond); color: var(--orange-texte); }
 .statut-forme-rouge { background: var(--rouge-fond); color: var(--rouge-texte); }
+/* Graphique de la charge (forme.js, 23/11/2026) */
+.graphique-charge { display: block; width: 100%; height: auto; margin: 8px 0 4px; }
+.ch-grille { stroke: var(--separateur); stroke-width: 1; }
+.ch-semaine { stroke: var(--bord); stroke-width: 1; stroke-dasharray: 2 3; }
+.ch-axe { fill: var(--texte-doux); font-size: 11px; font-family: Inter, system-ui, sans-serif; }
+.ch-golf { fill: #313F5B; }
+.ch-prepa { fill: #9AAACB; }
+.ch-vide { fill: var(--texte-doux); opacity: 0.45; }
+.ch-m7 { fill: none; stroke: #E85040; stroke-width: 2.5; stroke-linejoin: round; }
+.ch-m28 { fill: none; stroke: var(--texte); stroke-width: 1.5; stroke-dasharray: 5 4; opacity: 0.75; }
+.legende-charge { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 4px 0 10px; font-size: 0.8rem; color: var(--texte-doux); }
+.legende-charge span { display: inline-flex; align-items: center; gap: 6px; }
+.legende-charge i { display: inline-block; width: 14px; height: 10px; border-radius: 2px; }
+.ch-l-golf { background: #313F5B; }
+.ch-l-prepa { background: #9AAACB; }
+.ch-l-m7 { height: 3px !important; background: #E85040; }
+.ch-l-m28 { height: 0 !important; border-top: 2px dashed var(--texte); }
+.ch-l-vide { height: 2px !important; background: var(--texte-doux); }
+.semaines-charge td, .semaines-charge th { white-space: nowrap; }
+@media (max-width: 700px) {   /* téléphone : le graphique est réduit, on grossit les textes des axes */
+  .ch-axe { font-size: 19px; }
+  .graphique-charge.charge-longue .ch-axe-impair { display: none; }
+}
+.sous-titre-charge { margin: 14px 0 4px; font-size: 0.95rem; }
+:root[data-theme="sombre"] .ch-golf, :root[data-theme="sombre"] .ch-l-golf { fill: #7E93C2; background: #7E93C2; }
+:root[data-theme="sombre"] .ch-prepa, :root[data-theme="sombre"] .ch-l-prepa { fill: #C9D3E8; background: #C9D3E8; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="clair"]) .ch-golf, :root:not([data-theme="clair"]) .ch-l-golf { fill: #7E93C2; background: #7E93C2; }
+  :root:not([data-theme="clair"]) .ch-prepa, :root:not([data-theme="clair"]) .ch-l-prepa { fill: #C9D3E8; background: #C9D3E8; }
+}
 /* RPE en couleurs (forme.js, 23/11/2026) : 0-4 vert, 5-6 orange, 7-10 rouge (SEUILS_RPE) */
 .rpe-vert { background: var(--vert-fond); color: var(--vert-texte); }
 .rpe-orange { background: var(--orange-fond); color: var(--orange-texte); }
