@@ -183,3 +183,6 @@
 - 🎯 Planning des défis (même version v79) : Espace coachs > ⚙️ Gestion > Défis = choix de la semaine (cette semaine + 11 semaines, nombre de défis sur chaque puce), ajouter / retirer / message pour la semaine choisie, « Décaler à la semaine suivante » et « Copier sur la semaine suivante ». Les joueurs voient les défis de chaque semaine à partir de son lundi. Rien à changer dans les règles Firestore (même document `reglages/defi`, champ `planning` en plus).
 - Les défis de la semaine du 16/11 sont décalés à la semaine du 23/11 à la première ouverture de l'espace coachs après la mise en ligne (une seule fois, message affiché).
 - Testé en mode démo (Playwright) : décalage automatique, planification d'une semaine future, décalage d'une semaine, défis vus par un joueur.
+
+## 23/11/2026 — v80 : 🔗 Mon lien TPI
+- Prépa : case « Mon lien TPI » où le joueur colle le lien reçu de son coach TPI (bouton « Ouvrir », changer, effacer). Gardé dans sa sauvegarde en ligne (ses autres téléphones le retrouvent), pas affiché aux coachs. Pas de changement des règles Firebase.

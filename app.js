@@ -189,6 +189,8 @@ async function restaurerDepuisEnLigne() {
       ajoutes += tours.length - gardes.length;
     }
   }
+  // Lien TPI (prepa.js) : le plus récent gagne (changé sur un autre téléphone)
+  if (sauvegarde && sauvegarde.tpiMaj > monLienTpi().maj) ecrireStockage("tpi", { url: sauvegarde.tpi, maj: sauvegarde.tpiMaj });
   // Effacements du coach déjà appliqués (sinon ils effaceraient un 2e score identique)
   if (sauvegarde && sauvegarde.effacesCoach.length) {
     const deja = new Set([...(lireStockage("effacesCoach", [], PREFIXE_SCORES) || []), ...sauvegarde.effacesCoach]);
@@ -210,6 +212,7 @@ async function publierMonBilan() {
     effaces: (lireStockage("effaces", [], PREFIXE_SCORES) || []).slice(-1000),
     effacesCoach: (lireStockage("effacesCoach", [], PREFIXE_SCORES) || []).slice(-300),
     tours: Object.fromEntries(Object.keys(EXOS_POINTS).map((exo) => [exo, toursDe(exo).slice(-300)]).filter(([, l]) => l.length)),
+    tpi: monLienTpi().url, tpiMaj: monLienTpi().maj,   // prepa.js
     maj: Date.now(),
   });
 }
@@ -518,6 +521,7 @@ async function repartirDeZero() {
   ecrireStockage("scores", {}, PREFIXE_SCORES);
   ["effaces", "effacesCoach", "techniques", "consignesEnAttente"].forEach((k) => ecrireStockage(k, [], PREFIXE_SCORES));
   ecrireStockage("pelzEnCours", null, PREFIXE_SCORES);
+  ecrireStockage("tpi", null);   // lien TPI de l'ancien prénom
   Object.values(EXOS_POINTS).forEach((c) => {
     ecrireStockage(c.cleTours, [], PREFIXE_SCORES);
     if (c.cleEnCours) ecrireStockage(c.cleEnCours, null, PREFIXE_SCORES);

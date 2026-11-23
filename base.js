@@ -676,6 +676,9 @@ function normaliserDefi(d) {
 }
 const MAX_DEFIS = 40;   // pas de vraie limite : le coach peut mettre tous les exos (choix de l’utilisateur, 20/11/2026)
 
+// Lien TPI du joueur (prépa physique, 23/11/2026) : seulement une adresse web http(s), sans espace
+function lienTpiValide(u) { return typeof u === "string" && u.length <= 500 && /^https?:\/\/[^\s<>"']+$/i.test(u); }
+
 function normaliserSauvegarde(x) {
   const d = x && typeof x === "object" ? x : {};
   const scores = {};
@@ -691,6 +694,8 @@ function normaliserSauvegarde(x) {
     effaces: (Array.isArray(d.effaces) ? d.effaces : []).filter((t) => nombreOk(t, 1e13) || (typeof t === "string" && /^[a-z0-9-]{1,40}\|\d{1,14}$/.test(t))).slice(-1000),
     effacesCoach: (Array.isArray(d.effacesCoach) ? d.effacesCoach : []).filter((t) => nombreOk(t, 1e13)).slice(-300),
     tours: normaliserToursSauvegarde(d.tours),
+    tpi: lienTpiValide(d.tpi) ? d.tpi : "",
+    tpiMaj: nombreOk(d.tpiMaj, 1e13) ? d.tpiMaj : 0,
   };
 }
 

@@ -276,9 +276,54 @@ function vuePrepa() {
       ${b.idEdit ? `<button type="button" class="lien-bouton" data-a="prepa-nouvelle">Annuler la modification</button>` : ""}
       ${locale.enAttente ? `<p class="petit">📶 Pas encore envoyé (pas de réseau) : ça partira tout seul.</p>` : ""}
     </section>
+    ${blocMonTpi()}
     ${blocMes1RM(locale)}
     ${blocMesMesures()}
     ${blocMesSeances(locale)}`;
+}
+
+/* ---------- 🔗 Mon lien TPI (23/11/2026) ----------
+   Le joueur colle le lien reçu de son coach TPI. Gardé sur le téléphone (altus-v1:tpi)
+   et dans SA sauvegarde en ligne (publierMonBilan, app.js) pour ses autres téléphones ;
+   pas affiché dans l'espace coachs (choix de l'utilisateur). */
+let tpiEnModif = false;
+function monLienTpi() {
+  const t = lireStockage("tpi", null);
+  return t && lienTpiValide(t.url) ? { url: t.url, maj: Number(t.maj) || 0 } : { url: "", maj: (t && Number(t.maj)) || 0 };
+}
+function blocMonTpi() {
+  const { url } = monLienTpi();
+  const saisie = !url || tpiEnModif;
+  return `<section class="bloc pr-bloc">
+    <h2 class="bloc-titre">🔗 Mon lien TPI</h2>
+    ${saisie ? `<p class="petit">Colle ici le lien que tu as reçu de ton coach TPI.</p>
+      <input id="prepa-tpi" type="url" inputmode="url" autocomplete="off" placeholder="https://…" value="${echapper(url)}" aria-label="Lien TPI">
+      <button type="button" class="bouton principal" data-a="prepa-tpi">Enregistrer le lien</button>
+      ${url ? `<button type="button" class="lien-bouton" data-a="prepa-tpi-annuler">Annuler</button>` : ""}`
+    : `<a class="bouton principal pleine-largeur" href="${echapper(url)}" target="_blank" rel="noopener noreferrer">Ouvrir mon lien TPI ↗</a>
+      <p class="petit">${echapper(url.replace(/^https?:\/\//i, "").slice(0, 60))}${url.length > 68 ? "…" : ""}</p>
+      <button type="button" class="lien-bouton" data-a="prepa-tpi-modifier">✏️ Changer le lien</button>
+      <button type="button" class="lien-bouton" data-a="prepa-tpi-effacer">Effacer</button>`}
+  </section>`;
+}
+async function enregistrerTpi(url) {
+  ecrireStockage("tpi", { url, maj: Date.now() });
+  tpiEnModif = false;
+  afficherVue();
+  await publierMonBilan();   // app.js : part avec la sauvegarde (sinon au prochain chargement)
+}
+async function actionTpi(a) {
+  if (a === "prepa-tpi-modifier") { tpiEnModif = true; return afficherVue(); }
+  if (a === "prepa-tpi-annuler") { tpiEnModif = false; return afficherVue(); }
+  if (a === "prepa-tpi-effacer") {
+    if (!(await demanderConfirmation("Effacer ton lien TPI ?", "Oui, effacer"))) return;
+    return enregistrerTpi("");
+  }
+  const champ = document.getElementById("prepa-tpi");
+  let url = champ ? champ.value.trim() : "";
+  if (url && !/^https?:\/\//i.test(url)) url = "https://" + url;   // lien collé sans « https:// »
+  if (!lienTpiValide(url)) return afficherMessage("Ce n'est pas un lien valide : colle l'adresse complète (https://…).");
+  return enregistrerTpi(url);
 }
 
 function blocMes1RM(locale) {
@@ -359,6 +404,7 @@ function actionPrepa(a, bouton) {
   if (a.startsWith("prepa-mes-")) return actionMesures(a, bouton);   // mesures.js
   if (a === "prepa-enregistrer") return enregistrerSeancePrepa();
   if (a === "prepa-rm") return enregistrer1RM();
+  if (a.startsWith("prepa-tpi")) return actionTpi(a);
   if (a === "prepa-plan" && prepaBrouillon) { const p = planDe(prepaBrouillon.cle); if (p) prepaBrouillon.presc = { ...p.presc }; return afficherVue(); }
   if (a === "prepa-modifier") {
     const s = maPrepaLocale().seances.find((x) => x.id === bouton.dataset.id);
