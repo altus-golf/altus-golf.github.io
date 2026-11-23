@@ -1087,6 +1087,9 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .ch-golf { fill: #313F5B; }
 .ch-prepa { fill: #9AAACB; }
 .ch-vide { fill: var(--texte-doux); opacity: 0.45; }
+.ch-partiel { opacity: 0.45; }
+.ch-axe-sous { font-size: 10px; }
+.ch-l-partiel { background: #313F5B; opacity: 0.45; }
 .ch-m7 { fill: none; stroke: #E85040; stroke-width: 2.5; stroke-linejoin: round; }
 .ch-m28 { fill: none; stroke: var(--texte); stroke-width: 1.5; stroke-dasharray: 5 4; opacity: 0.75; }
 .legende-charge { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 4px 0 10px; font-size: 0.8rem; color: var(--texte-doux); }
@@ -1099,8 +1102,9 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .ch-l-vide { height: 2px !important; background: var(--texte-doux); }
 .semaines-charge td, .semaines-charge th { white-space: nowrap; }
 @media (max-width: 700px) {   /* téléphone : le graphique est réduit, on grossit les textes des axes */
-  .ch-axe { font-size: 19px; }
-  .graphique-charge.charge-longue .ch-axe-impair { display: none; }
+  .ch-axe { font-size: 23px; }
+  .ch-axe-sous { font-size: 18px; }
+  .ch-axe-impair { display: none; }
 }
 .sous-titre-charge { margin: 14px 0 4px; font-size: 0.95rem; }
 :root[data-theme="sombre"] .ch-golf, :root[data-theme="sombre"] .ch-l-golf { fill: #7E93C2; background: #7E93C2; }

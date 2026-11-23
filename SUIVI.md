@@ -192,4 +192,4 @@
 - RPE 0 à 4 vert, 5-6 orange, 7 à 10 rouge (`SEUILS_RPE`, forme.js) : boutons du joueur (Forme du matin et séance de prépa), pastilles du coach (historique Forme, tableaux Prépa), petit point dans les rapports imprimés. Testé en démo (clair / sombre).
 
 ## 23/11/2026 — v83 : graphique de la charge
-- 💪 Forme (coach) : graphique de la charge du groupe (moyenne des joueurs) et de chaque joueur (dans son historique) : UA golf + prépa par jour d'entraînement, moyenne 7 jours et 28 jours, jours sans réponse, totaux par semaine, sur 4 / 8 / 12 semaines. Testé en démo (ordinateur clair, téléphone sombre).
+- 💪 Forme (coach) : graphique de la charge de CHAQUE joueur (en haut de son historique ; pas de charge de groupe, les UA étant propres à chacun) : « 30 derniers jours » (barres golf + prépa par jour d'entraînement, moyennes 7 et 28 jours) et « Semaine par semaine » (12 semaines, jours renseignés). KPI « Charge moyenne d'hier » du groupe retiré. Testé en démo (ordinateur clair, téléphone sombre).
