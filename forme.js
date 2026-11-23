@@ -327,6 +327,7 @@ function actionForme(a, bouton) {
   if (a === "forme-annuler") { formeOuverte = false; formeBrouillon = null; messageForme = ""; return afficherVue(); }
   if (a === "forme-coach-joueur") { joueurFormeCoach = bouton.dataset.uid; return afficherVue(); }
   if (a === "forme-coach-actualiser") { formesCoach = null; return afficherVue(); }
+  if (a === "forme-coach-charge") { vueCharge = bouton.dataset.m === "semaines" ? "semaines" : "jours"; return afficherVue(); }
   if (a === "forme-import-envoyer") return envoyerImportForme();
 }
 // Les champs texte : on garde ce qui est tapé (l'écran est redessiné à chaque note choisie)
@@ -363,11 +364,11 @@ function formesDemo(db) {
   const res = {};
   Object.values(db.bilans || {}).forEach((b, k) => {
     const reponses = [];
-    for (let i = 34; i >= 0; i--) {
+    for (let i = 90; i >= 0; i--) {   // 13 semaines (graphique de charge sur 12 semaines)
       if ((i + k) % 6 === 5) continue;   // quelques oublis
       const d = dateEnTexte(ajouterJours(new Date(), -i));
       const n = (base) => Math.max(1, Math.min(7, base + Math.round((Math.random() - 0.5) * 2.4)));
-      const golf = i % 7 === 3 ? 0 : 90 + ((i * 17 + k * 7) % 4) * 30;
+      const golf = i % 7 === 3 ? 0 : 90 + ((i * 17 + k * 7) % 4) * 30 + (i < 10 ? 60 : 0);   // + de golf ces 10 derniers jours (démo)
       const prepa = [1, 3, 5].includes((i + k) % 7) ? 60 : 0;
       // Balles : environ 150 à 300 les jours de golf ; un gros jour hier pour 2 joueurs (repère orange / rouge)
       const balles = !golf ? 0 : i === 0 && k < 2 ? 520 + k * 200 : 150 + ((i * 37 + k * 11) % 7) * 25;
@@ -378,6 +379,132 @@ function formesDemo(db) {
     res[b.uid] = { uid: b.uid, prenom: b.prenom, reponses };
   });
   return res;
+}
+
+/* ---------- Coach : graphique de la charge d'un joueur (23/11/2026, demande du coach) ----------
+   Charge interne = minutes × RPE de séance (méthode de Foster et al., 2001), en UA.
+   SEULEMENT joueur par joueur (choix du coach : les UA sont propres à chacun, une moyenne de
+   groupe n'aurait pas de sens). Deux vues : « 30 derniers jours » (une barre par jour) et
+   « Semaine par semaine » (total de chaque semaine, 12 semaines).
+   La réponse du matin parle de la VEILLE : la charge est placée sur le jour où elle a été
+   faite (jour de la réponse − 1). Jour sans réponse = petit trait gris (pas de réponse ≠ 0 UA).
+   Rien n'est enregistré : tout est recalculé à partir des réponses de la Forme. */
+const JOURS_CHARGE = 30;          // vue « 30 derniers jours »
+const SEMAINES_CHARGE = 12;       // vue « semaine par semaine »
+let vueCharge = "jours";          // "jours" ou "semaines"
+
+// Une case par jour d'entraînement, de « debut » (texte AAAA-MM-JJ) à hier
+function joursCharge(reponses, debut) {
+  const parJour = new Map(reponses.map((r) => [r.d, r]));
+  const hier = dateEnTexte(ajouterJours(new Date(), -1));
+  const res = [];
+  for (let d = debut; d <= hier; d = dateEnTexte(ajouterJours(texteEnDate(d), 1))) {
+    const r = parJour.get(dateEnTexte(ajouterJours(texteEnDate(d), 1)));   // réponse du lendemain matin
+    res.push({ d, rep: !!r, golf: r ? chargeGolf(r) : 0, prepa: r ? chargePrepa(r) : 0 });
+  }
+  return res;
+}
+// Moyenne des jours renseignés parmi les k derniers (au moins « min » réponses)
+function moyenneCharge(jours, fin, k, min) {
+  const l = jours.slice(Math.max(0, fin - k + 1), fin + 1).filter((x) => x.rep);
+  return l.length >= min ? l.reduce((t, x) => t + x.golf + x.prepa, 0) / l.length : null;
+}
+const nombreUA = (v) => Math.round(v).toLocaleString("fr-FR");
+
+// Graphique SVG commun aux deux vues : barres golf + prépa empilées, 2 lignes facultatives
+// points = [{ golf, prepa, vide, partiel, titre, etiquette, sous, separateur, l1, l2 }]
+function graphiqueCharge(points, legende) {
+  const L = 720, H = 250, G = 74, D = 18, HAUT = 14, BAS = points.some((p) => p.sous) ? 50 : 34;
+  const total = (p) => p.golf + p.prepa;
+  const maxi = Math.max(100, ...points.map(total), ...points.map((p) => p.l1 || 0), ...points.map((p) => p.l2 || 0));
+  const pas = [100, 200, 250, 500, 1000, 2000, 2500, 5000].find((v) => maxi / v <= 5) || 10000;
+  const plafond = Math.ceil(maxi / pas) * pas;
+  const larg = (L - G - D) / points.length;
+  const x = (i) => G + i * larg;
+  const y = (v) => HAUT + (H - HAUT - BAS) * (1 - v / plafond);
+  let svg = "";
+  for (let v = 0; v <= plafond; v += pas) svg += `<line x1="${G}" x2="${L - D}" y1="${y(v)}" y2="${y(v)}" class="ch-grille"/><text x="${G - 6}" y="${y(v) + 4}" class="ch-axe" text-anchor="end">${nombreUA(v)}</text>`;
+  points.forEach((p, i) => {
+    if (p.separateur) svg += `<line x1="${x(i)}" x2="${x(i)}" y1="${HAUT}" y2="${H - BAS}" class="ch-semaine"/>`;
+    if (p.etiquette) svg += `<text x="${p.separateur ? x(i) + 2 : x(i) + larg / 2}" y="${H - BAS + 20}" class="ch-axe${p.impair ? " ch-axe-impair" : ""}" text-anchor="${p.separateur ? "start" : "middle"}">${echapper(p.etiquette)}</text>`;
+    if (p.sous) svg += `<text x="${x(i) + larg / 2}" y="${H - BAS + 40}" class="ch-axe ch-axe-sous" text-anchor="middle">${echapper(p.sous)}</text>`;
+    const bx = x(i) + larg * 0.15, bl = Math.max(1, larg * 0.7);
+    if (p.vide) { svg += `<rect x="${bx}" y="${y(0) - 2}" width="${bl}" height="2" class="ch-vide"><title>${echapper(p.titre)}</title></rect>`; return; }
+    svg += `<g class="${p.partiel ? "ch-partiel" : ""}"><title>${echapper(p.titre)}</title>
+      ${p.golf ? `<rect x="${bx}" y="${y(p.golf)}" width="${bl}" height="${y(0) - y(p.golf)}" class="ch-golf"/>` : ""}
+      ${p.prepa ? `<rect x="${bx}" y="${y(total(p))}" width="${bl}" height="${y(p.golf) - y(total(p))}" class="ch-prepa"/>` : ""}
+      ${!total(p) ? `<rect x="${bx}" y="${y(0) - 2}" width="${bl}" height="2" class="ch-golf"/>` : ""}</g>`;
+  });
+  // Lignes : coupées là où il n'y a pas assez de réponses
+  const ligne = (cle, classe) => {
+    let d = "", dedans = false;
+    points.forEach((p, i) => {
+      if (p[cle] === null || p[cle] === undefined) { dedans = false; return; }
+      d += `${dedans ? "L" : "M"}${(x(i) + larg / 2).toFixed(1)},${y(p[cle]).toFixed(1)} `;
+      dedans = true;
+    });
+    return d ? `<path d="${d}" class="${classe}"/>` : "";
+  };
+  svg += ligne("l2", "ch-m28") + ligne("l1", "ch-m7");
+  return `<svg class="graphique-charge" viewBox="0 0 ${L} ${H}" role="img" aria-label="Charge en UA">${svg}</svg>
+    <p class="legende-charge"><span><i class="ch-l-golf"></i>Golf</span><span><i class="ch-l-prepa"></i>Prépa</span>${legende}</p>`;
+}
+
+// Vue « 30 derniers jours » : une barre par jour, moyenne 7 jours et moyenne 28 jours
+function chargeParJour(reponses) {
+  const hier = ajouterJours(new Date(), -1);
+  // 27 jours de plus avant la période, seulement pour calculer la moyenne 28 jours dès le début
+  const tous = joursCharge(reponses, dateEnTexte(ajouterJours(hier, -(JOURS_CHARGE - 1) - 27)));
+  const depart = tous.length - JOURS_CHARGE;
+  const points = tous.slice(depart).map((j, k) => {
+    const i = depart + k, jour = texteEnDate(j.d);
+    return { golf: j.golf, prepa: j.prepa, vide: !j.rep, separateur: jour.getDay() === 1, etiquette: jour.getDay() === 1 ? dateLisible(j.d) : "",
+      l1: moyenneCharge(tous, i, 7, 3), l2: moyenneCharge(tous, i, 28, 10),
+      titre: `${jour.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })} : ${j.rep ? `golf ${nombreUA(j.golf)} + prépa ${nombreUA(j.prepa)} = ${nombreUA(j.golf + j.prepa)} UA` : "pas de réponse"}` };
+  });
+  if (!points.some((p) => !p.vide)) return `<p class="petit">Pas de réponse sur les ${JOURS_CHARGE} derniers jours.</p>`;
+  const der = points[points.length - 1];
+  const ecart = der.l1 !== null && der.l2 !== null ? Math.round(((der.l1 - der.l2) / der.l2) * 100) : null;
+  return graphiqueCharge(points, `<span><i class="ch-l-m7"></i>Moyenne 7 jours</span><span><i class="ch-l-m28"></i>Moyenne 28 jours</span><span><i class="ch-l-vide"></i>Pas de réponse</span>`)
+    + (ecart !== null ? `<p class="petit"><strong>7 derniers jours : ${nombreUA(der.l1)} UA / jour</strong> · 28 derniers jours : ${nombreUA(der.l2)} UA / jour · <strong>${ecart > 0 ? "+" : ""}${ecart} %</strong> par rapport à son habitude.</p>` : "");
+}
+
+// Vue « semaine par semaine » : total de chaque semaine (lundi → dimanche), 12 semaines
+function chargeParSemaine(reponses) {
+  const hier = ajouterJours(new Date(), -1);
+  const premierLundi = dateEnTexte(ajouterJours(texteEnDate(lundiDe(hier)), -7 * (SEMAINES_CHARGE - 1)));   // base.js
+  const semaines = [];
+  joursCharge(reponses, premierLundi).forEach((j) => {
+    const lundi = lundiDe(texteEnDate(j.d));
+    let s = semaines[semaines.length - 1];
+    if (!s || s.lundi !== lundi) semaines.push((s = { lundi, golf: 0, prepa: 0, rep: 0, jours: 0 }));
+    s.jours++;
+    if (j.rep) { s.rep++; s.golf += j.golf; s.prepa += j.prepa; }
+  });
+  if (!semaines.some((s) => s.rep)) return `<p class="petit">Pas de réponse sur les ${SEMAINES_CHARGE} dernières semaines.</p>`;
+  const points = semaines.map((s, i) => {
+    const avant = semaines.slice(Math.max(0, i - 3), i + 1).filter((w) => w.rep && w.jours === 7);
+    return { golf: s.golf, prepa: s.prepa, vide: !s.rep, partiel: s.jours < 7, etiquette: dateLisible(s.lundi), sous: `${s.rep}/${s.jours}`,
+      impair: (semaines.length - 1 - i) % 2 === 1,   // sur téléphone : une date sur deux (la plus récente toujours écrite)
+      l2: avant.length >= 2 && s.jours === 7 ? avant.reduce((t, w) => t + w.golf + w.prepa, 0) / avant.length : null,
+      titre: `Semaine du ${dateLisible(s.lundi)}${s.jours < 7 ? " (en cours)" : ""} : golf ${nombreUA(s.golf)} + prépa ${nombreUA(s.prepa)} = ${nombreUA(s.golf + s.prepa)} UA · ${s.rep} jour${s.rep > 1 ? "s" : ""} renseigné${s.rep > 1 ? "s" : ""} sur ${s.jours}` };
+  });
+  // Dernière semaine complète comparée à la moyenne des 4 semaines complètes d'avant
+  const completes = semaines.filter((s) => s.jours === 7 && s.rep);
+  const derniere = completes[completes.length - 1];
+  const avant = completes.slice(-5, -1);
+  const moyAvant = avant.length ? avant.reduce((t, w) => t + w.golf + w.prepa, 0) / avant.length : null;
+  const ecart = derniere && moyAvant ? Math.round(((derniere.golf + derniere.prepa - moyAvant) / moyAvant) * 100) : null;
+  return graphiqueCharge(points, `<span><i class="ch-l-m28"></i>Moyenne des 4 dernières semaines</span>${semaines.some((w) => w.jours < 7) ? `<span><i class="ch-l-partiel"></i>Semaine en cours</span>` : ""}`)
+    + (derniere ? `<p class="petit"><strong>Semaine du ${echapper(dateLisible(derniere.lundi))} : ${nombreUA(derniere.golf + derniere.prepa)} UA</strong> (${derniere.rep}/7 jours renseignés)${ecart !== null ? ` · moyenne des ${avant.length} semaine${avant.length > 1 ? "s" : ""} d'avant : ${nombreUA(moyAvant)} UA · <strong>${ecart > 0 ? "+" : ""}${ecart} %</strong>` : ""}.</p>` : "")
+    + `<p class="petit">Sous chaque semaine : jours renseignés (6/7 = 6 jours sur 7). Un total avec des jours sans réponse est sous-estimé.</p>`;
+}
+
+function contenuCharge(reponses) {
+  const choix = [["jours", `${JOURS_CHARGE} derniers jours`], ["semaines", "Semaine par semaine"]];
+  return `<div class="zone-charge"><div class="filtres filtres-charge">${choix.map(([m, t]) => `<button type="button" class="filtre ${m === vueCharge ? "actif" : ""}" data-a="forme-coach-charge" data-m="${m}">${t}</button>`).join("")}</div>
+    ${vueCharge === "semaines" ? chargeParSemaine(reponses) : chargeParJour(reponses)}
+    <p class="petit">Charge = minutes × RPE (golf + prépa), en UA (unités arbitraires, propres à chaque joueur), placée sur le jour où la séance a été faite : la Forme du matin parle de la veille. Survole une barre pour le détail.</p></div>`;
 }
 
 /* ---------- Coach : onglet 💪 Forme ---------- */
@@ -423,12 +550,10 @@ function vueCoachForme() {
   // Chiffres clés (visuel ALTUS, 21/11/2026) : moyennes des réponses du jour, pour l'affichage seulement
   const duJour = lignes.filter((l) => l.r);
   const avecHeures = duJour.filter((l) => l.r.heures !== null);
-  const chargeMoy = duJour.length ? Math.round(duJour.reduce((t, l) => t + chargeJour(l.r), 0) / duJour.length) : null;
   const sommeilMoy = avecHeures.length ? avecHeures.reduce((t, l) => t + l.r.heures, 0) / avecHeures.length : null;
   return `<div class="kpis">
       ${kpi("Questionnaires remplis", `${repondu} / ${joueurs.length}`, "forme du matin")}
       ${kpi("À surveiller", oranges + rouges, `${oranges} orange · ${rouges} rouge`)}
-      ${kpi("Charge moyenne d'hier", chargeMoy === null ? "—" : `${chargeMoy} <small>UA</small>`, "golf + prépa (minutes × RPE)")}
       ${kpi("Sommeil moyen", sommeilMoy === null ? "—" : `${texte1(sommeilMoy)} <small>h</small>`, "cette nuit")}
     </div>
     <section class="bloc pr-bloc">
@@ -460,6 +585,9 @@ function vueCoachForme() {
     ${jh ? `<section class="bloc pr-bloc">
       <h2 class="bloc-titre">📈 Historique de ${echapper(jh.prenom)}</h2>
       <div class="filtres">${joueurs.map((j) => `<button type="button" class="filtre ${j.uid === jh.uid ? "actif" : ""}" data-a="forme-coach-joueur" data-uid="${echapper(j.uid)}">${echapper(j.prenom)}</button>`).join("")}</div>
+      <h3 class="sous-titre-charge">📊 Charge de ${echapper(jh.prenom)}</h3>
+      ${contenuCharge(fh.reponses)}
+      <h3 class="sous-titre-charge">Réponses des 21 derniers jours</h3>
       ${fh.reponses.length ? `<div class="tableau-defilant"><table class="tableau-admin tableau-coach">
         <thead><tr><th>Date</th><th>Statut</th><th>Hooper</th><th>S · F · St · C</th><th>Sommeil (h)</th><th>Golf hier</th><th>Balles</th><th>Prépa hier</th><th>Charge</th><th>Commentaire</th></tr></thead>
         <tbody>${fh.reponses.slice(-21).reverse().map((r) => { const st = statutForme(fh.reponses, r); return `<tr>
