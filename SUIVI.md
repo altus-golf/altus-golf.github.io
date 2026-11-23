@@ -187,3 +187,6 @@
 ## 23/11/2026 — v80 : 🔗 Mon lien TPI
 - Prépa : case « Mon lien TPI » où le joueur colle le lien reçu de son coach TPI (bouton « Ouvrir », changer, effacer). Gardé dans sa sauvegarde en ligne (ses autres téléphones le retrouvent), pas affiché aux coachs. Pas de changement des règles Firebase.
 - v81 : « Mon lien TPI » refusait les vrais liens TPI (plus de 500 caractères) : limite à 2000, texte autour du lien enlevé, lien gardé tel quel.
+
+## 23/11/2026 — v82 : RPE en couleurs
+- RPE 0 à 4 vert, 5-6 orange, 7 à 10 rouge (`SEUILS_RPE`, forme.js) : boutons du joueur (Forme du matin et séance de prépa), pastilles du coach (historique Forme, tableaux Prépa), petit point dans les rapports imprimés. Testé en démo (clair / sombre).
