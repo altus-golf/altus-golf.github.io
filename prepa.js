@@ -320,8 +320,13 @@ async function actionTpi(a) {
     return enregistrerTpi("");
   }
   const champ = document.getElementById("prepa-tpi");
-  let url = champ ? champ.value.trim() : "";
-  if (url && !/^https?:\/\//i.test(url)) url = "https://" + url;   // lien collé sans « https:// »
+  const colle = champ ? champ.value.trim() : "";
+  // Le message reçu contient souvent du texte autour du lien (« Voici ton lien : https://… ») :
+  // on garde seulement le lien (sans la ponctuation collée à la fin)
+  const trouve = colle.match(/https?:\/\/[^\s<>"']+/i);
+  let url = trouve ? trouve[0].replace(/[.,;:!?)\]}»]+$/, "") : colle.replace(/\s+/g, "");
+  // lien collé sans « https:// » : seulement s'il ressemble à une adresse (« site.com/… »)
+  if (url && !/^https?:\/\//i.test(url)) url = /^[\w-]+(\.[\w-]+)+([/?#]|$)/.test(url) ? "https://" + url : "";
   if (!lienTpiValide(url)) return afficherMessage("Ce n'est pas un lien valide : colle l'adresse complète (https://…).");
   return enregistrerTpi(url);
 }

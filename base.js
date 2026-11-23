@@ -677,7 +677,7 @@ function normaliserDefi(d) {
 const MAX_DEFIS = 40;   // pas de vraie limite : le coach peut mettre tous les exos (choix de l’utilisateur, 20/11/2026)
 
 // Lien TPI du joueur (prépa physique, 23/11/2026) : seulement une adresse web http(s), sans espace
-function lienTpiValide(u) { return typeof u === "string" && u.length <= 500 && /^https?:\/\/[^\s<>"']+$/i.test(u); }
+function lienTpiValide(u) { return typeof u === "string" && u.length <= 2000 && /^https?:\/\/[^\s<>"']+$/i.test(u); }
 
 function normaliserSauvegarde(x) {
   const d = x && typeof x === "object" ? x : {};
