@@ -319,9 +319,13 @@ function vueCoachEquipe() {
 }
 
 /* ---------- 🏆 Classements : 30 derniers jours ET année ---------- */
-function podiumCoach(lignes, minimum) {
-  const p = lignes.filter((x) => x.n >= minimum && x.moy !== null).sort((a, b) => b.moy - a.moy || b.n - a.n || a.prenom.localeCompare(b.prenom, "fr")).slice(0, 3);
-  return p.length ? `<ol class="classement classement-court">${p.map((x, i) => ligneClassement(i, x.prenom, texte1(x.moy), false)).join("")}</ol>` : `<p class="petit">—</p>`;
+// Podium (3 premiers) + « Voir le classement complet » (app.js : classementComplet) ; cle = exo + période
+function podiumCoach(lignes, minimum, cle) {
+  const p = lignes.filter((x) => x.n >= minimum && x.moy !== null).sort((a, b) => b.moy - a.moy || b.n - a.n || a.prenom.localeCompare(b.prenom, "fr"));
+  const pasClasses = lignes.filter((x) => x.n > 0 && x.n < minimum).sort((a, b) => a.prenom.localeCompare(b.prenom, "fr")).map((x) => `${x.prenom} (${x.n})`);
+  return p.length || pasClasses.length
+    ? `<div class="classement-court">${classementComplet(cle, p.map((x) => ({ nom: x.prenom, valeur: `${texte1(x.moy)} <small>· ${x.n} fois</small>`, moi: false })), { nonClasses: pasClasses })}</div>`
+    : `<p class="petit">—</p>`;
 }
 function vueCoachClassements() {
   const donnees = donneesCoach();
@@ -337,8 +341,8 @@ function vueCoachClassements() {
         <h2 class="bloc-titre">${echapper(it.titre)} <small>${echapper(it.unite)}</small></h2>
         <p class="bloc-info">Moyenne du groupe sur 30 jours : ${texte1(moyenneListe(tout30))}${rec ? ` · ⭐ Record de l'année : <strong>${texte1(rec.s.record)}</strong> par ${echapper(rec.prenom)} (${echapper(dateLisible(rec.s.recordD))})` : ""}</p>
         <div class="deux-colonnes">
-          <div><h3>30 derniers jours <small>(${min30} score${min30 > 1 ? "s" : ""} min.)</small></h3>${podiumCoach(l30, min30)}</div>
-          <div><h3>Année ${anneeEnCours()} <small>(${minA} score${minA > 1 ? "s" : ""} min.)</small></h3>${podiumCoach(lA, minA)}</div>
+          <div><h3>30 derniers jours <small>(${min30} score${min30 > 1 ? "s" : ""} min.)</small></h3>${podiumCoach(l30, min30, `c30-${it.id}`)}</div>
+          <div><h3>Année ${anneeEnCours()} <small>(${minA} score${minA > 1 ? "s" : ""} min.)</small></h3>${podiumCoach(lA, minA, `can-${it.id}`)}</div>
         </div>
       </section>`;
     }).join("")}`;

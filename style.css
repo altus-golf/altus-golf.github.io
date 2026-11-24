@@ -617,6 +617,11 @@ details[open] > summary::before { transform: rotate(90deg); }
 .classement li:last-child { border-bottom: none; }
 .classement li.moi { color: var(--accent); }
 .classement small { color: var(--texte-doux); font-weight: 500; }
+/* Classement complet (24/11/2026) : bouton « Voir le classement complet », ma place sous le podium */
+.voir-classement { display: block; width: auto; margin: 4px 0 6px; padding: 6px 0; text-align: left; font-weight: 700; }
+.voir-classement small { font-weight: 500; }
+.classement-moi { margin-top: 0; }
+.classement-moi .classement-trou { justify-content: center; padding: 0 0 2px; border-bottom: none; color: var(--texte-doux); }
 .flemmard-nom { font-size: 1.4rem; font-weight: 800; margin: 6px 0 0; }
 .record-annee { font-size: 1.1rem; margin: 4px 0 10px; }
 .pr-bloc h3 { margin: 14px 0 4px; font-size: 1rem; }

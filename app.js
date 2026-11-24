@@ -478,6 +478,28 @@ function ligneClassement(i, nom, valeur, estMoi) {
   return `<li class="${estMoi ? "moi" : ""}"><span>${medaille(i)} ${echapper(nom)}</span><strong>${valeur}</strong></li>`;
 }
 
+// Classement complet en un geste (24/11/2026, demande du coach) : les 3 premiers, puis
+// « ▼ Classement complet (n) » déroule TOUS les classés (et ceux pas encore classés).
+// Ouvert / fermé gardé le temps de la visite (classementsOuverts) pour ne pas se refermer à chaque mise à jour.
+// lignes = [{ nom, valeur (HTML), moi }] déjà triées ; options : nonClasses = [texte] (ex. « Léa (2 fois) »),
+// voir = texte du bouton, podium = false pour ne rien montrer tant que c'est fermé (juste le bouton)
+const classementsOuverts = new Set();
+function classementComplet(cle, lignes, { nonClasses = [], voir = "Classement complet", podium = true } = {}) {
+  if (!lignes.length && !nonClasses.length) return "";
+  const ouvert = classementsOuverts.has(cle);
+  const li = (l, i) => ligneClassement(i, l.nom, l.valeur, l.moi);
+  const visibles = ouvert ? lignes : podium ? lignes.slice(0, 3) : [];
+  let html = visibles.length ? `<ol class="classement">${visibles.map(li).join("")}</ol>` : "";
+  // Fermé : si MA place est plus loin que le podium, on la montre quand même
+  const iMoi = lignes.findIndex((l) => l.moi);
+  if (!ouvert && podium && iMoi >= 3) html += `<ol class="classement classement-moi"><li class="classement-trou">…</li>${li(lignes[iMoi], iMoi)}</ol>`;
+  if (ouvert && nonClasses.length) html += `<p class="petit">Pas encore classés : ${nonClasses.map(echapper).join(", ")}.</p>`;
+  if (lignes.length > (podium ? 3 : 0) || nonClasses.length) {
+    html += `<button type="button" class="lien-bouton voir-classement" data-a="classement-complet" data-cle="${echapper(cle)}" aria-expanded="${ouvert}">${ouvert ? "▲ Réduire" : `▼ ${voir} <small>(${lignes.length})</small>`}</button>`;
+  }
+  return html;
+}
+
 
 /* ---------- 3. Vues ---------- */
 
@@ -708,7 +730,7 @@ function vueClassements() {
       html += `<section class="bloc pr-bloc">
         <h2 class="bloc-titre">🎯 Défi : ${echapper(itemDe(id).titre)}</h2>
         <p class="bloc-info">Meilleur score de chacun cette semaine</p>
-        ${joues.length ? `<ol class="classement">${joues.map((x, i) => ligneClassement(i, x.b.prenom, echapper(texteScore(id, x.v)), m && x.b.uid === m.uid)).join("")}</ol>` : `<p class="petit">Personne ne l'a encore joué.</p>`}
+        ${joues.length ? classementComplet(`defi-${id}`, joues.map((x) => ({ nom: x.b.prenom, valeur: echapper(texteScore(id, x.v)), moi: !!(m && x.b.uid === m.uid) }))) : `<p class="petit">Personne ne l'a encore joué.</p>`}
       </section>`;
     });
   }
@@ -736,15 +758,18 @@ function vueClassements() {
   if (exoClassement) {
     const id = exoClassement;
     const lignes = bilans.filter((b) => b.annee === annee && b.exos[id]);
-    const top = lignes.filter((b) => b.exos[id].n >= 3).sort((a, b) => (meilleurQue(id, a.exos[id].moy, b.exos[id].moy) ? -1 : 1)).slice(0, 3);
+    const top = lignes.filter((b) => b.exos[id].n >= 3).sort((a, b) => (meilleurQue(id, a.exos[id].moy, b.exos[id].moy) ? -1 : 1));
+    const pasClasses = lignes.filter((b) => b.exos[id].n < 3).sort((a, b) => a.prenom.localeCompare(b.prenom, "fr")).map((b) => `${b.prenom} (${b.exos[id].n} fois)`);
+    const records = [...lignes].sort((a, b) => (meilleurQue(id, a.exos[id].record, b.exos[id].record) ? -1 : meilleurQue(id, b.exos[id].record, a.exos[id].record) ? 1 : a.exos[id].recordD.localeCompare(b.exos[id].recordD)));
     const rec = [...lignes].sort((a, b) => (meilleurQue(id, a.exos[id].record, b.exos[id].record) ? -1 : 1))[0];
     html += `<section class="bloc pr-bloc">
       <h2 class="bloc-titre">🏆 Classements ${annee}</h2>
       <select id="choix-exo-classement" class="choix" aria-label="Exo">${avecDonnees.map((f) => `<option value="${echapper(f.id)}" ${f.id === id ? "selected" : ""}>${echapper(f.titre)}</option>`).join("")}</select>
       <h3>⭐ Record absolu de l'année</h3>
       <p class="record-annee"><strong>${echapper(texteScore(id, rec.exos[id].record))}</strong> par ${echapper(rec.prenom)} <small>(${echapper(dateLisible(rec.exos[id].recordD))})</small></p>
-      <h3>🏆 Top 3 à la moyenne</h3>
-      ${top.length ? `<ol class="classement">${top.map((b, i) => ligneClassement(i, b.prenom, `${virguleA(b.exos[id].moy)} <small>moy. · ${b.exos[id].n} fois</small>`, m && b.uid === m.uid)).join("")}</ol>` : ""}
+      ${records.length > 1 ? classementComplet(`records-${id}`, records.map((b) => ({ nom: b.prenom, valeur: `${echapper(texteScore(id, b.exos[id].record))} <small>${echapper(dateLisible(b.exos[id].recordD))}</small>`, moi: !!(m && b.uid === m.uid) })), { voir: "Record de chacun", podium: false }) : ""}
+      <h3>🏆 Classement à la moyenne</h3>
+      ${top.length || pasClasses.length ? classementComplet(`moyenne-${id}`, top.map((b) => ({ nom: b.prenom, valeur: `${virguleA(b.exos[id].moy)} <small>moy. · ${b.exos[id].n} fois</small>`, moi: !!(m && b.uid === m.uid) })), { nonClasses: pasClasses }) : ""}
       <p class="petit">Moyenne de tous les scores depuis le 1er janvier (3 fois minimum pour être classé).</p>
     </section>`;
   } else {
@@ -1179,6 +1204,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const a = bouton.dataset.a;
     if (a === "vue") changerVue(bouton.dataset.vue);
     if (a === "ouvrir-coach") changerVue("coach");
+    if (a === "classement-complet") {   // dérouler / réduire un classement (joueurs et coachs)
+      const cle = bouton.dataset.cle;
+      if (classementsOuverts.has(cle)) classementsOuverts.delete(cle); else classementsOuverts.add(cle);
+      afficherVue();
+    }
     if (a === "connexion") {
       // Pas d'attente avant connecterGoogle : la fenêtre Google doit s'ouvrir tout de suite
       connecterGoogle().then((erreur) => { messageConnexion = erreur; afficherVue(); });

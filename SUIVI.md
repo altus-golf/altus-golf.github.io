@@ -196,3 +196,6 @@
 
 ## 24/11/2026 — v84 : jour par jour (branche `suivi-jour`)
 - 📅 Semaine (coach) : bouton « Jour par jour » : grille de la semaine (joueurs × jours : exos, P = prépa, G = golf déclaré), choix du jour, filtre par compartiment (Putting, Chipping, Test Center, Prépa physique, Golf déclaré), détail de tout ce que chaque joueur a fait ce jour-là. Testé en démo (ordinateur clair, téléphone sombre).
+
+## 24/11/2026 — v85 : classements complets
+- 🏆 Joueurs et coachs : chaque classement montre le podium, puis « ▼ Classement complet (n) » déroule tous les classés et ceux pas encore classés (scores minimum). Joueur : défis, record de chacun, classement à la moyenne ; sa propre place s'affiche sous le podium. Coach : 30 jours et année pour chaque exo. Testé en démo.
