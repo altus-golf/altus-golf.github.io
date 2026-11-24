@@ -22,6 +22,9 @@ let ongletCoach = "c-semaine";     // onglet ouvert dans l'espace coachs
 let metriqueEquipe = "m30";        // Équipe : moyenne 30 j / année / record / nombre
 let categorieCoach = "Putting";    // Équipe et Classements : catégorie affichée
 let decalageSemaine = 0;           // Semaine et Pelz : 0 = cette semaine, 1 = la précédente…
+let modeSemaine = "semaine";       // 📅 Semaine : "semaine" (qui a fait quoi) ou "jour" (jour par jour)
+let jourCoach = null;              // jour par jour : jour choisi (AAAA-MM-JJ), aujourd'hui par défaut
+let filtreJour = "tout";           // jour par jour : compartiment affiché
 
 /* --- Outils --- */
 const nomCoach = (j) => j.prenom + (j.source === "classeur" ? " 📄" : "");
@@ -69,12 +72,24 @@ function actionInterfaceCoach(a, bouton) {
   if (a === "coach-metrique") { metriqueEquipe = bouton.dataset.m; afficherVue(); return true; }
   if (a === "coach-categorie") { categorieCoach = bouton.dataset.cat; afficherVue(); return true; }
   if (a === "coach-semaine") { decalageSemaine = Math.max(0, decalageSemaine + Number(bouton.dataset.sens)); afficherVue(); return true; }
+  if (a === "coach-mode-semaine") { modeSemaine = bouton.dataset.m === "jour" ? "jour" : "semaine"; afficherVue(); return true; }
+  if (a === "coach-jour") { if (jourValide(bouton.dataset.d) && bouton.dataset.d <= dateEnTexte(new Date())) jourCoach = bouton.dataset.d; afficherVue(); return true; }
+  if (a === "coach-jour-decaler") {
+    const d = dateEnTexte(ajouterJours(texteEnDate(jourCoach || dateEnTexte(new Date())), Number(bouton.dataset.sens)));
+    if (d <= dateEnTexte(new Date())) jourCoach = d;
+    afficherVue(); return true;
+  }
+  if (a === "coach-filtre-jour") { filtreJour = bouton.dataset.f; afficherVue(); return true; }
   if (a === "coach-ouvrir-joueur") { joueurCoach = bouton.dataset.uid; ongletCoach = "c-joueur"; afficherVue(); window.scrollTo(0, 0); return true; }
   return false;
 }
 
 /* ---------- 📅 Semaine : qui a fait quoi ---------- */
+// Choix entre la vue de la semaine et le jour par jour (24/11/2026, demande du coach)
+const choixModeSemaine = () => `<div class="filtres filtres-mode">${[["semaine", "Vue de la semaine"], ["jour", "Jour par jour"]].map(([m, t]) =>
+  `<button type="button" class="filtre ${modeSemaine === m ? "actif" : ""}" data-a="coach-mode-semaine" data-m="${m}">${t}</button>`).join("")}</div>`;
 function vueCoachSemaine() {
+  if (modeSemaine === "jour") return choixModeSemaine() + vueCoachJour();
   const donnees = donneesCoach();
   const lundi = lundiAffiche();
   const dimanche = dateEnTexte(ajouterJours(texteEnDate(lundi), 6));
@@ -92,7 +107,7 @@ function vueCoachSemaine() {
     return { x, n: semaine.length, exos: new Set(semaine.map((it) => it.fiche)).size, pz, derniere, statut };
   }).sort((a, b) => b.n - a.n || a.x.j.prenom.localeCompare(b.x.j.prenom, "fr"));
   const kpi = (titre, valeur, detail) => `<div class="kpi"><span>${titre}</span><strong>${valeur}</strong><small>${detail}</small></div>`;
-  return `${navigationSemaine()}
+  return `${choixModeSemaine()}${navigationSemaine()}
     <div class="kpis">
       ${kpi("Joueurs actifs", `${actifs} / ${donnees.length}`, "au moins un score")}
       ${kpi("Scores saisis", nbScores, "tous exos confondus")}
@@ -115,6 +130,151 @@ function vueCoachSemaine() {
     </section>
     ${blocSommeilSemaine()}`;   // forme.js
 }
+
+/* ---------- 📅 Semaine > Jour par jour (24/11/2026, demande du coach) ----------
+   Le travail de chaque joueur, jour par jour : la semaine en grille (un jour par colonne),
+   puis le détail du jour choisi. Filtre par compartiment : Putting, Chipping, Test Center
+   (exos du site), Prépa physique (séances notées dans 🏋️ Prépa, sinon prépa déclarée dans la
+   Forme) et Golf (durée, RPE et balles déclarés dans la Forme du LENDEMAIN matin).
+   Aucun calcul nouveau : on regroupe ce qui est déjà saisi. */
+const FILTRES_JOUR = [["tout", "Tout"], ["Putting", "Putting"], ["Chipping", "Chipping"], ["Test Center", "Test Center"], ["prepa", "Prépa physique"], ["golf", "Golf déclaré"]];
+const COMPARTIMENTS_EXOS = ["Putting", "Chipping", "Test Center"];
+const lendemain = (d) => dateEnTexte(ajouterJours(texteEnDate(d), 1));
+// Titre court d'un exo (« Pelz A - Approche levée (15 m) » → « Pelz A »)
+const titreCourtExo = (it) => (it.id.startsWith("pelz-") ? it.titre.replace(/ - .*$/, "") : it.titre);
+
+// Tout ce qu'un joueur a fait un jour donné
+function travailDuJour(x, d) {
+  const exos = [];
+  ITEMS_ALTUS.forEach((it) => {
+    if (it.id === "pelz-total") return;
+    const cat = categorieRapport(it.id);   // classeur.js : Putting / Chipping / Test Center
+    if (filtreJour !== "tout" && COMPARTIMENTS_EXOS.includes(filtreJour) && cat !== filtreJour) return;
+    x.scores[it.id].forEach(([jour, v]) => { if (jour === d) exos.push({ it, v, cat }); });
+  });
+  const prepa = prepasCoach && !prepasCoach.erreur ? ((prepasCoach[x.j.uid] || {}).seances || []).filter((s) => s.d === d) : [];
+  const reponses = formesCoach && !formesCoach.erreur ? formeDe(x.j).reponses : [];   // forme.js
+  const forme = reponses.find((r) => r.d === lendemain(d)) || null;   // la Forme du lendemain parle de ce jour-là
+  const ressentis = ((groupeDonnees.consignes[x.j.uid] || {}).ressentis || []).filter((r) => r.d === d);
+  const matchs = (groupeDonnees.matchs || []).filter((m) => m.date === d && [m.j1, m.j2].some((p) => slugPrenom(p) === slugPrenom(x.j.prenom)));
+  return { exos, prepa, forme, ressentis, matchs };
+}
+// Ce qui compte selon le filtre choisi (pour la grille et pour savoir si le joueur a « fait quelque chose »)
+function aTravaille(t) {
+  if (filtreJour === "prepa") return t.prepa.length > 0 || !!(t.forme && t.forme.prepaMin);
+  if (filtreJour === "golf") return !!(t.forme && t.forme.golfMin);
+  if (filtreJour !== "tout") return t.exos.length > 0;
+  return t.exos.length > 0 || t.prepa.length > 0 || t.ressentis.length > 0 || t.matchs.length > 0 || !!(t.forme && (t.forme.golfMin || t.forme.prepaMin));
+}
+function celluleJour(t) {
+  if (filtreJour === "prepa") {
+    const s = t.prepa[0];
+    if (s) return { texte: s.rpe !== null && s.rpe !== undefined ? `RPE ${s.rpe}` : "✓", niveau: 1 };
+    return t.forme && t.forme.prepaMin ? { texte: `${t.forme.prepaMin} min`, niveau: 0.6 } : { texte: "", niveau: 0 };
+  }
+  if (filtreJour === "golf") return t.forme && t.forme.golfMin ? { texte: texteDuree(t.forme.golfMin), niveau: Math.min(1, t.forme.golfMin / 240) } : { texte: "", niveau: 0 };
+  const n = t.exos.length;
+  if (filtreJour !== "tout") return { texte: n ? String(n) : "", niveau: n ? Math.min(1, n / 6) : 0 };
+  // « Tout » : nombre d'exos + P (prépa) + G (golf déclaré)
+  const p = t.prepa.length > 0 || !!(t.forme && t.forme.prepaMin), g = !!(t.forme && t.forme.golfMin);
+  return { texte: [n ? String(n) : "", p ? "P" : "", g ? "G" : ""].filter(Boolean).join(" "), niveau: Math.min(1, n / 6 + (p ? 0.15 : 0) + (g ? 0.2 : 0)) };
+}
+
+function vueCoachJour() {
+  // Prépa et Forme : chargées après l'affichage (prepa.js / forme.js)
+  if (!prepasCoach) Promise.resolve().then(chargerPrepasCoach);
+  if (!formesCoach) Promise.resolve().then(chargerFormesCoach);
+  const auj = dateEnTexte(new Date());
+  if (!jourCoach || jourCoach > auj) jourCoach = auj;
+  const d = jourCoach;
+  const lundi = lundiDe(texteEnDate(d));
+  const jours = [...Array(7)].map((_, i) => dateEnTexte(ajouterJours(texteEnDate(lundi), i)));
+  const donnees = donneesCoach();
+  const grille = donnees.map((x) => ({ x, t: jours.map((j) => travailDuJour(x, j)) }));
+  const iJour = jours.indexOf(d);
+  const nomJour = (j, format = "short") => texteEnDate(j).toLocaleDateString("fr-FR", { weekday: format, day: "numeric", month: format === "short" ? "numeric" : "long" });
+  // En-tête de colonne sur 2 lignes (« lun. » / « 16 ») pour tenir sur un téléphone
+  const enteteJour = (j) => { const t = texteEnDate(j); return `${echapper(t.toLocaleDateString("fr-FR", { weekday: "short" }))}<br>${t.getDate()}`; };
+  const nomFiltre = (FILTRES_JOUR.find(([f]) => f === filtreJour) || FILTRES_JOUR[0])[1];
+  const chargement = (!prepasCoach || !formesCoach) ? `<p class="petit">Chargement de la prépa et de la forme…</p>` : "";
+
+  // Détail du jour choisi
+  const actifs = grille.filter((g) => aTravaille(g.t[iJour]));
+  const inactifs = grille.filter((g) => !aTravaille(g.t[iJour]) && g.x.j.source !== "classeur");
+  const nbExos = actifs.reduce((n, g) => n + g.t[iJour].exos.length, 0);
+  const nbPrepa = grille.filter((g) => g.t[iJour].prepa.length).length;
+  const nbGolf = grille.filter((g) => g.t[iJour].forme && g.t[iJour].forme.golfMin).length;
+  const kpi = (titre, valeur, detail) => `<div class="kpi"><span>${titre}</span><strong>${valeur}</strong><small>${detail}</small></div>`;
+  const montrer = (f) => filtreJour === "tout" || filtreJour === f || (f === "exos" && COMPARTIMENTS_EXOS.includes(filtreJour));
+  const ligneDetail = (g) => {
+    const t = g.t[iJour];
+    const morceaux = [];
+    if (montrer("exos") && t.exos.length) {
+      const parCat = COMPARTIMENTS_EXOS.map((c) => [c, t.exos.filter((e) => e.cat === c)]).filter(([, l]) => l.length);
+      morceaux.push(parCat.map(([c, l]) => `<p class="jour-ligne"><span class="jour-cat">${echapper(c)}</span> ${l.map((e) => `${echapper(titreCourtExo(e.it))} <strong>${echapper(texteScore(e.it.id, e.v))}</strong>`).join(" · ")}</p>`).join(""));
+    }
+    if (montrer("prepa")) {
+      t.prepa.forEach((s) => {
+        const p = planDe(s.cle);   // prepa.js
+        morceaux.push(`<p class="jour-ligne"><span class="jour-cat">Prépa</span> ${p ? `Sem. ${p.sem} · séance ${p.seance}` : "Séance libre"}${prescAdaptee(s) ? " <small>(adaptée)</small>" : ""} ${pastilleRpe(s.rpe)}${s.duree ? ` · ${s.duree} min` : ""}${tonnageSeance(s) ? ` · ${Math.round(tonnageSeance(s))} kg` : ""}</p>`);
+      });
+      if (!t.prepa.length && t.forme && t.forme.prepaMin) morceaux.push(`<p class="jour-ligne"><span class="jour-cat">Prépa</span> ${t.forme.prepaMin} min ${pastilleRpe(t.forme.prepaRpe)} <small>(déclarée dans la Forme, séance non notée)</small></p>`);
+    }
+    if (montrer("golf") && t.forme && t.forme.golfMin) {
+      morceaux.push(`<p class="jour-ligne"><span class="jour-cat">Golf</span> ${texteDuree(t.forme.golfMin)} ${pastilleRpe(t.forme.golfRpe)}${t.forme.balles !== null && t.forme.balles !== undefined ? ` · ${t.forme.balles} balles` : ""}</p>`);
+    }
+    if (filtreJour === "tout") {
+      t.ressentis.forEach((r) => morceaux.push(`<p class="jour-ligne"><span class="jour-cat">Technique</span> ${echapper(((TECHNIQUES.find(([id]) => id === r.id) || [])[1]) || r.id)} : « ${echapper(r.texte)} »</p>`));
+      t.matchs.forEach((m) => morceaux.push(`<p class="jour-ligne"><span class="jour-cat">Match</span> ${echapper(texteMatchRapport(m))}</p>`));   // rapports.js
+    }
+    return `<div class="jour-joueur"><div class="jour-prenom">${boutonJoueur(g.x.j)}${t.exos.length && montrer("exos") ? ` <small>${t.exos.length} exo${t.exos.length > 1 ? "s" : ""}</small>` : ""}</div><div>${morceaux.join("")}</div></div>`;
+  };
+  const golfPasEncore = d >= auj ? `<p class="petit">Le golf de ce jour sera déclaré demain matin dans la Forme.</p>` : "";
+
+  return `<div class="nav-semaine nav-jour">
+      <button type="button" class="bouton" data-a="coach-jour-decaler" data-sens="-1" aria-label="Jour précédent">◀</button>
+      <input type="date" id="coach-jour-date" value="${d}" max="${auj}" aria-label="Choisir un jour">
+      <button type="button" class="bouton" data-a="coach-jour-decaler" data-sens="1" aria-label="Jour suivant" ${d >= auj ? "disabled" : ""}>▶</button>
+      ${d !== auj ? `<button type="button" class="bouton" data-a="coach-jour" data-d="${auj}">Aujourd'hui</button>` : ""}
+    </div>
+    <div class="filtres">${FILTRES_JOUR.map(([f, n]) => `<button type="button" class="filtre ${filtreJour === f ? "actif" : ""}" data-a="coach-filtre-jour" data-f="${f}">${n}</button>`).join("")}</div>
+    ${chargement}
+    <section class="bloc pr-bloc">
+      <h2 class="bloc-titre">🗓️ Semaine du ${echapper(dateLisible(lundi))}, jour par jour <small>(${echapper(nomFiltre)})</small></h2>
+      <div class="tableau-defilant"><table class="tableau-admin tableau-coach grille-jours">
+        <thead><tr><th>Joueur</th>${jours.map((j) => `<th class="${j === d ? "jour-choisi" : ""}">${j > auj ? `<span class="jour-futur">${enteteJour(j)}</span>`
+          : `<button type="button" class="lien-bouton" data-a="coach-jour" data-d="${j}">${enteteJour(j)}</button>`}</th>`).join("")}</tr></thead>
+        <tbody>${grille.map((g) => `<tr><td>${boutonJoueur(g.x.j)}</td>${g.t.map((t, i) => {
+          if (jours[i] > auj) return `<td class="jour-futur"></td>`;
+          const c = celluleJour(t);
+          return `<td class="nombre${jours[i] === d ? " jour-choisi" : ""}"${c.niveau ? ` style="${fondDegrade(c.niveau)}"` : ""}><button type="button" class="case-jour" data-a="coach-jour" data-d="${jours[i]}" title="${echapper(nomJour(jours[i], "long"))}">${c.texte ? echapper(c.texte) : "·"}</button></td>`;
+        }).join("")}</tr>`).join("")}
+          <tr class="ligne-total"><td>Joueurs actifs</td>${jours.map((j, i) => j > auj ? `<td></td>` : `<td class="nombre${j === d ? " jour-choisi" : ""}"><strong>${grille.filter((g) => aTravaille(g.t[i])).length}</strong></td>`).join("")}</tr>
+        </tbody>
+      </table></div>
+      <p class="petit">${filtreJour === "golf" ? "Durée de golf déclarée dans la Forme du lendemain matin."
+        : filtreJour === "prepa" ? "RPE de la séance notée dans 🏋️ Prépa ; en minutes = prépa déclarée dans la Forme sans séance notée."
+        : `Nombre d'exos joués${filtreJour === "tout" ? " · P = prépa physique · G = golf (déclaré dans la Forme du lendemain)" : ""}.`} Toucher un jour ou une case affiche le détail.</p>
+    </section>
+    <div class="kpis">
+      ${kpi("Joueurs actifs", `${actifs.length} / ${donnees.length}`, nomFiltre === "Tout" ? "au moins une chose notée" : nomFiltre)}
+      ${kpi("Exos joués", nbExos, COMPARTIMENTS_EXOS.includes(filtreJour) ? filtreJour : "tous compartiments")}
+      ${kpi("Séances de prépa", nbPrepa, "notées dans 🏋️ Prépa")}
+      ${kpi("Golf déclaré", d >= auj ? "—" : nbGolf, d >= auj ? "demain matin" : "joueurs (Forme du lendemain)")}
+    </div>
+    <section class="bloc pr-bloc">
+      <h2 class="bloc-titre">📋 ${echapper(nomJour(d, "long").replace(/^./, (c) => c.toUpperCase()))} <small>(${echapper(nomFiltre)})</small></h2>
+      ${actifs.length ? `<div class="liste-jour">${actifs.map(ligneDetail).join("")}</div>` : `<p class="petit">Rien de noté ce jour-là${filtreJour !== "tout" ? " pour ce compartiment" : ""}.</p>`}
+      ${golfPasEncore}
+      ${inactifs.length ? `<p class="petit"><strong>Rien de noté :</strong> ${inactifs.map((g) => echapper(g.x.j.prenom)).join(", ")}</p>` : ""}
+    </section>`;
+}
+// Choix d'un jour dans le calendrier
+document.addEventListener("change", (e) => {
+  if (e.target.id !== "coach-jour-date") return;
+  const d = e.target.value;
+  if (jourValide(d) && d <= dateEnTexte(new Date())) { jourCoach = d; afficherVue(); }
+});
 
 /* ---------- 👥 Équipe : tous les joueurs × tous les exos ---------- */
 const METRIQUES_EQUIPE = [["m30", "Moy. 30 jours"], ["annee", "Moy. de l'année"], ["record", "Record de l'année"], ["n", "Nb de scores (année)"]];

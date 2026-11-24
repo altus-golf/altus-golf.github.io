@@ -1079,6 +1079,36 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .statut-forme-vert { background: var(--vert-fond); color: var(--vert-texte); }
 .statut-forme-orange { background: var(--orange-fond); color: var(--orange-texte); }
 .statut-forme-rouge { background: var(--rouge-fond); color: var(--rouge-texte); }
+/* 📅 Semaine > Jour par jour (coach.js, 24/11/2026) */
+.filtres-mode { margin-bottom: 12px; }
+.nav-jour { flex-wrap: wrap; }
+.nav-jour input[type="date"] { min-height: 44px; padding: 6px 10px; border: 1px solid var(--bord); border-radius: 10px; background: var(--champ); color: var(--texte); font: inherit; font-weight: 600; }
+.grille-jours th, .grille-jours td { text-align: center; }
+.grille-jours th:first-child, .grille-jours td:first-child { text-align: left; }
+.grille-jours th .lien-bouton { font-weight: 700; text-transform: capitalize; white-space: nowrap; }
+.grille-jours .jour-futur { color: var(--texte-doux); opacity: 0.5; text-transform: capitalize; white-space: nowrap; }
+.grille-jours th.jour-choisi { background: var(--accent); }
+.grille-jours th.jour-choisi .lien-bouton { color: var(--accent-texte); }
+.grille-jours td.jour-choisi { box-shadow: inset 2px 0 0 var(--corail), inset -2px 0 0 var(--corail); }
+.case-jour { width: 100%; min-height: 36px; padding: 4px; border: 0; background: none; color: inherit; font: inherit; font-weight: 700; cursor: pointer; }
+.grille-jours .ligne-total td { border-top: 2px solid var(--bord); }
+.liste-jour { display: flex; flex-direction: column; }
+.jour-joueur { display: grid; grid-template-columns: minmax(90px, 140px) 1fr; gap: 6px 14px; padding: 10px 0; border-bottom: 1px solid var(--separateur); }
+.jour-joueur:last-child { border-bottom: 0; }
+.jour-prenom small { color: var(--texte-doux); }
+.jour-ligne { margin: 2px 0; line-height: 1.6; }
+.jour-cat { display: inline-block; min-width: 86px; margin-right: 6px; padding: 0 8px; border-radius: 999px; background: var(--accent-doux); color: var(--texte); font-size: 0.75rem; font-weight: 700; text-align: center; }
+@media (max-width: 600px) {
+  .jour-joueur { grid-template-columns: 1fr; } .jour-cat { min-width: 0; }
+  /* La semaine entière tient sur la largeur du téléphone */
+  .grille-jours { min-width: 0; font-size: 0.78rem; }
+  .grille-jours th, .grille-jours td { padding: 4px 2px; }
+  .grille-jours th:first-child, .grille-jours td:first-child { padding-left: 4px; max-width: 54px; overflow: hidden; text-overflow: ellipsis; font-size: 0.7rem; }
+  .grille-jours th, .grille-jours td { padding: 3px 1px; }
+  .grille-jours th .lien-bouton, .grille-jours th .jour-futur { white-space: normal; font-size: 0.66rem; padding: 0; min-width: 0; }
+  .case-jour { min-height: 34px; padding: 2px 0; font-size: 0.72rem; letter-spacing: -0.02em; }
+}
+
 /* Graphique de la charge (forme.js, 23/11/2026) */
 .graphique-charge { display: block; width: 100%; height: auto; margin: 8px 0 4px; }
 .ch-grille { stroke: var(--separateur); stroke-width: 1; }
