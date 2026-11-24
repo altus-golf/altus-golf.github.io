@@ -193,3 +193,6 @@
 
 ## 23/11/2026 — v83 : graphique de la charge
 - 💪 Forme (coach) : graphique de la charge de CHAQUE joueur (en haut de son historique ; pas de charge de groupe, les UA étant propres à chacun) : « 30 derniers jours » (barres golf + prépa par jour d'entraînement, moyennes 7 et 28 jours) et « Semaine par semaine » (12 semaines, jours renseignés). KPI « Charge moyenne d'hier » du groupe retiré. Testé en démo (ordinateur clair, téléphone sombre).
+
+## 24/11/2026 — v84 : jour par jour (branche `suivi-jour`)
+- 📅 Semaine (coach) : bouton « Jour par jour » : grille de la semaine (joueurs × jours : exos, P = prépa, G = golf déclaré), choix du jour, filtre par compartiment (Putting, Chipping, Test Center, Prépa physique, Golf déclaré), détail de tout ce que chaque joueur a fait ce jour-là. Testé en démo (ordinateur clair, téléphone sombre).
