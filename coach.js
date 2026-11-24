@@ -120,7 +120,7 @@ function vueCoachSemaine() {
         <thead><tr><th>Joueur</th><th>Scores</th><th>Exos</th><th>Pelz de la semaine</th><th>Dernière saisie</th><th>Statut</th></tr></thead>
         <tbody>${lignes.map((l) => `<tr>
           <td>${boutonJoueur(l.x.j)}</td><td class="nombre"><strong>${l.n}</strong></td><td class="nombre">${l.exos}</td>
-          <td><span class="pastilles-pelz">${PELZ_SITUATIONS.map((s) => `<span class="pastille-pelz ${l.pz.pts[s.id] !== undefined ? "faite" : ""}" title="${echapper(s.nom)}">${s.id.toUpperCase()}</span>`).join("")}</span>
+          <td>${!l.pz.n ? "—" : `<span class="pastilles-pelz">${PELZ_SITUATIONS.map((s) => `<span class="pastille-pelz ${l.pz.pts[s.id] !== undefined ? "faite" : ""}" title="${echapper(s.nom)}">${echapper(s.court)}</span>`).join("")}</span>`}
             ${l.pz.total !== null ? ` <strong>${l.pz.total}/${PELZ_MAX_TOTAL}</strong>` : ""}</td>
           <td class="nombre">${l.derniere ? echapper(dateLisible(l.derniere)) : "—"}</td>
           <td><span class="statut statut-${l.statut[1]}">${l.statut[0]}</span></td>
@@ -140,8 +140,8 @@ function vueCoachSemaine() {
 const FILTRES_JOUR = [["tout", "Tout"], ["Putting", "Putting"], ["Chipping", "Chipping"], ["Test Center", "Test Center"], ["prepa", "Prépa physique"], ["golf", "Golf déclaré"]];
 const COMPARTIMENTS_EXOS = ["Putting", "Chipping", "Test Center"];
 const lendemain = (d) => dateEnTexte(ajouterJours(texteEnDate(d), 1));
-// Titre court d'un exo (« Pelz A - Approche levée (15 m) » → « Pelz A »)
-const titreCourtExo = (it) => (it.id.startsWith("pelz-") ? it.titre.replace(/ - .*$/, "") : it.titre);
+// Titre court d'un exo (« Pelz · Approche levée (15 m) » → « Pelz Levée 15 m »)
+const titreCourtExo = (it) => (it.id.startsWith("pelz-") ? `Pelz ${(PELZ_SITUATIONS.find((s) => "pelz-" + s.id === it.id) || {}).court || ""}` : it.titre);
 
 // Tout ce qu'un joueur a fait un jour donné
 function travailDuJour(x, d) {
@@ -361,13 +361,13 @@ function vueCoachPelz() {
     <section class="bloc pr-bloc">
       <h2 class="bloc-titre">🏌️ Pelz de la semaine (points sur 40)</h2>
       <div class="tableau-defilant"><table class="tableau-admin tableau-coach">
-        <thead><tr><th>Joueur</th>${PELZ_SITUATIONS.map((s) => `<th class="nombre" title="${echapper(s.nom)}">${s.id.toUpperCase()}</th>`).join("")}<th>Faites</th><th>Total</th></tr></thead>
+        <thead><tr><th>Joueur</th>${PELZ_SITUATIONS.map((s) => `<th class="nombre th-pelz" title="${echapper(s.nom)}">${echapper(s.court)}</th>`).join("")}<th>Faites</th><th>Total</th></tr></thead>
         <tbody>${lignes.map((l) => `<tr><td>${boutonJoueur(l.x.j)}</td>
           ${PELZ_SITUATIONS.map((s) => l.pz.pts[s.id] !== undefined ? `<td class="nombre case-faite">${l.pz.pts[s.id]}</td>` : `<td class="nombre vide">·</td>`).join("")}
           <td class="nombre">${l.pz.n}/${PELZ_SITUATIONS.length}</td>
           <td class="nombre">${l.pz.total !== null ? `<strong class="statut statut-top">${l.pz.total}</strong>` : "—"}</td></tr>`).join("")}</tbody>
       </table></div>
-      <p class="petit">${PELZ_SITUATIONS.map((s) => `${s.id.toUpperCase()} = ${echapper(s.nom)}`).join(" · ")}. Total sur ${PELZ_MAX_TOTAL} quand les ${PELZ_SITUATIONS.length} situations sont faites dans la semaine (dernier score de chaque situation).</p>
+      <p class="petit">Total sur ${PELZ_MAX_TOTAL} quand les ${PELZ_SITUATIONS.length} situations sont faites dans la semaine (dernier score de chaque situation).</p>
     </section>
     <section class="bloc pr-bloc">
       <h2 class="bloc-titre">📈 Total du Pelz, semaine par semaine</h2>

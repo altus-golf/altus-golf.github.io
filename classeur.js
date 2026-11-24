@@ -427,7 +427,7 @@ function versDateExcel(d) {
 }
 // Titre court pour les en-têtes de colonnes
 function titreCourt(it) {
-  return it.titre.replace(/^Test Center /, "TC ").replace(/ \(filles [^)]*\)/, "").replace(/^Pelz ([A-I]) - /, "Pelz $1\n").replace(/^Pelz complet \(total de la semaine\)$/, "Pelz complet");
+  return it.titre.replace(/^Test Center /, "TC ").replace(/ \(filles [^)]*\)/, "").replace(/^Pelz · /, "Pelz\n").replace(/^Pelz complet \(total de la semaine\)$/, "Pelz complet");
 }
 const texteNote = (v) => (v === null || v === undefined ? "" : String(arrondi1(v)).replace(".", ","));
 
@@ -622,7 +622,7 @@ async function telechargerRapport() {
 
     // ---------- Semaine : qui a fait quoi ----------
     titreFeuille(fs, `Semaine du ${dateRapport(lundi)} au ${dateRapport(dimanche)}`, `Rapport du ${dateRapport(aujourdhui)} · Pelz sur ${PELZ_SITUATIONS.length} situations (points sur 40)`);
-    const entSem = ["Joueur", "Scores cette semaine", "Exercices différents", ...PELZ_SITUATIONS.map((s) => "Pelz " + s.id.toUpperCase()), "Pelz faites", `Total /${PELZ_MAX_TOTAL}`, "Dernière saisie", "Statut"];
+    const entSem = ["Joueur", "Scores cette semaine", "Exercices différents", ...PELZ_SITUATIONS.map((s) => "Pelz " + s.court), "Pelz faites", `Total /${PELZ_MAX_TOTAL}`, "Dernière saisie", "Statut"];
     ligneEnTete(fs, 4, entSem);
     const lignesSem = donnees.map((x) => {
       const semaine = [];
@@ -788,7 +788,7 @@ async function telechargerRapport() {
     const PZ = F1 + 3;
     sousTitreBloc(ff, PZ, "Test de Pelz semaine par semaine");
     // Tableau en colonnes B (semaine) à L (total), sous le tableau des exos
-    ligneEnTete(ff, PZ + 1, ["Semaine du", ...PELZ_SITUATIONS.map((s) => s.id.toUpperCase()), "Faites", `Total /${PELZ_MAX_TOTAL}`], 2);
+    ligneEnTete(ff, PZ + 1, ["Semaine du", ...PELZ_SITUATIONS.map((s) => s.court), "Faites", `Total /${PELZ_MAX_TOTAL}`], 2);
     const nS = PELZ_SITUATIONS.length;
     [...semaines].reverse().forEach((sem, k) => {
       const r = PZ + 2 + k;

@@ -199,3 +199,6 @@
 
 ## 24/11/2026 — v85 : classements complets
 - 🏆 Joueurs et coachs : chaque classement montre le podium, puis « ▼ Classement complet (n) » déroule tous les classés et ceux pas encore classés (scores minimum). Joueur : défis, record de chacun, classement à la moyenne ; sa propre place s'affiche sous le podium. Coach : 30 jours et année pour chaque exo. Testé en démo.
+
+## 24/11/2026 — v86 : situations du Pelz par leur nom
+- Partout (joueurs et coachs, rapport Excel) : « Bunker 10 m », « Chip 20 m »… à la place des lettres A, B, C… Titres : « Pelz · Bunker court (10 m) ». Testé en démo.

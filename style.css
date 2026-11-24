@@ -1169,6 +1169,10 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .note-hooper.haute { background: var(--orange-fond); color: var(--orange-texte); }
 .pastille-pelz { border-color: var(--bord); }
 .pastille-pelz.faite { background: var(--accent); border-color: var(--accent); color: #FFFFFF; }
+/* Situations du Pelz écrites en toutes lettres (24/11/2026) : pastilles allongées, en-têtes sur 2 lignes */
+.pastilles-pelz { display: inline-flex; flex-wrap: wrap; gap: 4px; max-width: 420px; }
+.pastille-pelz { width: auto; min-width: 0; height: auto; min-height: 22px; padding: 1px 8px; border-radius: 999px; font-size: 0.68rem; font-weight: 700; white-space: nowrap; }
+.tableau-admin th.th-pelz { white-space: normal; min-width: 58px; line-height: 1.2; font-size: 0.7rem; }
 .barre-pc { background: var(--rang-fond); }
 .barre-pc span { background: var(--accent); }
 .note { background: var(--alerte-fond); color: var(--alerte-texte); }

@@ -144,17 +144,21 @@ document.addEventListener("click", (e) => {
   if (b) finirTechnique(b.dataset.id);
 });
 
+// Situations du Pelz : on affiche leur NOM, plus la lettre du classeur (demande du coach, 24/11/2026) ;
+// la lettre reste seulement dans l'identifiant (pelz-a…) et pour lire le classeur importé.
+// « court » = nom court pour les en-têtes de tableaux et les pastilles.
 const PELZ_SITUATIONS = [
-  { id: "a", nom: "Approche levée (15 m)", detail: "Fairway, par-dessus le bunker ; drapeau à 4 m max. du bord." },
-  { id: "b", nom: "Chip long (20 m)", detail: "Fairway ; au moins 15 m de green devant le drapeau." },
-  { id: "c", nom: "Chip court (10 m)", detail: "Fairway ; au moins 7 m de green devant le drapeau." },
+  { id: "a", nom: "Approche levée (15 m)", court: "Levée 15 m", detail: "Fairway, par-dessus le bunker ; drapeau à 4 m max. du bord." },
+  { id: "b", nom: "Chip long (20 m)", court: "Chip 20 m", detail: "Fairway ; au moins 15 m de green devant le drapeau." },
+  { id: "c", nom: "Chip court (10 m)", court: "Chip 10 m", detail: "Fairway ; au moins 7 m de green devant le drapeau." },
   // D (Wedging 50 m) retirée à la demande de l'utilisateur (20/11/2026) : les lettres restent celles du classeur
-  { id: "e", nom: "Bunker court (10 m)", detail: "Bunker ; drapeau à 3 m max. du bord." },
-  { id: "f", nom: "Wedging 30 m", detail: "Fairway ; au moins 15 m de green devant le drapeau." },
-  { id: "g", nom: "Bunker long (25 m)", detail: "Bunker ; drapeau à 10 m max. du bord du green." },
-  { id: "h", nom: "Approche mi-distance (20 m)", detail: "Fairway ; drapeau à 10 m max. du bord du green." },
-  { id: "i", nom: "Approche rough (15 m)", detail: "Rough ; drapeau à 10 m max. du bord du green." },
+  { id: "e", nom: "Bunker court (10 m)", court: "Bunker 10 m", detail: "Bunker ; drapeau à 3 m max. du bord." },
+  { id: "f", nom: "Wedging 30 m", court: "Wedging 30 m", detail: "Fairway ; au moins 15 m de green devant le drapeau." },
+  { id: "g", nom: "Bunker long (25 m)", court: "Bunker 25 m", detail: "Bunker ; drapeau à 10 m max. du bord du green." },
+  { id: "h", nom: "Approche mi-distance (20 m)", court: "Approche 20 m", detail: "Fairway ; drapeau à 10 m max. du bord du green." },
+  { id: "i", nom: "Approche rough (15 m)", court: "Rough 15 m", detail: "Rough ; drapeau à 10 m max. du bord du green." },
 ];
+const nomPelz = (lettre) => (PELZ_SITUATIONS.find((s) => s.id === lettre) || { nom: lettre }).nom;
 const PELZ_BAREME = [
   { pts: 4, nom: "🕳️ Rentrée" }, { pts: 2, nom: "< 3 pieds" }, { pts: 1, nom: "3 à 6 pieds" }, { pts: 0, nom: "> 6 pieds" },
 ];
@@ -165,7 +169,7 @@ const PELZ_MAX_TOTAL = PELZ_SITUATIONS.length * 40;
 // Scores classés : { id, titre, fiche (exo à jouer), max, unite }
 const ITEMS_ALTUS = [
   { id: "pelz-total", titre: "Pelz complet (total de la semaine)", fiche: "pelz", unite: `/ ${PELZ_MAX_TOTAL}`, max: PELZ_MAX_TOTAL },
-  ...PELZ_SITUATIONS.map((s) => ({ id: "pelz-" + s.id, titre: `Pelz ${s.id.toUpperCase()} - ${s.nom}`, fiche: "pelz", unite: "/ 40", max: 40 })),
+  ...PELZ_SITUATIONS.map((s) => ({ id: "pelz-" + s.id, titre: `Pelz · ${s.nom}`, fiche: "pelz", unite: "/ 40", max: 40 })),
   { id: "9-putt-circle", titre: "9 Putt Circle", fiche: "9-putt-circle", unite: "/ 9", max: 9 },
   { id: "demi-lune", titre: "Demi-lune", fiche: "demi-lune", unite: "/ 12", max: 12 },
   { id: "2-feet-circle", titre: "2 Feet Circle", fiche: "2-feet-circle", unite: "/ 12", max: 12 },
@@ -338,9 +342,9 @@ function zonePelz() {
   const enCours = pelzEnCours();
   return `<div class="zone-pelz">
     <p class="pelz-semaine"><strong>Pelz de la semaine : ${faites} / ${PELZ_SITUATIONS.length} situations</strong>${faites === PELZ_SITUATIONS.length ? ` · total <strong>${total} / ${PELZ_MAX_TOTAL}</strong>` : ""}</p>
-    ${enCours ? `<button type="button" class="bouton principal pleine-largeur" data-a="pelz-reprendre">⛳ Reprendre la situation ${enCours.s.toUpperCase()} (${enCours.balles.length}/10)</button>` : ""}
+    ${enCours ? `<button type="button" class="bouton principal pleine-largeur" data-a="pelz-reprendre">⛳ Reprendre : ${echapper(nomPelz(enCours.s))} (${enCours.balles.length}/10)</button>` : ""}
     <ul class="pelz-liste">${PELZ_SITUATIONS.map((s) => `<li>
-      <span><strong>${s.id.toUpperCase()}</strong> ${echapper(s.nom)}<small>${echapper(s.detail)}</small></span>
+      <span><strong>${echapper(s.nom)}</strong><small>${echapper(s.detail)}</small></span>
       ${semaine[s.id] !== undefined ? `<span class="pelz-fait">✓ ${semaine[s.id]}/40</span>` : ""}
       <button type="button" class="bouton ${semaine[s.id] !== undefined ? "" : "principal"}" data-a="pelz-commencer" data-s="${s.id}">${semaine[s.id] !== undefined ? "Refaire" : "Jouer"}</button>
     </li>`).join("")}</ul>
@@ -355,7 +359,7 @@ function afficherPelz() {
   const points = t.balles.reduce((a, b) => a + b, 0);
   const fini = t.balles.length >= 10;
   zone.innerHTML = `<div class="trefle-contenu">
-    <div class="trefle-haut"><h2 class="bloc-titre">⛳ Pelz ${s.id.toUpperCase()}</h2>
+    <div class="trefle-haut"><h2 class="bloc-titre">⛳ Pelz · ${echapper(s.court)}</h2>
       <button type="button" class="bouton" data-a="pelz-fermer">Fermer</button></div>
     <p><strong>${echapper(s.nom)}</strong><br><span class="petit">${echapper(s.detail)}</span></p>
     <p class="pelz-compteur">Balle ${Math.min(10, t.balles.length + 1)} / 10 · <strong>${points} pts</strong></p>
@@ -372,7 +376,7 @@ function afficherPelz() {
 async function actionPelz(a, bouton) {
   let t = pelzEnCours();
   if (a === "pelz-commencer") {
-    if (t && t.balles.length && t.s !== bouton.dataset.s && !(await demanderConfirmation(`La situation ${t.s.toUpperCase()} est en cours : l'abandonner ?`, "Oui, l'abandonner"))) return;
+    if (t && t.balles.length && t.s !== bouton.dataset.s && !(await demanderConfirmation(`La situation « ${nomPelz(t.s)} » est en cours : l'abandonner ?`, "Oui, l'abandonner"))) return;
     t = { s: bouton.dataset.s, balles: [] };
   }
   if (a === "pelz-abandonner") {
@@ -410,7 +414,7 @@ function terminerPelz(t) {
   }
   apresUnExo("pelz");
   const record = avant.length && score > Math.max(...avant) ? "\n🏆 Nouveau record sur cette situation !" : "";
-  alert(`Pelz ${t.s.toUpperCase()} : ${score} / 40.${record}${texteTotal}`);
+  alert(`Pelz · ${nomPelz(t.s)} : ${score} / 40.${record}${texteTotal}`);
 }
 
 document.addEventListener("click", async (e) => {
