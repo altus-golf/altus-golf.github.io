@@ -202,3 +202,6 @@
 
 ## 24/11/2026 — v86 : situations du Pelz par leur nom
 - Partout (joueurs et coachs, rapport Excel) : « Bunker 10 m », « Chip 20 m »… à la place des lettres A, B, C… Titres : « Pelz · Bunker court (10 m) ». Testé en démo.
+
+## 25/11/2026 — v87 : Test Center 20-50 m
+- Nouveau Test Center Trackman « 20-50 m » (score /100 tapé par le joueur), en tête de la section Long jeu ; dans Moi, l'espace coachs, les rapports et l'Excel comme les autres.

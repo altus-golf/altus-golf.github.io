@@ -46,6 +46,7 @@ const FICHES_ALTUS = [
 // Pas de jeu interactif : on tape le score donné par Trackman à la fin du test
 // (« saisie: true » ; score sur 100, plus haut = mieux, confirmé par l’utilisateur).
 const TESTS_CENTER = [
+  ["tc-20-50", "20-50 m"],   // ajouté le 25/11/2026 (demande de l'utilisateur)
   ["tc-fix-wedge-60-90", "Fix Wedge 60-90 m"],
   ["tc-random-60-90", "Random 60-90 m"],
   // Filles : 90-130 m pour les 2 tests 100-150 m (demandé par l'utilisateur, 20/11/2026) ; même exo, même classement
