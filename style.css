@@ -1058,10 +1058,14 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
   border-radius: 50%; background: var(--rang-fond); color: var(--texte); font-size: 0.8rem; font-weight: 700;
 }
 .rang-premier { background: var(--corail); color: #FFFFFF; }
+/* Podium : or, argent, bronze (25/11/2026) — mêmes couleurs dans tous les thèmes */
+.rang.rang-or { background: #E2B33C; color: #3B2B00; }
+.rang.rang-argent { background: #C3C8D0; color: #252A33; }
+.rang.rang-bronze { background: #B0702F; color: #FFFFFF; }
 .classement li { align-items: center; padding: 9px 0; border-bottom-color: var(--separateur); }
 .classement li > span { display: flex; align-items: center; }
 .classement li.moi { color: var(--lien); }
-.classement li.moi .rang:not(.rang-premier) { background: var(--accent); color: #FFFFFF; }
+.classement li.moi .rang:not(.rang-premier):not(.rang-argent):not(.rang-bronze) { background: var(--accent); color: #FFFFFF; }
 .table-matchs .rang { margin: 0; }
 /* Record de l'année : encart marine */
 .record-annee { margin: 6px 0 12px; padding: 12px 14px; border-radius: 12px; background: var(--accent); color: #FFFFFF; }

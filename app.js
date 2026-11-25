@@ -472,7 +472,8 @@ function appliquerEffacementsCoach() {
 }
 
 // Rang dans un rond (visuel ALTUS, 21/11/2026) : le 1er en corail, les autres en gris-bleu (style.css)
-const medaille = (i) => `<span class="rang ${i === 0 ? "rang-premier" : ""}">${i + 1}</span>`;
+// 1er or, 2e argent, 3e bronze (demande de l'utilisateur, 25/11/2026) ; style.css : .rang-or / -argent / -bronze
+const medaille = (i) => `<span class="rang ${["rang-premier rang-or", "rang-argent", "rang-bronze"][i] || ""}">${i + 1}</span>`;
 
 function ligneClassement(i, nom, valeur, estMoi) {
   return `<li class="${estMoi ? "moi" : ""}"><span>${medaille(i)} ${echapper(nom)}</span><strong>${valeur}</strong></li>`;

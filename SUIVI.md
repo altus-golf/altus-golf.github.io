@@ -205,3 +205,6 @@
 
 ## 25/11/2026 — v87 : Test Center 20-50 m
 - Nouveau Test Center Trackman « 20-50 m » (score /100 tapé par le joueur), en tête de la section Long jeu ; dans Moi, l'espace coachs, les rapports et l'Excel comme les autres.
+
+## 25/11/2026 — v88 : podium or, argent, bronze
+- Les ronds des places 1, 2 et 3 sont en or, argent et bronze dans tous les classements (joueurs, coachs, matchs).
