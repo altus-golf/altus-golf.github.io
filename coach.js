@@ -14,7 +14,7 @@
 
 const ONGLETS_COACH = [
   ["c-semaine", "📅 Semaine"], ["c-forme", "💪 Forme"], ["c-equipe", "👥 Équipe"],
-  ["c-classements", "🏆 Classements"], ["c-pelz", "🏌️ Pelz"], ["c-prepa", "🏋️ Prépa"],
+  ["c-classements", "🏆 Classements"], ["c-pelz", "🏌️ Pelz"], ["c-matchs", "⚔️ Matchs"], ["c-prepa", "🏋️ Prépa"],
   ["c-joueur", "👤 Joueur"], ["c-distances", "🎯 Distances"], ["c-verifier", "⚠️ À vérifier"],
   ["c-calendrier", "🗓️ Calendrier"], ["c-gestion", "⚙️ Gestion"],
 ];
