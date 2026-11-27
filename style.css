@@ -679,6 +679,7 @@ details[open] > summary::before { transform: rotate(90deg); }
 
 /* Match play */
 .table-matchs { width: 100%; border-collapse: collapse; margin: 6px 0; }
+@media (max-width: 600px) { .col-pct { display: none; } }   /* coach ⚔️ Matchs : la colonne % se cache sur téléphone */
 .table-matchs th, .table-matchs td { padding: 0.4rem 0.25rem; border-bottom: 1px solid var(--bord); text-align: center; }
 .table-matchs th:nth-child(2), .table-matchs td:nth-child(2) { text-align: left; width: 100%; }
 .table-matchs tr.moi td { background: var(--accent-doux); font-weight: bold; }

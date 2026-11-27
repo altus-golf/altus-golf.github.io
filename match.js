@@ -127,12 +127,97 @@ function texteMatch(x) {
   return `${g} bat ${p} ${x.score}`;
 }
 
+/* ---------- Coach : onglet ⚔️ Matchs (27/11/2026, demande du coach) ----------
+   Classement de l'année, tous les matchs entrés (filtre par joueur), bilan d'un joueur
+   contre chacun de ses adversaires ; un coach peut effacer n'importe quel match (règles :
+   « allow delete: if estCoach() »). Aucun calcul nouveau : même classement que les joueurs. */
+let matchJoueurCoach = "";   // slug du prénom filtré ("" = tous)
+
+function vueCoachMatchs() {
+  const matchs = (groupeDonnees && groupeDonnees.matchs) || [];
+  const annee = String(new Date().getFullYear());
+  const deLAnnee = matchs.filter((x) => x.date.startsWith(annee));
+  const classement = classementMatchs(matchs);
+  const message = messageMatch ? `<p class="${messageMatch.startsWith("✅") ? "petit" : "erreur"}">${echapper(messageMatch)}</p>` : "";
+  // Qui a entré le match : prénom du compte (bilan) à partir de l'auteur
+  const auteurDe = (x) => ((groupeDonnees.bilans || []).find((b) => b.uid === x.auteur) || {}).prenom || "";
+  const joueurs = [...new Map(matchs.flatMap((x) => [x.j1, x.j2]).map((p) => [slugPrenom(p), p])).entries()].sort((a, b) => a[1].localeCompare(b[1], "fr"));
+  if (matchJoueurCoach && !joueurs.some(([k]) => k === matchJoueurCoach)) matchJoueurCoach = "";
+  const filtres = matchJoueurCoach ? matchs.filter((x) => slugPrenom(x.j1) === matchJoueurCoach || slugPrenom(x.j2) === matchJoueurCoach) : matchs;
+  const kpi = (titre, valeur, detail) => `<div class="kpi"><span>${titre}</span><strong>${valeur}</strong><small>${detail}</small></div>`;
+  const nbJoueurs = new Set(deLAnnee.flatMap((x) => [slugPrenom(x.j1), slugPrenom(x.j2)])).size;
+  const depuis30 = dateEnTexte(ajouterJours(new Date(), -30));
+  let html = `<div class="kpis">
+      ${kpi("Matchs en " + annee, deLAnnee.length, `${deLAnnee.filter((x) => x.gagnant === 0).length} égalité${deLAnnee.filter((x) => x.gagnant === 0).length > 1 ? "s" : ""}`)}
+      ${kpi("Joueurs", nbJoueurs, "au moins un match cette année")}
+      ${kpi("30 derniers jours", matchs.filter((x) => x.date >= depuis30).length, "matchs joués")}
+      ${kpi("Dernier match", matchs.length ? echapper(dateLisible(matchs[0].date)) : "—", matchs.length ? echapper(texteMatch(matchs[0])) : "aucun")}
+    </div>
+    <section class="bloc pr-bloc">
+      <h2 class="bloc-titre">🏆 Classement ${annee}</h2>
+      ${classement.length ? `<div class="tableau-defilant"><table class="tableau-admin tableau-coach">
+        <thead><tr><th></th><th>Joueur</th><th class="nombre">Joués</th><th class="nombre" title="Victoires">V</th><th class="nombre" title="Nuls">N</th><th class="nombre" title="Défaites">D</th><th class="nombre" title="Victoire 1, nul ½">Points</th><th class="nombre col-pct">% de points</th></tr></thead>
+        <tbody>${classement.map((l, i) => `<tr><td>${medaille(i)}</td>
+          <td><button type="button" class="lien-bouton" data-a="match-coach-joueur" data-p="${echapper(slugPrenom(l.prenom))}">${echapper(l.prenom)}</button></td>
+          <td class="nombre">${l.joues}</td><td class="nombre">${l.v}</td><td class="nombre">${l.n}</td><td class="nombre">${l.d}</td>
+          <td class="nombre"><strong>${textePoints(l.pts)}</strong></td><td class="nombre col-pct">${Math.round((l.pts / l.joues) * 100)} %</td></tr>`).join("")}</tbody>
+      </table></div>
+      <p class="petit">Victoire = 1 point, égalité = ½ point. « % de points » = points ÷ matchs joués (utile quand tout le monde n'a pas joué autant). Toucher un prénom affiche ses matchs.</p>`
+      : `<p class="petit">Pas encore de match cette année. Les joueurs entrent leurs résultats dans leur onglet ⚔️ Matchs.</p>`}
+    </section>`;
+  // Bilan d'un joueur contre chacun de ses adversaires
+  if (matchJoueurCoach) {
+    const nom = joueurs.find(([k]) => k === matchJoueurCoach)[1];
+    const face = {};
+    filtres.forEach((x) => {
+      const estJ1 = slugPrenom(x.j1) === matchJoueurCoach;
+      const adv = estJ1 ? x.j2 : x.j1;
+      const l = (face[slugPrenom(adv)] = face[slugPrenom(adv)] || { adv, v: 0, n: 0, d: 0 });
+      if (x.gagnant === 0) l.n++; else if ((x.gagnant === 1) === estJ1) l.v++; else l.d++;
+    });
+    html += `<section class="bloc pr-bloc">
+      <h2 class="bloc-titre">🤝 ${echapper(nom)} contre chacun</h2>
+      <div class="tableau-defilant"><table class="tableau-admin tableau-coach">
+        <thead><tr><th>Adversaire</th><th class="nombre">V</th><th class="nombre">N</th><th class="nombre">D</th></tr></thead>
+        <tbody>${Object.values(face).sort((a, b) => (b.v + b.n + b.d) - (a.v + a.n + a.d) || a.adv.localeCompare(b.adv, "fr")).map((l) => `<tr><td>${echapper(l.adv)}</td><td class="nombre">${l.v}</td><td class="nombre">${l.n}</td><td class="nombre">${l.d}</td></tr>`).join("")}</tbody>
+      </table></div>
+    </section>`;
+  }
+  html += `<section class="bloc pr-bloc">
+      <h2 class="bloc-titre">⚔️ Tous les matchs <small>(${filtres.length})</small></h2>
+      ${joueurs.length ? `<div class="filtres"><button type="button" class="filtre ${!matchJoueurCoach ? "actif" : ""}" data-a="match-coach-joueur" data-p="">Tous</button>${joueurs.map(([k, p]) => `<button type="button" class="filtre ${matchJoueurCoach === k ? "actif" : ""}" data-a="match-coach-joueur" data-p="${echapper(k)}">${echapper(p)}</button>`).join("")}</div>` : ""}
+      ${message}
+      ${filtres.length ? `<ul class="liste-consignes liste-matchs-coach">${filtres.map((x) => `<li class="consigne">
+        <span><strong>${echapper(texteMatch(x))}</strong><small>${echapper(dateLisible(x.date))}${x.parcours ? " · " + echapper(x.parcours) : ""}${auteurDe(x) ? ` · entré par ${echapper(auteurDe(x))}` : ""}</small></span>
+        <button type="button" class="bouton danger" data-a="match-effacer" data-id="${echapper(x.id)}" aria-label="Effacer ce match">✕</button>
+      </li>`).join("")}</ul>` : `<p class="petit">Aucun match.</p>`}
+      <p class="petit">✕ = effacer un match entré par erreur (le joueur peut aussi effacer les siens).</p>
+    </section>`;
+  return html;
+}
+
+// Mode démo : quelques matchs fictifs entre les joueurs de la démo
+function matchsDemo(db) {
+  const p = Object.values(db.bilans || {}).filter((b) => b.source !== "classeur").map((b) => b.prenom);
+  if (p.length < 2) return [];
+  const res = [], scores = ["2&1", "3&2", "1 up", "4&3", "AS", "2 up", "5&4"];
+  for (let i = 0; i < 9; i++) {
+    const a = p[i % p.length], b = p[(i * 3 + 1) % p.length];
+    if (a === b) continue;
+    const score = scores[i % scores.length];
+    res.push({ id: "demo-m" + i, auteur: "", j1: a, j2: b, gagnant: score === "AS" ? 0 : (i % 3 === 0 ? 2 : 1), score,
+      date: dateEnTexte(ajouterJours(new Date(), -(i * 4 + 1))), parcours: i % 2 ? "Golf du Vaudreuil" : "" });
+  }
+  return res;
+}
+
 document.addEventListener("click", async (e) => {
   const b = e.target.closest("[data-a^='match-']");
   if (!b) return;
   const a = b.dataset.a;
   messageMatch = "";
   if (a === "match-ouvrir" || a === "match-fermer") { formulaireMatch = a === "match-ouvrir"; return afficherVue(); }
+  if (a === "match-coach-joueur") { matchJoueurCoach = b.dataset.p || ""; return afficherVue(); }
   if (a === "match-effacer" && (await demanderConfirmation("Effacer ce match ?", "Oui, effacer"))) {
     messageMatch = await effacerMatch(b.dataset.id);   // base.js
     await chargerGroupe();

@@ -208,3 +208,6 @@
 
 ## 25/11/2026 — v88 : podium or, argent, bronze
 - Les ronds des places 1, 2 et 3 sont en or, argent et bronze dans tous les classements (joueurs, coachs, matchs).
+
+## 27/11/2026 — v89 : matchs dans l'espace coachs
+- ⚔️ Nouvel onglet coach « Matchs » : chiffres clés, classement de l'année (joués, V / N / D, points, % de points), bilan d'un joueur contre chacun de ses adversaires, liste de tous les matchs filtrable par joueur, effacement d'un match entré par erreur. Testé en démo.

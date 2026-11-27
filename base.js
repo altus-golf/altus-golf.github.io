@@ -409,6 +409,7 @@ async function lireGroupe(commeCoach = false) {
   if (!code) return null;
   if (modeDemo()) {
     const db = baseDemo();
+    if (!db.matchs) { db.matchs = matchsDemo(db); ecrireStockage("demo", db); }   // match.js : quelques matchs fictifs
     return {
       bilans: Object.values(db.bilans).map(normaliserBilan).filter(Boolean),
       defi: normaliserDefi(db.defi),

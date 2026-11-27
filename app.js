@@ -812,7 +812,7 @@ function vueCoach() {
   if (!groupeDonnees) return html + `<p class="petit">${erreurGroupe ? "Pas de connexion." : "Chargement…"}</p>`;
   const vuesCoach = { "c-semaine": vueCoachSemaine, "c-equipe": vueCoachEquipe, "c-classements": vueCoachClassements,
     "c-pelz": vueCoachPelz, "c-distances": vueCoachDistances, "c-verifier": vueCoachVerifier,
-    "c-forme": vueCoachForme, "c-prepa": vueCoachPrepa, "c-calendrier": vueCoachCalendrier };   // forme.js / prepa.js / calendrier.js
+    "c-forme": vueCoachForme, "c-prepa": vueCoachPrepa, "c-calendrier": vueCoachCalendrier, "c-matchs": vueCoachMatchs };   // forme.js / prepa.js / calendrier.js / match.js
   if (vuesCoach[ongletCoach]) return html + vuesCoach[ongletCoach]();
   if (ongletCoach === "c-gestion") return html + vueCoachGestion();
   return html + vueCoachJoueur();
@@ -935,6 +935,7 @@ const ICONES_ONGLETS = {
   "c-equipe": '<circle cx="9" cy="8.5" r="3"/><path d="M3.5 19.5a5.5 5.5 0 0 1 11 0"/><circle cx="16.5" cy="9.5" r="2.5"/><path d="M15.5 14.2a4.5 4.5 0 0 1 5 4.8"/>',
   "c-classements": '<path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 6H5v1a3 3 0 0 0 3 3M16 6h3v1a3 3 0 0 1-3 3M12 13v4M8.5 20h7M10 17h4"/>',
   "c-pelz": '<path d="M8 21V3.5l9 3.8-9 3.7"/><path d="M4 21h12"/>',
+  "c-matchs": '<path d="M5 4l12.5 12.5M19 4L6.5 16.5M14.5 19.5l5-5M9.5 19.5l-5-5"/>',
   "c-prepa": '<path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/>',
   "c-joueur": '<circle cx="12" cy="8" r="3.8"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>',
   "c-distances": '<path d="M3 12h18M6 8.5v7M12 8.5v7M18 8.5v7"/>',
